@@ -23,7 +23,7 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - Optionale Werkzeuge (z. B. Ghostscript) dürfen den Lauf nicht blockieren und werden nicht als Pflicht behandelt. `jbig2` wird nicht verwendet.
 
 ## Umgang mit Dateien und Daten
-- Eingabedateien werden nach erfolgreicher Verarbeitung standardmäßig als `<Name>_orig.pdf` gesichert. Mit `-Replace` wird das Original ohne Sicherung überschrieben.
+- Eingabedateien werden nach erfolgreicher Verarbeitung standardmäßig als `<Name>_orig.pdf` gesichert. Mit `-ReplaceOriginal` wird das Original ohne Sicherung überschrieben.
 - Ein Lauf gilt nur dann als fehlgeschlagen, wenn OCRmyPDF tatsächlich fehlschlägt oder das Endergebnis hash-gleich (SHA-256) zum Original ist, d. h. keine Veränderung stattgefunden hat. Ein größeres, aber inhaltlich verändertes Ergebnis ist ein Erfolg.
 - Jede nachgelagerte Optimierungsstufe (Ghostscript) ersetzt das Zwischenergebnis nur, wenn es dadurch kleiner wird; bei fehlender Verkleinerung bleibt die kleinere Datei erhalten.
 - Temporäre Dateien landen neben der Eingabedatei und werden im `finally`-Block zuverlässig entfernt.

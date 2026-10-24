@@ -6,7 +6,7 @@
     Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien in einem angegebenen Ordner
     einschließlich seiner Unterordner. Nach erfolgreicher OCR wird die Eingabedatei überschrieben.
     Das bisherige Original wird standardmäßig als <Name>_orig.pdf gesichert.
-    Mit -Replace wird die Eingabedatei ohne Sicherung überschrieben.
+    Mit -ReplaceOriginal wird die Eingabedatei ohne Sicherung überschrieben.
 
     VERARBEITUNG IN ZWEI STUFEN:
       1. OCRmyPDF: OCR-Textebene ergänzen, schiefe Seiten begradigen. Die Ausgabe erfolgt
@@ -72,7 +72,7 @@
     Deaktiviert Ghostscript als nachgelagerte Optimierungsstufe. Standardmäßig darf
     Ghostscript verwendet werden; es läuft nur in Kombination mit -GhostscriptDpi > 0.
 
-.PARAMETER Replace
+.PARAMETER ReplaceOriginal
     Überschreibt die Eingabedatei ohne Sicherung. Standardmäßig wird das Original
     nach erfolgreicher Verarbeitung als <Name>_orig.pdf gesichert.
 
@@ -89,7 +89,7 @@
     erhalten und die automatische Seitendrehung wird aktiviert.
 
 .EXAMPLE
-    .\Invoke-PdfOcr.ps1 -InputPath 'C:\PDFs' -Replace
+    .\Invoke-PdfOcr.ps1 -InputPath 'C:\PDFs' -ReplaceOriginal
     Verarbeitet alle PDFs in C:\PDFs und überschreibt die Originale ohne Sicherung.
 
 .NOTES
@@ -147,7 +147,7 @@ param(
     [switch] $NoGhostscript,
 
     # Eingabedatei ohne Sicherung überschreiben (standardmäßig wird _orig angelegt).
-    [switch] $Replace
+    [switch] $ReplaceOriginal
 )
 
 Set-StrictMode -Version Latest
@@ -363,7 +363,7 @@ function Get-PdfInputFile {
         Write-Host '  -NoDeskew              Schräglagenkorrektur deaktivieren (Standard: aktiv).'
         Write-Host '  -RotatePages           Verdrehte Seiten automatisch korrigieren (Standard: aus).'
         Write-Host '  -NoGhostscript         Ghostscript-Komprimierung deaktivieren (Standard: erlaubt).'
-        Write-Host '  -Replace               Original ohne _orig-Sicherung überschreiben.'
+        Write-Host '  -ReplaceOriginal       Original ohne _orig-Sicherung überschreiben.'
         Write-Host 'Mit Strg+C kannst du die Eingabe abbrechen.' -ForegroundColor Yellow
         $Path = Read-Host 'Pfad zu einer PDF-Datei oder einem Ordner mit PDFs'
     }
@@ -499,7 +499,7 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][bool] $NoDeskew,
         [Parameter(Mandatory)][bool] $RotatePages,
         [Parameter(Mandatory)][bool] $NoGhostscript,
-        [Parameter(Mandatory)][bool] $Replace,
+        [Parameter(Mandatory)][bool] $ReplaceOriginal,
         [string] $GhostscriptPath
     )
 
@@ -507,49 +507,97 @@ function Invoke-PdfProcessing {
     $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
     $originalPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
     $replaceBackupPath = $tempPath + '.bak'
+    $runnerPath = $tempPath + '.runner.py'
+    $failureReasonPath = $tempPath + '.reason'
+    $failureDetailsPath = $tempPath + '.details'
     $failureReason = $null
+    $failureDetails = $null
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
-        # Normales PDF (Version 1.5) statt PDF/A-Archiv als Ergebnis.
-        # Kein --image-dpi: wird bei PDF-Eingaben ignoriert und gemeldet; die
-        # Auflösung steuert die Ghostscript-Stufe.
-        # --optimize 1 statt 3: vermeidet die jbig2-Warnung (jbig2 wird nicht installiert).
-        $ocrArgs = @(
-            '--skip-text',
-            '--output-type', 'pdf',
-            '--optimize', '1',
-            '--jpeg-quality', $Quality,
-            '--language', $Language
-        )
-        if (-not $NoDeskew) { $ocrArgs += '--deskew' }
-        if ($RotatePages) {
-            # Die niedrigere Schwelle lässt auch Rotationen mit geringer Tesseract-Konfidenz zu.
-            $ocrArgs += @('--rotate-pages', '--rotate-pages-threshold', '5')
-        }
+        $pythonRunner = @'
+import logging
+import os
+import re
+import sys
+from pathlib import Path
 
-        # Live-Ausgabe: OCRmyPDF läuft ohne Umleitung, Fortschrittsbalken und
-        # Statusmeldungen erscheinen während des Laufs auf der Konsole.
+import ocrmypdf
+
+os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
+sys.stdout = sys.stderr
+
+input_path, output_path, reason_path, details_path, language, quality, no_deskew, rotate_pages = sys.argv[1:]
+
+def save_reason(reason):
+    Path(reason_path).write_text(reason, encoding="utf-8")
+
+def save_details(details):
+    Path(details_path).write_text(details, encoding="utf-8")
+
+class FailureReasonHandler(logging.Handler):
+    def emit(self, record):
+        exception = record.exc_info[1] if record.exc_info else None
+        if exception is not None:
+            reason = type(exception).__name__
+            details = f"{reason}: {exception}"
+        else:
+            message = record.getMessage()
+            match = re.search(r"\b([A-Za-z][A-Za-z0-9]*Error)\b", message)
+            reason = match.group(1) if match else None
+            details = message
+        if reason and not Path(reason_path).exists():
+            save_reason(reason)
+            save_details(details)
+
+logger = ocrmypdf.configure_logging(ocrmypdf.Verbosity.default)
+logger.addHandler(FailureReasonHandler())
+
+options = {
+    "skip_text": True,
+    "output_type": "pdf",
+    "optimize": 1,
+    "jpeg_quality": int(quality),
+    "language": language.split("+"),
+    "deskew": no_deskew.lower() != "true",
+    "rotate_pages": rotate_pages.lower() == "true",
+    "progress_bar": True,
+}
+if options["rotate_pages"]:
+    options["rotate_pages_threshold"] = 5
+
+try:
+    result = ocrmypdf.ocr(input_path, output_path, **options)
+except Exception as error:
+    save_reason(type(error).__name__)
+    save_details(f"{type(error).__name__}: {error}")
+    print(f"{type(error).__name__}: {error}", file=sys.stderr)
+    sys.exit(int(getattr(error, "exit_code", 1)))
+
+sys.exit(int(result))
+'@
+        [System.IO.File]::WriteAllText($runnerPath, $pythonRunner, [System.Text.UTF8Encoding]::new($false))
+
+        # OCRmyPDF läuft direkt im Terminal; Logging und Fortschrittsanzeige bleiben vollständig sichtbar.
         $previousErrorActionPreference = $ErrorActionPreference
         try {
-            # OCRmyPDF schreibt auch normale Statusmeldungen auf stderr. Unter
-            # StrictMode dürfen diese nicht als PowerShell-Fehler den Lauf abbrechen.
             $ErrorActionPreference = 'Continue'
-            & $PythonPath -m ocrmypdf @ocrArgs -- $Pdf.FullName $tempPath 2>&1 |
-                ForEach-Object {
-                    $outputLine = $_.ToString()
-                    Write-Host $outputLine
-                    if ($outputLine -match '^\s*(?<reason>[A-Za-z][A-Za-z0-9]*Error):') {
-                        $failureReason = $Matches['reason']
-                    }
-                }
+            & $PythonPath $runnerPath $Pdf.FullName $tempPath $failureReasonPath `
+                $failureDetailsPath $Language $Quality $NoDeskew.ToString() $RotatePages.ToString()
             $ocrExitCode = $LASTEXITCODE
         }
         finally {
             $ErrorActionPreference = $previousErrorActionPreference
         }
+        if (Test-Path -LiteralPath $failureReasonPath) {
+            $failureReason = [System.IO.File]::ReadAllText($failureReasonPath).Trim()
+        }
+        if (Test-Path -LiteralPath $failureDetailsPath) {
+            $failureDetails = [System.IO.File]::ReadAllText($failureDetailsPath).Trim()
+        }
         if ($ocrExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
             if (-not $failureReason) { $failureReason = "OCRmyPDF-Fehler (Exitcode $ocrExitCode)" }
-            throw "OCRmyPDF fehlgeschlagen (Exitcode $ocrExitCode)."
+            if (-not $failureDetails) { $failureDetails = "$failureReason (Exitcode $ocrExitCode)" }
+            throw "OCRmyPDF fehlgeschlagen: $failureDetails"
         }
 
         # Nachgelagerte Ghostscript-Optimierung: läuft nur, wenn explizit eine
@@ -574,7 +622,7 @@ function Invoke-PdfProcessing {
         }
 
         # Erst nach erfolgreicher Verarbeitung und Hash-Prüfung atomar austauschen.
-        if (-not $Replace) {
+        if (-not $ReplaceOriginal) {
             if (Test-Path -LiteralPath $originalPath) {
                 throw "Die Sicherungsdatei '$originalPath' existiert bereits; sie wird nicht überschrieben."
             }
@@ -594,9 +642,10 @@ function Invoke-PdfProcessing {
         return [pscustomobject]@{ Success = $true; FilePath = $Pdf.FullName; FailureReason = $null; OriginalBytes = [long]$originalSize; ResultBytes = [long]$resultSize }
     }
     catch {
-        Write-Warning "Fehler bei '$($Pdf.Name)': $($_.Exception.Message)"
+        if (-not $failureDetails) { $failureDetails = $_.Exception.Message }
+        Write-Warning "Fehler bei '$($Pdf.Name)':`n$failureDetails"
         if (-not $failureReason) {
-            $failureReason = $_.Exception.Message -split '[\r\n]' | Select-Object -First 1
+            $failureReason = $failureDetails -split '[\r\n]' | Select-Object -First 1
         }
         return [pscustomobject]@{ Success = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; OriginalBytes = [long]0; ResultBytes = [long]0 }
     }
@@ -607,6 +656,15 @@ function Invoke-PdfProcessing {
         }
         if (Test-Path -LiteralPath $replaceBackupPath) {
             Remove-Item -LiteralPath $replaceBackupPath -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path -LiteralPath $runnerPath) {
+            Remove-Item -LiteralPath $runnerPath -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path -LiteralPath $failureReasonPath) {
+            Remove-Item -LiteralPath $failureReasonPath -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path -LiteralPath $failureDetailsPath) {
+            Remove-Item -LiteralPath $failureDetailsPath -Force -ErrorAction SilentlyContinue
         }
     }
 }
@@ -623,7 +681,7 @@ Write-Host '       |  | [__________] >>> |        SCAN  /  TEXT            |' -F
 Write-Host '       |  +------------------+        DESKEW / OPTIMIZE        |' -ForegroundColor Cyan
 Write-Host '       ''-------------------------------------------------------''' -ForegroundColor Cyan
 Write-Host '  Fuegt PDFs OCR-Textebenen hinzu, begradigt Seiten und optimiert Dateien.' -ForegroundColor Cyan
-if (-not $Replace) {
+if (-not $ReplaceOriginal) {
     Write-Host '  Originale werden als _orig-Dateien gesichert.' -ForegroundColor Cyan
 }
 else {
@@ -733,7 +791,7 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
     $r = Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath `
         -Language $languageSelection -Quality $JpegQuality -GhostscriptDpi $GhostscriptDpi `
         -NoDeskew $NoDeskew.IsPresent -RotatePages $RotatePages.IsPresent `
-        -NoGhostscript $NoGhostscript.IsPresent -Replace $Replace.IsPresent `
+        -NoGhostscript $NoGhostscript.IsPresent -ReplaceOriginal $ReplaceOriginal.IsPresent `
         -GhostscriptPath $dependencyCheck.GhostscriptPath
     if ($null -ne $r) { $results += $r }
 }
@@ -756,7 +814,7 @@ if ($successCount -gt 0) {
     Write-Host ('Ergebnis gesamt: {0:N2} MB' -f ($sumResult / 1MB))
     Write-Host ('Gesamteinsparung: {0:N2} MB ({1:N1} %)' -f $savedMb, $savedPct)
 }
-if (-not $Replace) {
+if (-not $ReplaceOriginal) {
     Write-Host 'Originale wurden als _orig-Dateien gesichert.'
 }
 else {
