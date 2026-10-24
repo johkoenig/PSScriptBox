@@ -13,18 +13,22 @@
         (`--rotate-pages` ist standardmäßig deaktiviert und kann über den Parameter
         `-RotatePages` explizit aktiviert werden).
 
-    KOMPRESSION:
-      Die Scan-Bilder werden mit 300 DPI neu abgetastet und als JPEG mit Qualität 75
-      eingebettet (`--pdfa-image-compression jpeg --jpeg-quality 75 --image-dpi 300`).
-      Die Auflösungsbegrenzung auf 300 DPI reduziert die Dateigröße deutlich, ohne die
-      Lesbarkeit nennenswert zu beeinträchtigen. Bei reinen Textdokumenten ohne Bilder
-      bleibt diese Einstellung wirkungslos.
+    KOMPRESSION (mehrere Stufen):
+      1. OCRmyPDF: Die Scan-Bilder werden mit 300 DPI neu abgetastet und als JPEG mit
+         Qualität 75 eingebettet (`--pdfa-image-compression jpeg --jpeg-quality 75
+         --image-dpi 300`). Die Auflösungsbegrenzung auf 300 DPI reduziert die Dateigröße
+         deutlich, ohne die Lesbarkeit nennenswert zu beeinträchtigen.
+      2. qpdf (falls installiert): Strukturelle Optimierung der PDF mit
+         `qpdf --optimize-images --object-streams=generate` (Default-Ebene).
+      3. Ghostscript (falls installiert): Nachkompression der Bilder mit
+         `gs -dPDFSETTINGS=/ebook` als letzte, stärkste Stufe.
 
     ERGEBNISPRÜFUNG:
       Ein Lauf gilt nur dann als fehlgeschlagen, wenn OCRmyPDF tatsächlich fehlschlägt oder
       das Ergebnis byte-identisch (hash-gleich) zum Original ist, d. h. keine Veränderung
       stattgefunden hat. Ein größeres, aber inhaltlich verändertes Ergebnis wird als
-      Erfolg gewertet und als _ocr-Datei abgelegt.
+      Erfolg gewertet und als _ocr-Datei abgelegt. Jede Optimierungsstufe (qpdf,
+      Ghostscript) ersetzt das Zwischenergebnis nur, wenn es dadurch kleiner wird.
 
     Das Skript selbst benötigt keine Administratorrechte und installiert keine Software.
     Fehlende Programme meldet es mit Installationshinweisen. Fehlende Tesseract-Sprachdaten
@@ -59,26 +63,42 @@
     Legt fest, ob verdrehte Seiten (90°, 180°, 270°) automatisch korrigiert werden sollen
     (Standard: $false). Bei Aktivierung wird `--rotate-pages` an OCRmyPDF übergeben.
 
+.PARAMETER UseQpdf
+    Legt fest, ob qpdf als nachgelagerte Optimierungsstufe verwendet werden soll
+    (Standard: $true). Erfordert qpdf im PATH; ohne qpdf wird die Stufe übersprungen.
+
+.PARAMETER UseGhostscript
+    Legt fest, ob Ghostscript als letzte Optimierungsstufe verwendet werden soll
+    (Standard: $true). Erfordert Ghostscript (gswin64c/gswin32c/gs) im PATH;
+    ohne Ghostscript wird die Stufe übersprungen.
+
 .EXAMPLE
     .\pdf-toolbox.ps1
     Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa, JPEG-Qualität 75,
     300 DPI, automatischer Begradigung schiefer Seiten und deaktivierter automatischer
-    Drehkorrektur. Ergebnisse werden als <Name>_ocr.pdf abgelegt.
+    Drehkorrektur. Ergebnisse werden als <Name>_ocr.pdf abgelegt. qpdf und Ghostscript
+    werden automatisch als zusätzliche Optimierungsstufen verwendet, falls installiert.
 
 .EXAMPLE
     .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -JpegQuality 65 -ImageDpi 200 -Deskew:$true -RotatePages:$true
     Verarbeitet alle PDFs in C:\PDFs mit deutscher und englischer OCR, stärkerer JPEG-
     Kompression, 200 DPI, automatischer Begradigung und automatischer Drehkorrektur.
 
+.EXAMPLE
+    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -UseQpdf:$false -UseGhostscript:$false
+    Deaktiviert die nachgelagerten Optimierungsstufen; nur OCRmyPDF mit JPEG-Kompression
+    und 300 DPI wird angewendet.
+
 .NOTES
     Abhängigkeiten:
       - Python
       - OCRmyPDF (Python-Modul)
       - Tesseract
-      - Ghostscript
+      - qpdf (optional, aber empfohlen für zusätzliche Optimierung)
+      - Ghostscript (optional, aber empfohlen für stärkste Kompression)
 
     Beispielinstallation aus einer PowerShell mit Administratorrechten:
-      choco install python tesseract ghostscript -y
+      choco install python tesseract qpdf ghostscript -y
       py -m pip install --user ocrmypdf
 
     Tesseract-Sprachdaten (.traineddata) werden nicht mitinstalliert.
@@ -94,8 +114,10 @@
         Dokumente keine Farbe benötigen).
       - Reines Schwarz-Weiß: OCRmyPDF-Option `--threshold` (stärkste Kompression, aber
         Verlust von Graustufen und Hintergrunddetails).
-      - Externe Werkzeuge: `qpdf --optimize-images` oder Ghostscript direkt
-        (`gs -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook`) als nachgelagerter Schritt.
+      - Nachgelagerte Werkzeuge (im Skript bereits integriert, falls installiert):
+        qpdf (`--optimize-images --object-streams=generate`) und
+        Ghostscript (`-dPDFSETTINGS=/ebook`). Beide Stufen ersetzen das Zwischenergebnis
+        nur, wenn es dadurch kleiner wird.
 #>
 
 [CmdletBinding()]
@@ -118,7 +140,13 @@ param(
     [bool] $Deskew = $true,
 
     # Automatische Drehkorrektur für 90°/180°/270°-Verdrehungen (Standard false).
-    [bool] $RotatePages = $false
+    [bool] $RotatePages = $false,
+
+    # qpdf als nachgelagerte Optimierungsstufe verwenden (Standard true).
+    [bool] $UseQpdf = $true,
+
+    # Ghostscript als letzte Optimierungsstufe verwenden (Standard true).
+    [bool] $UseGhostscript = $true
 )
 
 Set-StrictMode -Version Latest
@@ -177,19 +205,26 @@ function Test-PythonModule {
 function Get-MissingDependency {
     # Prüft alle erforderlichen Programme und Python-Module und liefert
     # deren Pfade bzw. eine Liste der fehlenden Abhängigkeiten.
+    # qpdf und Ghostscript sind optional: Ihr Fehlen wird gemeldet, blockiert
+    # den Lauf aber nicht (die jeweilige Optimierungsstufe wird übersprungen).
     [CmdletBinding()]
     param()
 
     $missing = [System.Collections.Generic.List[string]]::new()
+    $optionalMissing = [System.Collections.Generic.List[string]]::new()
     $pythonPath = Get-ExecutablePath -Name 'py'
     if (-not $pythonPath) { $pythonPath = Get-ExecutablePath -Name 'python' }
     if (-not $pythonPath) { $missing.Add('Python (py.exe oder python.exe)') }
     if (-not (Get-ExecutablePath -Name 'tesseract')) { $missing.Add('Tesseract') }
-    if (
-        -not (Get-ExecutablePath -Name 'gswin64c') -and
-        -not (Get-ExecutablePath -Name 'gswin32c') -and
-        -not (Get-ExecutablePath -Name 'gs')
-    ) { $missing.Add('Ghostscript') }
+
+    # qpdf und Ghostscript sind optionale Optimierungsstufen.
+    $qpdfPath = Get-ExecutablePath -Name 'qpdf'
+    if (-not $qpdfPath) { $optionalMissing.Add('qpdf (optional, empfohlen für zusätzliche Optimierung)') }
+
+    $ghostscriptPath = Get-ExecutablePath -Name 'gswin64c'
+    if (-not $ghostscriptPath) { $ghostscriptPath = Get-ExecutablePath -Name 'gswin32c' }
+    if (-not $ghostscriptPath) { $ghostscriptPath = Get-ExecutablePath -Name 'gs' }
+    if (-not $ghostscriptPath) { $optionalMissing.Add('Ghostscript (optional, empfohlen für stärkste Kompression)') }
 
     # pngquant ist für die OCRmyPDF-Optimierung optional; ein Fehlen darf den
     # Lauf nicht blockieren. jbig2 wird bewusst nicht verwendet (nur für
@@ -198,7 +233,13 @@ function Get-MissingDependency {
         $missing.Add('OCRmyPDF (Python-Modul)')
     }
 
-    [pscustomobject]@{ PythonPath = $pythonPath; Missing = $missing }
+    [pscustomobject]@{
+        PythonPath      = $pythonPath
+        QpdfPath        = $qpdfPath
+        GhostscriptPath = $ghostscriptPath
+        Missing         = $missing
+        OptionalMissing = $optionalMissing
+    }
 }
 
 function Invoke-Tesseract {
@@ -328,14 +369,134 @@ function Get-FileSha256 {
     finally { $sha256.Dispose() }
 }
 
+function Invoke-ExternalTool {
+    # Führt ein externes Konsolenprogramm (qpdf, Ghostscript) mit umgeleiteten
+    # Streams aus und liefert Exitcode, Stdout und Stderr. Asynchrones Lesen
+    # verhindert blockierende Pipes bei großen Ausgaben.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $ExePath,
+        [Parameter(Mandatory)][string] $Arguments
+    )
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $ExePath
+    $startInfo.Arguments = $Arguments
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    try {
+        if (-not $process.Start()) { throw 'Programm konnte nicht gestartet werden.' }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        [pscustomobject]@{
+            ExitCode = $process.ExitCode
+            StdOut   = $stdoutTask.GetAwaiter().GetResult()
+            StdErr   = $stderrTask.GetAwaiter().GetResult()
+        }
+    }
+    finally { $process.Dispose() }
+}
+
+function Optimize-WithQpdf {
+    # Optimiert eine PDF-Datei strukturell mit qpdf
+    # (`--optimize-images --object-streams=generate`). Ersetzt die Eingabedatei
+    # nur, wenn das Ergebnis kleiner ist; anderenfalls bleibt die Eingabe
+    # unverändert. Rückgabe: $true, wenn eine Verkleinerung erzielt wurde.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $QpdfPath,
+        [Parameter(Mandatory)][System.IO.FileInfo] $Pdf
+    )
+
+    $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.qpdf.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
+    try {
+        $inputSize = (Get-Item -LiteralPath $Pdf.FullName).Length
+        $result = Invoke-ExternalTool -ExePath $QpdfPath -Arguments "--optimize-images --object-streams=generate --linearize `"$($Pdf.FullName)`" `"$tempPath`""
+        if ($result.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
+            Write-Host '  qpdf: fehlgeschlagen, Stufe übersprungen.' -ForegroundColor DarkYellow
+            return $false
+        }
+        $resultSize = (Get-Item -LiteralPath $tempPath).Length
+        if ($resultSize -lt $inputSize) {
+            Move-Item -LiteralPath $tempPath -Destination $Pdf.FullName -Force
+            Write-Host ('  qpdf: {0:N1} MB -> {1:N1} MB' -f ($inputSize / 1MB), ($resultSize / 1MB)) -ForegroundColor DarkGray
+            return $true
+        }
+        Write-Host '  qpdf: keine Verkleinerung, Ergebnis verworfen.' -ForegroundColor DarkYellow
+        return $false
+    }
+    catch {
+        Write-Host "  qpdf: Fehler: $($_.Exception.Message)" -ForegroundColor DarkYellow
+        return $false
+    }
+    finally {
+        if (Test-Path -LiteralPath $tempPath) {
+            Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Optimize-WithGhostscript {
+    # Komprimiert die Bilder einer PDF-Datei mit Ghostscript
+    # (`-dPDFSETTINGS=/ebook`: 150 DPI, JPEG-Kompression). Ersetzt die
+    # Eingabedatei nur, wenn das Ergebnis kleiner ist; anderenfalls bleibt
+    # die Eingabe unverändert. Rückgabe: $true, wenn eine Verkleinerung
+    # erzielt wurde.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $GhostscriptPath,
+        [Parameter(Mandatory)][System.IO.FileInfo] $Pdf
+    )
+
+    $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.gs.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
+    try {
+        $inputSize = (Get-Item -LiteralPath $Pdf.FullName).Length
+        # -dPDFSETTINGS=/ebook: 150 DPI, JPEG (DCT) Kompression - guter Kompromiss
+        # aus Größe und Qualität für gescannte Dokumente.
+        $gsArgs = '-dBATCH -dNOPAUSE -dQUIET -dSAFER -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook ' +
+            '-dCompatibilityLevel=1.5 ' +
+            '-sOutputFile="{0}" "{1}"' -f $tempPath, $Pdf.FullName
+        $result = Invoke-ExternalTool -ExePath $GhostscriptPath -Arguments $gsArgs
+        if ($result.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
+            Write-Host '  Ghostscript: fehlgeschlagen, Stufe übersprungen.' -ForegroundColor DarkYellow
+            return $false
+        }
+        $resultSize = (Get-Item -LiteralPath $tempPath).Length
+        if ($resultSize -lt $inputSize) {
+            Move-Item -LiteralPath $tempPath -Destination $Pdf.FullName -Force
+            Write-Host ('  Ghostscript: {0:N1} MB -> {1:N1} MB' -f ($inputSize / 1MB), ($resultSize / 1MB)) -ForegroundColor DarkGray
+            return $true
+        }
+        Write-Host '  Ghostscript: keine Verkleinerung, Ergebnis verworfen.' -ForegroundColor DarkYellow
+        return $false
+    }
+    catch {
+        Write-Host "  Ghostscript: Fehler: $($_.Exception.Message)" -ForegroundColor DarkYellow
+        return $false
+    }
+    finally {
+        if (Test-Path -LiteralPath $tempPath) {
+            Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function Invoke-PdfProcessing {
-    # Verarbeitet eine einzelne PDF-Datei mit OCRmyPDF: OCR-Textebene ergänzen,
-    # optimieren und schiefe Seiten begradigen. Die Scan-Bilder werden mit der
-    # übergebenen Auflösung (DPI) neu abgetastet und als JPEG mit der übergebenen
-    # Qualität eingebettet, was die Dateigröße deutlich reduziert.
+    # Verarbeitet eine einzelne PDF-Datei in mehreren Stufen:
+    #   1. OCRmyPDF: OCR-Textebene ergänzen, optimieren und schiefe Seiten begradigen.
+    #      Die Scan-Bilder werden mit der übergebenen Auflösung (DPI) neu abgetastet
+    #      und als JPEG mit der übergebenen Qualität eingebettet.
+    #   2. qpdf (optional): strukturelle Optimierung.
+    #   3. Ghostscript (optional): Bilder nachkomprimieren (stärkste Stufe).
     # Das Original bleibt unverändert; das Ergebnis wird als <Name>_ocr.pdf
     # neben das Original gelegt. Ein Lauf gilt nur als Fehlschlag, wenn OCRmyPDF
-    # fehlschlägt oder das Ergebnis hash-gleich zum Original ist (keine Änderung).
+    # fehlschlägt oder das Endergebnis hash-gleich zum Original ist (keine Änderung).
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
@@ -344,7 +505,11 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][int] $Quality,
         [Parameter(Mandatory)][int] $Dpi,
         [Parameter(Mandatory)][bool] $Deskew,
-        [Parameter(Mandatory)][bool] $RotatePages
+        [Parameter(Mandatory)][bool] $RotatePages,
+        [Parameter(Mandatory)][bool] $UseQpdf,
+        [Parameter(Mandatory)][bool] $UseGhostscript,
+        [string] $QpdfPath,
+        [string] $GhostscriptPath
     )
 
     # Temporäre Datei neben der Eingabe, damit Verschieben auf demselben Laufwerk bleibt.
@@ -368,6 +533,16 @@ function Invoke-PdfProcessing {
         & $PythonPath -m ocrmypdf $ocrArgs -- $Pdf.FullName $tempPath
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
             throw "OCRmyPDF fehlgeschlagen (Exitcode $LASTEXITCODE)."
+        }
+
+        # Nachgelagerte Optimierungsstufen (jeweils nur bei Verkleinerung übernommen).
+        if ($UseQpdf -and $QpdfPath) {
+            $qpdfResult = Get-Item -LiteralPath $tempPath
+            Optimize-WithQpdf -QpdfPath $QpdfPath -Pdf $qpdfResult | Out-Null
+        }
+        if ($UseGhostscript -and $GhostscriptPath) {
+            $gsResult = Get-Item -LiteralPath $tempPath
+            Optimize-WithGhostscript -GhostscriptPath $GhostscriptPath -Pdf $gsResult | Out-Null
         }
 
         $originalSize = (Get-Item -LiteralPath $Pdf.FullName).Length
@@ -416,10 +591,16 @@ if ($dependencyCheck.Missing.Count -gt 0) {
     Write-Host "`nFehlende Abhängigkeiten:" -ForegroundColor Yellow
     $dependencyCheck.Missing | ForEach-Object { Write-Host "  - $_" }
     Write-Host "`nBitte öffne eine neue PowerShell-Sitzung als Administrator und installiere:"
-    Write-Host '  choco install python tesseract ghostscript -y'
+    Write-Host '  choco install python tesseract -y'
     Write-Host '  py -m pip install --user ocrmypdf'
     Write-Host "`nDanach starte dieses Skript erneut in einer normalen PowerShell."
     exit 1
+}
+if ($dependencyCheck.OptionalMissing.Count -gt 0) {
+    Write-Host "`nOptionale Werkzeuge nicht gefunden (Optimierung wird eingeschränkt):" -ForegroundColor DarkYellow
+    $dependencyCheck.OptionalMissing | ForEach-Object { Write-Host "  - $_" }
+    Write-Host '  Installation (Admin-Shell): choco install qpdf ghostscript -y'
+    Write-Host '  Danach eine neue PowerShell-Sitzung öffnen und das Skript erneut starten.'
 }
 
 # --- Tesseract-Sprachen und tessdata-Ordner ermitteln -------------------------
@@ -463,7 +644,7 @@ if ($missingLanguages.Count -gt 0) {
 $successCount = 0
 $failureCount = 0
 foreach ($pdf in $pdfFiles) {
-    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $languageSelection -Quality $JpegQuality -Dpi $ImageDpi -Deskew:$Deskew -RotatePages:$RotatePages) { $successCount++ }
+    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $languageSelection -Quality $JpegQuality -Dpi $ImageDpi -Deskew:$Deskew -RotatePages:$RotatePages -UseQpdf:$UseQpdf -UseGhostscript:$UseGhostscript -QpdfPath $dependencyCheck.QpdfPath -GhostscriptPath $dependencyCheck.GhostscriptPath) { $successCount++ }
     else { $failureCount++ }
 }
 Write-Host "`nAbgeschlossen: $successCount erfolgreich, $failureCount fehlgeschlagen."
