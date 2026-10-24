@@ -8,6 +8,11 @@
     wird eine Sicherung mit dem Suffix _orig angelegt. Das Original wird
     nur durch ein erfolgreich verarbeitetes, kleineres Ergebnis ersetzt.
 
+    Die Scan-Bilder werden für eine aggressive, aber noch gut lesbare
+    Kompression als JPEG mit Qualität 75 eingebettet (--pdfa-image-compression
+    jpeg --jpeg-quality 75). Bei reinen Textdokumenten ohne Bilder bleibt
+    diese Einstellung wirkungslos.
+
     Das Skript selbst benötigt keine Administratorrechte und installiert
     keine Software. Fehlende Programme meldet es mit Installationshinweisen.
     Fehlende Tesseract-Sprachdaten meldet es mit einem Zweizeiler, der den
@@ -24,13 +29,19 @@
     Optionaler Pfad zu einer PDF-Datei oder einem Ordner mit PDF-Dateien.
     Ohne Angabe wird interaktiv danach gefragt.
 
-.EXAMPLE
-    .\pdf-toolbox.ps1
-    Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa.
+.PARAMETER JpegQuality
+    JPEG-Qualität für die eingebetteten Scan-Bilder (1-100).
+    Vorgabe ist 75: guter Kompromiss aus Dateigröße und Lesbarkeit.
 
 .EXAMPLE
-    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng'
-    Verarbeitet alle PDFs in C:\PDFs mit deutscher und englischer OCR.
+    .\pdf-toolbox.ps1
+    Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa
+    und JPEG-Qualität 75.
+
+.EXAMPLE
+    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -JpegQuality 65
+    Verarbeitet alle PDFs in C:\PDFs mit deutscher und englischer OCR und
+    stärkerer JPEG-Kompression.
 
 .NOTES
     Abhängigkeiten:
@@ -56,7 +67,11 @@ param(
     [string] $Language,
 
     # Optionaler Pfad zu einer PDF-Datei oder einem Ordner mit PDF-Dateien.
-    [string] $InputPath
+    [string] $InputPath,
+
+    # JPEG-Qualität für eingebettete Scan-Bilder (1-100). Vorgabe 75.
+    [ValidateRange(1, 100)]
+    [int] $JpegQuality = 75
 )
 
 Set-StrictMode -Version Latest
@@ -248,13 +263,16 @@ function Get-PdfInputFile {
 
 function Invoke-PdfProcessing {
     # Verarbeitet eine einzelne PDF-Datei mit OCRmyPDF: OCR-Textebene
-    # ergänzen und optimieren. Das Original wird nur ersetzt, wenn das
-    # Ergebnis kleiner ist; vorher wird eine Sicherung mit _orig angelegt.
+    # ergänzen und optimieren. Die Scan-Bilder werden dabei als JPEG mit
+    # der übergebenen Qualität eingebettet, was die Dateigröße deutlich
+    # reduziert. Das Original wird nur ersetzt, wenn das Ergebnis kleiner
+    # ist; vorher wird eine Sicherung mit _orig angelegt.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
         [Parameter(Mandatory)][string] $PythonPath,
-        [Parameter(Mandatory)][string] $Language
+        [Parameter(Mandatory)][string] $Language,
+        [Parameter(Mandatory)][int] $Quality
     )
 
     # Temporäre Datei neben der Eingabe, damit Verschieben auf demselben Laufwerk bleibt.
@@ -262,7 +280,9 @@ function Invoke-PdfProcessing {
     $backupPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
-        & $PythonPath -m ocrmypdf --skip-text --optimize 3 --output-type pdf --language $Language -- $Pdf.FullName $tempPath
+        # --pdfa-image-compression jpeg: Bilder verlustbehaftet als JPEG einbetten.
+        # --jpeg-quality: Qualitätsstufe des JPEG-Encoders (75 = guter Kompromiss).
+        & $PythonPath -m ocrmypdf --skip-text --optimize 3 --output-type pdf --pdfa-image-compression jpeg --jpeg-quality $Quality --language $Language -- $Pdf.FullName $tempPath
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
             throw "OCRmyPDF fehlgeschlagen (Exitcode $LASTEXITCODE)."
         }
@@ -350,7 +370,7 @@ if ($missingLanguages.Count -gt 0) {
 $successCount = 0
 $failureCount = 0
 foreach ($pdf in $pdfFiles) {
-    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $languageSelection) { $successCount++ }
+    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $languageSelection -Quality $JpegQuality) { $successCount++ }
     else { $failureCount++ }
 }
 Write-Host "`nAbgeschlossen: $successCount erfolgreich, $failureCount fehlgeschlagen."
