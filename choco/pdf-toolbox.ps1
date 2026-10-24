@@ -22,6 +22,12 @@
       choco install python tesseract ghostscript -y
       py -m pip install --user ocrmypdf
 
+    Sprachdaten (traineddata) sind separat für Tesseract zu installieren.
+    Siehe https://github.com/tesseract-ocr/tessdata_fast bzw.
+    https://github.com/tesseract-ocr/tessdata_best. Die benötigten Dateien
+    gehören in den tessdata-Ordner von Tesseract. Danach `tesseract --list-langs`
+    ausführen und eine neue PowerShell-Sitzung öffnen.
+
     Anschließend das Skript in einer normalen PowerShell starten.
 #>
 
@@ -32,63 +38,20 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Get-ExecutablePath {
-    <#
-    .SYNOPSIS
-        Liefert den Pfad zu einem ausführbaren Kommando.
-
-    .DESCRIPTION
-        Sucht ein Kommando über Get-Command. Gibt bei fehlendem Kommando
-        $null zurück, anstatt einen Fehler auszulösen.
-
-    .PARAMETER Name
-        Name des Kommandos, zum Beispiel py oder tesseract.
-
-    .OUTPUTS
-        System.String oder $null
-    #>
     [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string] $Name
-    )
+    param([Parameter(Mandatory)][string] $Name)
 
     $command = Get-Command -Name $Name -ErrorAction SilentlyContinue |
         Select-Object -First 1
-
-    if ($null -eq $command) {
-        return $null
-    }
-
+    if ($null -eq $command) { return $null }
     return $command.Source
 }
 
 function Test-PythonModule {
-    <#
-    .SYNOPSIS
-        Prüft ein Python-Modul ohne den erwarteten Importfehler auszugeben.
-
-    .DESCRIPTION
-        Startet Python als separaten Prozess und prüft dessen Exitcode.
-        Standardausgabe und Fehlerausgabe werden umgeleitet und nicht in
-        der PowerShell-Konsole angezeigt. So entsteht beim fehlenden Modul
-        kein NativeCommandError.
-
-    .PARAMETER PythonPath
-        Pfad zu py.exe oder python.exe.
-
-    .PARAMETER ModuleName
-        Name des Python-Moduls, das importiert werden soll.
-
-    .OUTPUTS
-        System.Boolean
-    #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
-        [string] $PythonPath,
-
-        [Parameter(Mandatory)]
-        [string] $ModuleName
+        [Parameter(Mandatory)][string] $PythonPath,
+        [Parameter(Mandatory)][string] $ModuleName
     )
 
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
@@ -101,203 +64,120 @@ function Test-PythonModule {
 
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
-
     try {
-        if (-not $process.Start()) {
-            return $false
-        }
-
-        # Drain both streams to avoid blocking if the child process writes
-        # more output than the operating-system pipe buffer can hold.
+        if (-not $process.Start()) { return $false }
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
         $stderrTask = $process.StandardError.ReadToEndAsync()
         $process.WaitForExit()
         $stdoutTask.GetAwaiter().GetResult() | Out-Null
         $stderrTask.GetAwaiter().GetResult() | Out-Null
-
         return ($process.ExitCode -eq 0)
     }
-    catch {
-        return $false
-    }
-    finally {
-        $process.Dispose()
-    }
+    catch { return $false }
+    finally { $process.Dispose() }
 }
 
 function Get-MissingDependency {
-    <#
-    .SYNOPSIS
-        Prüft, ob die benötigten Programme und das OCRmyPDF-Modul vorhanden sind.
-
-    .DESCRIPTION
-        Sucht Python, Tesseract, Ghostscript und pngquant im PATH und testet
-        den Import des OCRmyPDF-Moduls. Der Python-Importtest unterdrückt
-        erwartete Fehlermeldungen.
-
-    .OUTPUTS
-        PSCustomObject mit den Python-Pfad und einer Liste fehlender Abhängigkeiten.
-    #>
     [CmdletBinding()]
     param()
 
     $missing = [System.Collections.Generic.List[string]]::new()
-
     $pythonPath = Get-ExecutablePath -Name 'py'
-    if (-not $pythonPath) {
-        $pythonPath = Get-ExecutablePath -Name 'python'
-    }
-    if (-not $pythonPath) {
-        $missing.Add('Python (py.exe oder python.exe)')
-    }
-
-    if (-not (Get-ExecutablePath -Name 'tesseract')) {
-        $missing.Add('Tesseract')
-    }
-
+    if (-not $pythonPath) { $pythonPath = Get-ExecutablePath -Name 'python' }
+    if (-not $pythonPath) { $missing.Add('Python (py.exe oder python.exe)') }
+    if (-not (Get-ExecutablePath -Name 'tesseract')) { $missing.Add('Tesseract') }
     if (
         -not (Get-ExecutablePath -Name 'gswin64c') -and
         -not (Get-ExecutablePath -Name 'gswin32c') -and
         -not (Get-ExecutablePath -Name 'gs')
-    ) {
-        $missing.Add('Ghostscript')
-    }
+    ) { $missing.Add('Ghostscript') }
 
-    # OCRmyPDF benötigt pngquant bei den Optimierungsstufen 2 und 3.
-    if (-not (Get-ExecutablePath -Name 'pngquant')) {
-        $missing.Add('pngquant (für --optimize 2/3)')
-    }
-
+    # pngquant und jbig2enc sind für OCRmyPDF-Optimierung optional.
+    # Fehlende optionale Werkzeuge dürfen den Lauf nicht blockieren.
     if ($pythonPath -and -not (Test-PythonModule -PythonPath $pythonPath -ModuleName 'ocrmypdf')) {
         $missing.Add('OCRmyPDF (Python-Modul)')
     }
 
-    [pscustomobject]@{
-        PythonPath = $pythonPath
-        Missing    = $missing
+    [pscustomobject]@{ PythonPath = $pythonPath; Missing = $missing }
+}
+
+function Get-TesseractLanguages {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string] $TesseractPath)
+
+    # Native Prozessausgabe gezielt abfangen, damit Fehlerausgaben nicht
+    # durch PowerShells NativeCommand-Verhalten als Terminierungsfehler enden.
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $TesseractPath
+    $startInfo.Arguments = '--list-langs'
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    try {
+        if (-not $process.Start()) { throw 'Tesseract konnte nicht gestartet werden.' }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        if ($process.ExitCode -ne 0) {
+            throw "Tesseract --list-langs fehlgeschlagen: $stderr"
+        }
+        return @($stdout -split '\r?\n' | ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -and $_ -ne 'List of available languages in "tessdata" (2):' -and $_ -notmatch '^List of available languages' })
     }
+    finally { $process.Dispose() }
 }
 
 function Get-PdfInputFile {
-    <#
-    .SYNOPSIS
-        Fragt nach einer PDF-Datei oder einem Ordner mit PDFs.
-
-    .DESCRIPTION
-        Bei Auswahl eines Ordners werden nur PDF-Dateien direkt in diesem
-        Ordner berücksichtigt. Unterordner werden nicht durchsucht.
-
-    .OUTPUTS
-        System.IO.FileInfo[]
-    #>
     [CmdletBinding()]
     param()
 
     $inputPath = Read-Host 'Pfad zu einer PDF-Datei oder einem Ordner mit PDFs'
-    if ([string]::IsNullOrWhiteSpace($inputPath)) {
-        throw 'Es wurde kein Pfad eingegeben.'
-    }
-
-    $inputPath = [Environment]::ExpandEnvironmentVariables(
-        $inputPath.Trim().Trim('"')
-    )
-
-    if (-not (Test-Path -LiteralPath $inputPath)) {
-        throw "Pfad nicht gefunden: $inputPath"
-    }
-
+    if ([string]::IsNullOrWhiteSpace($inputPath)) { throw 'Es wurde kein Pfad eingegeben.' }
+    $inputPath = [Environment]::ExpandEnvironmentVariables($inputPath.Trim().Trim('"'))
+    if (-not (Test-Path -LiteralPath $inputPath)) { throw "Pfad nicht gefunden: $inputPath" }
     $item = Get-Item -LiteralPath $inputPath
-
     if ($item.PSIsContainer) {
         return @(Get-ChildItem -LiteralPath $item.FullName -File -Filter '*.pdf')
     }
-
-    if ($item.Extension -ine '.pdf') {
-        throw 'Die ausgewählte Datei hat keine .pdf-Endung.'
-    }
-
+    if ($item.Extension -ine '.pdf') { throw 'Die ausgewählte Datei hat keine .pdf-Endung.' }
     return @($item)
 }
 
 function Invoke-PdfProcessing {
-    <#
-    .SYNOPSIS
-        Verarbeitet eine PDF-Datei und ersetzt sie nur bei erfolgreicher Verkleinerung.
-
-    .DESCRIPTION
-        Erstellt zunächst eine temporäre Ausgabedatei. Bei einem Fehler oder
-        wenn das Ergebnis nicht kleiner ist, bleibt das Original unverändert
-        und es wird keine _orig-Sicherung angelegt. Eine Sicherung wird erst
-        unmittelbar vor dem Ersetzen des Originals erstellt.
-
-    .PARAMETER Pdf
-        Zu verarbeitende PDF-Datei.
-
-    .PARAMETER PythonPath
-        Pfad zum Python-Interpreter beziehungsweise Launcher.
-
-    .PARAMETER Language
-        OCR-Sprachcode, zum Beispiel deu oder deu+eng.
-
-    .OUTPUTS
-        System.Boolean. True bei erfolgreicher Verarbeitung, sonst False.
-    #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
-        [System.IO.FileInfo] $Pdf,
-
-        [Parameter(Mandatory)]
-        [string] $PythonPath,
-
-        [Parameter(Mandatory)]
-        [string] $Language
+        [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
+        [Parameter(Mandatory)][string] $PythonPath,
+        [Parameter(Mandatory)][string] $Language
     )
 
-    $tempPath = Join-Path $Pdf.DirectoryName (
-        '.{0}.{1}.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N')
-    )
+    $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
     $backupPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
-
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
-
-        & $PythonPath -m ocrmypdf `
-            --skip-text `
-            --optimize 3 `
-            --output-type pdf `
-            --language $Language `
-            -- $Pdf.FullName $tempPath
-
+        & $PythonPath -m ocrmypdf --skip-text --optimize 3 --output-type pdf --language $Language -- $Pdf.FullName $tempPath
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
             throw "OCRmyPDF fehlgeschlagen (Exitcode $LASTEXITCODE)."
         }
-
         $originalSize = (Get-Item -LiteralPath $Pdf.FullName).Length
         $resultSize = (Get-Item -LiteralPath $tempPath).Length
-
         if ($resultSize -ge $originalSize) {
-            Write-Host 'Ergebnis ist nicht kleiner; Original bleibt unverändert und es wird keine Sicherung angelegt.' `
-                -ForegroundColor Yellow
+            Write-Host 'Ergebnis ist nicht kleiner; Original bleibt unverändert und es wird keine Sicherung angelegt.' -ForegroundColor Yellow
             return $false
         }
-
-        # Sicherung erst anlegen, wenn ein kleineres Ergebnis vorliegt.
         if (-not (Test-Path -LiteralPath $backupPath)) {
             Copy-Item -LiteralPath $Pdf.FullName -Destination $backupPath
         }
         else {
-            Write-Host "Vorhandene Sicherung bleibt unverändert: $backupPath" `
-                -ForegroundColor DarkYellow
+            Write-Host "Vorhandene Sicherung bleibt unverändert: $backupPath" -ForegroundColor DarkYellow
         }
-
         Move-Item -LiteralPath $tempPath -Destination $Pdf.FullName -Force
-
-        Write-Host (
-            'Optimiert: {0:N1} MB -> {1:N1} MB' -f
-            ($originalSize / 1MB), ($resultSize / 1MB)
-        ) -ForegroundColor Green
-
+        Write-Host ('Optimiert: {0:N1} MB -> {1:N1} MB' -f ($originalSize / 1MB), ($resultSize / 1MB)) -ForegroundColor Green
         return $true
     }
     catch {
@@ -311,12 +191,11 @@ function Invoke-PdfProcessing {
     }
 }
 
-# Prüfe vor der Verarbeitung alle erforderlichen Abhängigkeiten.
+# Prüfe vor der Verarbeitung alle erforderlichen Programme und Module.
 $dependencyCheck = Get-MissingDependency
 if ($dependencyCheck.Missing.Count -gt 0) {
     Write-Host "`nFehlende Abhängigkeiten:" -ForegroundColor Yellow
     $dependencyCheck.Missing | ForEach-Object { Write-Host "  - $_" }
-
     Write-Host "`nBitte öffne eine neue PowerShell-Sitzung als Administrator und installiere:"
     Write-Host '  choco install python tesseract ghostscript -y'
     Write-Host '  py -m pip install --user ocrmypdf'
@@ -324,35 +203,40 @@ if ($dependencyCheck.Missing.Count -gt 0) {
     exit 1
 }
 
+$tesseractPath = Get-ExecutablePath -Name 'tesseract'
 try {
-    $pdfFiles = @(Get-PdfInputFile)
+    $installedLanguages = @(Get-TesseractLanguages -TesseractPath $tesseractPath)
 }
 catch {
-    Write-Error $_.Exception.Message
+    Write-Error "Tesseract-Sprachen konnten nicht ermittelt werden. Prüfe `"tesseract --list-langs`": $($_.Exception.Message)"
+    exit 1
+}
+if ($installedLanguages.Count -eq 0) {
+    Write-Error 'Tesseract meldet keine installierten Sprachdaten. Die Sprachdateien müssen separat beschafft und im tessdata-Ordner abgelegt werden; eine erneute Chocolatey-Installation von Tesseract hilft nicht.'
     exit 1
 }
 
-if ($pdfFiles.Count -eq 0) {
-    Write-Host 'Keine PDFs gefunden.'
-    exit 0
-}
+try { $pdfFiles = @(Get-PdfInputFile) }
+catch { Write-Error $_.Exception.Message; exit 1 }
+if ($pdfFiles.Count -eq 0) { Write-Host 'Keine PDFs gefunden.'; exit 0 }
 
-$language = Read-Host 'OCR-Sprachen (z. B. deu oder deu+eng) [deu]'
-if ([string]::IsNullOrWhiteSpace($language)) {
-    $language = 'deu'
+Write-Host "`nInstallierte Tesseract-Sprachen: $($installedLanguages -join ', ')" -ForegroundColor Cyan
+Write-Host 'Sprachdaten können beispielsweise aus tessdata_fast oder tessdata_best bezogen und in den Tesseract-tessdata-Ordner kopiert werden.'
+$defaultLanguage = if ($installedLanguages -contains 'deu') { 'deu' } else { $installedLanguages[0] }
+$language = Read-Host "OCR-Sprachen mit + kombinieren (z. B. deu+eng). Verfügbar: $($installedLanguages -join ', ') [$defaultLanguage]"
+if ([string]::IsNullOrWhiteSpace($language)) { $language = $defaultLanguage }
+$requestedLanguages = @($language -split '\+' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$missingLanguages = @($requestedLanguages | Where-Object { $installedLanguages -notcontains $_ })
+if ($missingLanguages.Count -gt 0) {
+    Write-Error ("Fehlende Tesseract-Sprachdaten: {0}. Installierte Sprachen: {1}. Beschaffe die passenden .traineddata-Dateien separat, lege sie im tessdata-Ordner ab und bestätige dies mit `tesseract --list-langs`. Keine Chocolatey-Neuinstallation erforderlich." -f ($missingLanguages -join ', '), ($installedLanguages -join ', '))
+    exit 1
 }
 
 $successCount = 0
 $failureCount = 0
-
 foreach ($pdf in $pdfFiles) {
-    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $language) {
-        $successCount++
-    }
-    else {
-        $failureCount++
-    }
+    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $language) { $successCount++ }
+    else { $failureCount++ }
 }
-
 Write-Host "`nAbgeschlossen: $successCount erfolgreich, $failureCount fehlgeschlagen."
 Write-Host 'Sicherungskopien mit dem Suffix _orig liegen neben den Originalen.'
