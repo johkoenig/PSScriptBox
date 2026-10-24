@@ -5,8 +5,10 @@
 .DESCRIPTION
     Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien in einem angegebenen Ordner
     einschließlich seiner Unterordner. Nach erfolgreicher OCR wird die Eingabedatei überschrieben.
-    Das bisherige Original wird standardmäßig als <Name>_orig.pdf gesichert.
-    Mit -ReplaceOriginal wird die Eingabedatei ohne Sicherung überschrieben.
+    Das bisherige Original wird standardmäßig als <Name>_orig.pdf gesichert. Existiert diese
+    Sicherung bereits, bleibt sie erhalten; die Eingabedatei wird direkt ersetzt und als Warnung
+    aufgeführt. Mit -ReplaceOriginal wird die Eingabedatei ohne Sicherung überschrieben.
+    PDFs mit digitaler Signatur werden vor dem OCR-Aufruf erkannt und übersprungen.
 
     VERARBEITUNG IN ZWEI STUFEN:
       1. OCRmyPDF: OCR-Textebene ergänzen, schiefe Seiten begradigen. Die Ausgabe erfolgt
@@ -74,7 +76,8 @@
 
 .PARAMETER ReplaceOriginal
     Überschreibt die Eingabedatei ohne Sicherung. Standardmäßig wird das Original
-    nach erfolgreicher Verarbeitung als <Name>_orig.pdf gesichert.
+    nach erfolgreicher Verarbeitung als <Name>_orig.pdf gesichert. Existiert die
+    Sicherungsdatei bereits, wird sie nicht überschrieben und das PDF direkt ersetzt.
 
 .EXAMPLE
     .\Invoke-PdfOcr.ps1
@@ -96,6 +99,7 @@
     Abhängigkeiten:
       - Python
       - OCRmyPDF (Python-Modul)
+      - pikepdf (wird für die Signaturprüfung verwendet und mit OCRmyPDF installiert)
       - Tesseract
       - Ghostscript (nur erforderlich bei -GhostscriptDpi > 0)
 
@@ -508,97 +512,97 @@ function Invoke-PdfProcessing {
     $tempPath = Join-Path $Pdf.DirectoryName ($tempStem + '.pdf.part')
     $originalPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
     $replaceBackupPath = Join-Path $Pdf.DirectoryName ($tempStem + '.bak.part')
-    $runnerPath = Join-Path $Pdf.DirectoryName ($tempStem + '.py.part')
-    $failureReasonPath = Join-Path $Pdf.DirectoryName ($tempStem + '.reason.part')
-    $failureDetailsPath = Join-Path $Pdf.DirectoryName ($tempStem + '.details.part')
+    $signatureCheckPath = Join-Path $Pdf.DirectoryName ($tempStem + '.sig.py.part')
+    $backupWarning = $null
     $failureReason = $null
     $failureDetails = $null
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
-        $pythonRunner = @'
-import logging
-import os
-import re
+        $signatureCheck = @'
 import sys
-from pathlib import Path
+import pikepdf
 
-import ocrmypdf
+def has_signature_value(value):
+    return value is not None and "/ByteRange" in value and "/Contents" in value
 
-os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
-sys.stdout = sys.stderr
+def field_is_signed(field, inherited_type=None):
+    field_type = field.get("/FT", inherited_type)
+    if str(field_type) == "/Sig" and has_signature_value(field.get("/V")):
+        return True
+    return any(field_is_signed(child, field_type) for child in field.get("/Kids", []))
 
-input_path, output_path, reason_path, details_path, language, quality, no_deskew, rotate_pages = sys.argv[1:]
-
-def save_reason(reason):
-    Path(reason_path).write_text(reason, encoding="utf-8")
-
-def save_details(details):
-    Path(details_path).write_text(details, encoding="utf-8")
-
-class FailureReasonHandler(logging.Handler):
-    def emit(self, record):
-        exception = record.exc_info[1] if record.exc_info else None
-        if exception is not None:
-            reason = type(exception).__name__
-            details = f"{reason}: {exception}"
-        else:
-            message = record.getMessage()
-            match = re.search(r"\b([A-Za-z][A-Za-z0-9]*Error)\b", message)
-            reason = match.group(1) if match else None
-            details = message
-        if reason and not Path(reason_path).exists():
-            save_reason(reason)
-            save_details(details)
-
-logger = ocrmypdf.configure_logging(ocrmypdf.Verbosity.default)
-logger.addHandler(FailureReasonHandler())
-
-options = {
-    "skip_text": True,
-    "output_type": "pdf",
-    "optimize": 1,
-    "jpeg_quality": int(quality),
-    "language": language.split("+"),
-    "deskew": no_deskew.lower() != "true",
-    "rotate_pages": rotate_pages.lower() == "true",
-    "progress_bar": True,
-}
-if options["rotate_pages"]:
-    options["rotate_pages_threshold"] = 5
-
-try:
-    result = ocrmypdf.ocr(input_path, output_path, **options)
-except Exception as error:
-    save_reason(type(error).__name__)
-    save_details(f"{type(error).__name__}: {error}")
-    print(f"{type(error).__name__}: {error}", file=sys.stderr)
-    sys.exit(int(getattr(error, "exit_code", 1)))
-
-sys.exit(int(result))
+with pikepdf.open(sys.argv[1]) as pdf:
+    acro_form = pdf.Root.get("/AcroForm")
+    fields = acro_form.get("/Fields", []) if acro_form is not None else []
+    permissions = pdf.Root.get("/Perms")
+    permission_signatures = (
+        [permissions.get("/DocMDP"), permissions.get("/UR3")]
+        if permissions is not None else []
+    )
+    signed = any(field_is_signed(field) for field in fields)
+    signed = signed or any(has_signature_value(value) for value in permission_signatures)
+    print("SIGNED" if signed else "UNSIGNED")
 '@
-        [System.IO.File]::WriteAllText($runnerPath, $pythonRunner, [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::WriteAllText($signatureCheckPath, $signatureCheck, [System.Text.UTF8Encoding]::new($false))
 
-        # OCRmyPDF läuft direkt im Terminal; Logging und Fortschrittsanzeige bleiben vollständig sichtbar.
+        # Die Signaturprüfung läuft getrennt; OCRmyPDF selbst wird unten direkt im Terminal gestartet.
         $previousErrorActionPreference = $ErrorActionPreference
         try {
             $ErrorActionPreference = 'Continue'
-            & $PythonPath $runnerPath $Pdf.FullName $tempPath $failureReasonPath `
-                $failureDetailsPath $Language $Quality $NoDeskew.ToString() $RotatePages.ToString()
+            $signatureCheckOutput = @(& $PythonPath $signatureCheckPath $Pdf.FullName 2>&1)
+            $signatureCheckExitCode = $LASTEXITCODE
+        }
+        finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+        if ($signatureCheckExitCode -ne 0) {
+            $checkDetails = ($signatureCheckOutput | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
+            throw "Signaturprüfung fehlgeschlagen (Exitcode $signatureCheckExitCode): $checkDetails"
+        }
+        $signatureStatus = ($signatureCheckOutput | ForEach-Object { $_.ToString() }) -join ''
+        $signatureStatus = $signatureStatus.Trim()
+        if ($signatureStatus -notin @('SIGNED', 'UNSIGNED')) {
+            throw "Signaturprüfung lieferte ein ungültiges Ergebnis: '$signatureStatus'"
+        }
+        if ($signatureStatus -eq 'SIGNED') {
+            $failureReason = 'DigitalSignatureError'
+            $failureDetails = 'DigitalSignatureError: Input PDF has a digital signature. OCR would alter the document, invalidating the signature.'
+            Write-Warning "Übersprungen: '$($Pdf.Name)'`n$failureDetails"
+            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
+        }
+
+        if (-not $ReplaceOriginal -and (Test-Path -LiteralPath $originalPath)) {
+            $relativeOriginalPath = $originalPath.Substring($Pdf.DirectoryName.Length + 1)
+            $backupWarning = 'Sicherung vorhanden'
+            Write-Warning "Sicherung '$relativeOriginalPath' existiert bereits und bleibt erhalten; das PDF wird direkt ersetzt."
+        }
+
+        $ocrArguments = @(
+            '-m', 'ocrmypdf',
+            '--skip-text',
+            '--output-type', 'pdf',
+            '--optimize', '1',
+            '--jpeg-quality', "$Quality",
+            '--language', $Language
+        )
+        if (-not $NoDeskew) { $ocrArguments += '--deskew' }
+        if ($RotatePages) { $ocrArguments += @('--rotate-pages', '--rotate-pages-threshold', '5') }
+        $ocrArguments += @($Pdf.FullName, $tempPath)
+
+        # Keine Stream-Umleitung: OCRmyPDF behält seine native Konsolenausgabe und Fortschrittsanzeige.
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            & $PythonPath @ocrArguments
             $ocrExitCode = $LASTEXITCODE
         }
         finally {
             $ErrorActionPreference = $previousErrorActionPreference
         }
-        if (Test-Path -LiteralPath $failureReasonPath) {
-            $failureReason = [System.IO.File]::ReadAllText($failureReasonPath).Trim()
-        }
-        if (Test-Path -LiteralPath $failureDetailsPath) {
-            $failureDetails = [System.IO.File]::ReadAllText($failureDetailsPath).Trim()
-        }
         if ($ocrExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
-            if (-not $failureReason) { $failureReason = "OCRmyPDF-Fehler (Exitcode $ocrExitCode)" }
-            if (-not $failureDetails) { $failureDetails = "$failureReason (Exitcode $ocrExitCode)" }
-            throw "OCRmyPDF fehlgeschlagen: $failureDetails"
+            $failureReason = "OCRmyPDF-Fehler (Exitcode $ocrExitCode)"
+            $failureDetails = "$failureReason. Die genaue Ursache steht in der OCRmyPDF-Konsolenausgabe."
+            throw $failureDetails
         }
 
         # Nachgelagerte Ghostscript-Optimierung: läuft nur, wenn explizit eine
@@ -619,14 +623,11 @@ sys.exit(int(result))
         $resultHash = Get-FileSha256 -Path $tempPath
         if ($originalHash -eq $resultHash) {
             Write-Host 'Ergebnis ist identisch zum Original (keine Änderung); Datei wird verworfen.' -ForegroundColor Yellow
-            return [pscustomobject]@{ Success = $false; FilePath = $Pdf.FullName; FailureReason = 'Keine Änderung'; OriginalBytes = [long]$originalSize; ResultBytes = [long]0 }
+            return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = 'Keine Änderung'; Warning = $backupWarning; OriginalBytes = [long]$originalSize; ResultBytes = [long]0 }
         }
 
         # Erst nach erfolgreicher Verarbeitung und Hash-Prüfung atomar austauschen.
-        if (-not $ReplaceOriginal) {
-            if (Test-Path -LiteralPath $originalPath) {
-                throw "Die Sicherungsdatei '$originalPath' existiert bereits; sie wird nicht überschrieben."
-            }
+        if (-not $ReplaceOriginal -and -not (Test-Path -LiteralPath $originalPath)) {
             [System.IO.File]::Replace($tempPath, $Pdf.FullName, $originalPath)
             Write-Host "Original gesichert: $originalPath"
         }
@@ -640,7 +641,7 @@ sys.exit(int(result))
             Write-Host ('Verarbeitet (größer als Original): {0:N1} MB -> {1:N1} MB' -f ($originalSize / 1MB), ($resultSize / 1MB)) -ForegroundColor Cyan
         }
         Write-Host "Gespeichert: $($Pdf.FullName)"
-        return [pscustomobject]@{ Success = $true; FilePath = $Pdf.FullName; FailureReason = $null; OriginalBytes = [long]$originalSize; ResultBytes = [long]$resultSize }
+        return [pscustomobject]@{ Success = $true; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $null; Warning = $backupWarning; OriginalBytes = [long]$originalSize; ResultBytes = [long]$resultSize }
     }
     catch {
         if (-not $failureDetails) { $failureDetails = $_.Exception.Message }
@@ -648,7 +649,7 @@ sys.exit(int(result))
         if (-not $failureReason) {
             $failureReason = $failureDetails -split '[\r\n]' | Select-Object -First 1
         }
-        return [pscustomobject]@{ Success = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; OriginalBytes = [long]0; ResultBytes = [long]0 }
+        return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $backupWarning; OriginalBytes = [long]0; ResultBytes = [long]0 }
     }
     finally {
         # Temporäre Datei auch im Fehlerfall zuverlässig entfernen.
@@ -658,14 +659,8 @@ sys.exit(int(result))
         if (Test-Path -LiteralPath $replaceBackupPath) {
             Remove-Item -LiteralPath $replaceBackupPath -Force -ErrorAction SilentlyContinue
         }
-        if (Test-Path -LiteralPath $runnerPath) {
-            Remove-Item -LiteralPath $runnerPath -Force -ErrorAction SilentlyContinue
-        }
-        if (Test-Path -LiteralPath $failureReasonPath) {
-            Remove-Item -LiteralPath $failureReasonPath -Force -ErrorAction SilentlyContinue
-        }
-        if (Test-Path -LiteralPath $failureDetailsPath) {
-            Remove-Item -LiteralPath $failureDetailsPath -Force -ErrorAction SilentlyContinue
+        if (Test-Path -LiteralPath $signatureCheckPath) {
+            Remove-Item -LiteralPath $signatureCheckPath -Force -ErrorAction SilentlyContinue
         }
     }
 }
@@ -799,8 +794,12 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
 
 # --- Zusammenfassung -------------------------------------------------------------
 $successResults = @($results | Where-Object { $_.Success })
+$skippedResults = @($results | Where-Object { $_.Skipped })
+$failedResults = @($results | Where-Object { -not $_.Success -and -not $_.Skipped })
+$warningResults = @($results | Where-Object { $_.Warning })
 $successCount = $successResults.Count
-$failureCount = @($results | Where-Object { -not $_.Success }).Count
+$skippedCount = $skippedResults.Count
+$failureCount = $failedResults.Count
 $sumOriginal = [long](($results | ForEach-Object { [long]$_.OriginalBytes }) | Measure-Object -Sum).Sum
 $sumResult = [long](($successResults | ForEach-Object { [long]$_.ResultBytes }) | Measure-Object -Sum).Sum
 $savedMb = ($sumOriginal - $sumResult) / 1MB
@@ -809,27 +808,45 @@ $savedPct = if ($sumOriginal -gt 0) { (1 - ($sumResult / $sumOriginal)) * 100 } 
 Write-Host ''
 Write-Host '=== Zusammenfassung ===' -ForegroundColor Cyan
 Write-Host "Pfad: $summaryPath"
-Write-Host ('Erfolgreich: {0}, Fehlgeschlagen: {1}' -f $successCount, $failureCount)
+Write-Host ('Erfolgreich: {0}, Übersprungen: {1}, Fehlgeschlagen: {2}' -f $successCount, $skippedCount, $failureCount)
 if ($successCount -gt 0) {
     Write-Host ('Original gesamt: {0:N2} MB' -f ($sumOriginal / 1MB))
     Write-Host ('Ergebnis gesamt: {0:N2} MB' -f ($sumResult / 1MB))
     Write-Host ('Gesamteinsparung: {0:N2} MB ({1:N1} %)' -f $savedMb, $savedPct)
 }
 if (-not $ReplaceOriginal) {
-    Write-Host 'Originale wurden als _orig-Dateien gesichert.'
+    Write-Host 'Originale werden als _orig-Dateien gesichert; vorhandene Sicherungen bleiben erhalten.'
 }
 else {
     Write-Host 'Originale wurden überschrieben.'
 }
-$failedFiles = @($results | Where-Object { -not $_.Success })
 Write-Host ''
 Write-Host 'Fehlgeschlagene Dateien:' -ForegroundColor Cyan
-if ($failedFiles.Count -eq 0) {
+if ($failedResults.Count -eq 0) {
     Write-Host '  Keine.'
 }
 else {
-    foreach ($failedFile in $failedFiles) {
+    foreach ($failedFile in $failedResults) {
         $relativePath = $failedFile.FilePath.Substring($basePathPrefix.Length)
         Write-Host "  - $relativePath ($($failedFile.FailureReason))" -ForegroundColor Yellow
+    }
+}
+Write-Host ''
+Write-Host 'Übersprungene Dateien:' -ForegroundColor Cyan
+if ($skippedCount -eq 0) {
+    Write-Host '  Keine.'
+}
+else {
+    foreach ($skippedFile in $skippedResults) {
+        $relativePath = $skippedFile.FilePath.Substring($basePathPrefix.Length)
+        Write-Host "  - $relativePath ($($skippedFile.FailureReason))" -ForegroundColor Yellow
+    }
+}
+if ($warningResults.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Warnungen:' -ForegroundColor Cyan
+    foreach ($warningResult in $warningResults) {
+        $relativePath = $warningResult.FilePath.Substring($basePathPrefix.Length)
+        Write-Host "  - $relativePath ($($warningResult.Warning))" -ForegroundColor Yellow
     }
 }
