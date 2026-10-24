@@ -3,8 +3,8 @@
     Optimiert PDFs, begradigt schiefe Scan-Seiten und ergänzt eine OCR-Textebene.
 
 .DESCRIPTION
-    Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien direkt in einem angegebenen
-    Ordner (keine Unterordner). Nach erfolgreicher OCR wird die Eingabedatei überschrieben.
+    Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien in einem angegebenen Ordner
+    einschließlich seiner Unterordner. Nach erfolgreicher OCR wird die Eingabedatei überschrieben.
     Mit -KeepOriginal wird das bisherige Original als <Name>_raw.pdf gesichert.
 
     VERARBEITUNG IN ZWEI STUFEN:
@@ -366,8 +366,8 @@ function Get-PdfInputFile {
     if (-not (Test-Path -LiteralPath $Path)) { throw "Pfad nicht gefunden: $Path" }
     $item = Get-Item -LiteralPath $Path
     if ($item.PSIsContainer) {
-        # Nur Eingabe-PDFs direkt im Ordner; erzeugte _raw-Sicherungen nicht erneut verarbeiten.
-        return @(Get-ChildItem -LiteralPath $item.FullName -File -Filter '*.pdf' |
+        # _raw-Sicherungen bei der rekursiven Suche nicht erneut verarbeiten.
+        return @(Get-ChildItem -LiteralPath $item.FullName -File -Filter '*.pdf' -Recurse |
             Where-Object { $_.BaseName -notmatch '_raw$' })
     }
     if ($item.Extension -ine '.pdf') { throw 'Die ausgewählte Datei hat keine .pdf-Endung.' }
