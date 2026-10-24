@@ -417,7 +417,7 @@ function Optimize-WithGhostscript {
         [Parameter(Mandatory)][int] $Dpi
     )
 
-    $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.gs.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
+    $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.gs.pdf.part' -f [guid]::NewGuid().ToString('N'))
     try {
         # Explizite Downsampling-Parameter statt -dPDFSETTINGS: garantiert die
         # Zielauflösung für Farb-, Graustufen- und Schwarz-Weiß-Bilder, eingebettet als JPEG.
@@ -504,12 +504,13 @@ function Invoke-PdfProcessing {
     )
 
     # Temporäre Datei neben der Eingabe, damit Verschieben auf demselben Laufwerk bleibt.
-    $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
+    $tempStem = '.{0}' -f [guid]::NewGuid().ToString('N')
+    $tempPath = Join-Path $Pdf.DirectoryName ($tempStem + '.pdf.part')
     $originalPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
-    $replaceBackupPath = $tempPath + '.bak'
-    $runnerPath = $tempPath + '.runner.py'
-    $failureReasonPath = $tempPath + '.reason'
-    $failureDetailsPath = $tempPath + '.details'
+    $replaceBackupPath = Join-Path $Pdf.DirectoryName ($tempStem + '.bak.part')
+    $runnerPath = Join-Path $Pdf.DirectoryName ($tempStem + '.py.part')
+    $failureReasonPath = Join-Path $Pdf.DirectoryName ($tempStem + '.reason.part')
+    $failureDetailsPath = Join-Path $Pdf.DirectoryName ($tempStem + '.details.part')
     $failureReason = $null
     $failureDetails = $null
     try {
