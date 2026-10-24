@@ -1,11 +1,11 @@
-<#
+﻿<#
 .SYNOPSIS
     Optimiert PDFs, begradigt schiefe Scan-Seiten und ergänzt eine OCR-Textebene.
 
 .DESCRIPTION
     Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien direkt in einem angegebenen
-    Ordner (keine Unterordner). Das Original bleibt stets unverändert erhalten; das
-    verarbeitete Ergebnis wird als neue Datei mit dem Suffix _ocr neben das Original gelegt.
+    Ordner (keine Unterordner). Nach erfolgreicher OCR wird die Eingabedatei überschrieben.
+    Mit -KeepOriginal wird das bisherige Original als <Name>_raw.pdf gesichert.
 
     VERARBEITUNG IN ZWEI STUFEN:
       1. OCRmyPDF: OCR-Textebene ergänzen, schiefe Seiten begradigen. Die Ausgabe erfolgt
@@ -18,9 +18,9 @@
 
     BEIGRADIGUNG:
       - Schiefe Scan-Seiten werden automatisch begradigt (`--deskew`, standardmäßig aktiv).
-      - Verdrehte Seiten (90°, 180°, 270°) werden NICHT automatisch korrigiert
-        (`--rotate-pages` ist standardmäßig deaktiviert und kann über den Parameter
-        `-RotatePages` explizit aktiviert werden).
+      - Verdrehte Seiten (90°, 180°, 270°) werden standardmäßig nicht korrigiert.
+        `-RotatePages` aktiviert die Erkennung mit einem OCRmyPDF-Konfidenzschwellwert
+        von 5, damit auch Erkennungen mit geringer Konfidenz berücksichtigt werden.
 
     SPRACHEN:
       Standardfolge ist 'deu+eng+fra+ita+spa'. Deutsch (deu) und Englisch (eng) sind
@@ -33,7 +33,7 @@
       Ein Lauf gilt nur dann als fehlgeschlagen, wenn OCRmyPDF tatsächlich fehlschlägt oder
       das Ergebnis byte-identisch (hash-gleich) zum Original ist, d. h. keine Veränderung
       stattgefunden hat. Ein größeres, aber inhaltlich verändertes Ergebnis wird als
-      Erfolg gewertet und als _ocr-Datei abgelegt.
+      Erfolg gewertet und ersetzt die Eingabedatei.
 
     Das Skript selbst benötigt keine Administratorrechte und installiert keine Software.
     Fehlende Programme meldet es mit Installationshinweisen.
@@ -65,22 +65,26 @@
 
 .PARAMETER RotatePages
     Legt fest, ob verdrehte Seiten (90°, 180°, 270°) automatisch korrigiert werden sollen
-    (Standard: $false).
+    (Standard: $false). Bei Aktivierung wird ein Konfidenzschwellwert von 5 verwendet.
 
-.PARAMETER UseGhostscript
-    Legt fest, ob Ghostscript als nachgelagerte Optimierungsstufe verwendet werden darf
-    (Standard: $true). Wirksam nur in Kombination mit -GhostscriptDpi > 0.
+.PARAMETER NoGhostscript
+    Deaktiviert Ghostscript als nachgelagerte Optimierungsstufe. Standardmäßig darf
+    Ghostscript verwendet werden; es läuft nur in Kombination mit -GhostscriptDpi > 0.
+
+.PARAMETER KeepOriginal
+    Sichert das Original nach erfolgreicher Verarbeitung neben der bearbeiteten Datei
+    unter <Name>_raw.pdf. Ohne diesen Parameter wird die Eingabedatei überschrieben.
 
 .EXAMPLE
-    .\pdf-toolbox.ps1
+    .\Invoke-PdfOcr.ps1
     Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa, JPEG-Qualität 75,
-    automatischer Begradigung schiefer Seiten, ohne Ghostscript-Nachkomprimierung.
-    Ergebnisse werden als <Name>_ocr.pdf abgelegt.
+    automatischer Begradigung schiefer Seiten. Die Eingabedatei wird überschrieben.
 
 .EXAMPLE
-    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -GhostscriptDpi 150
+    .\Invoke-PdfOcr.ps1 -InputPath 'C:\PDFs' -RotatePages -KeepOriginal -GhostscriptDpi 150
     Verarbeitet alle PDFs in C:\PDFs; Ghostscript rechnet die Bilder anschließend auf
-    150 DPI herunter und komprimiert sie als JPEG.
+    150 DPI herunter und komprimiert sie als JPEG. Die Originale bleiben als _raw-Dateien
+    erhalten und die automatische Seitendrehung wird aktiviert.
 
 .NOTES
     Abhängigkeiten:
@@ -127,14 +131,17 @@ param(
     [int] $GhostscriptDpi = 0,
 
     # Begradigung schiefer Scan-Seiten aktivieren (Standard true).
-    [bool] $Deskew = $true,
+    [switch] $Deskew = $true,
 
     # Automatische Drehkorrektur für 90°/180°/270°-Verdrehungen (Standard false).
-    [bool] $RotatePages = $false,
+    [switch] $RotatePages,
 
-    # Ghostscript als nachgelagerte Optimierungsstufe zulassen (Standard true).
+    # Ghostscript als nachgelagerte Optimierungsstufe deaktivieren (Standard false).
     # Wirksam nur in Kombination mit -GhostscriptDpi > 0.
-    [bool] $UseGhostscript = $true
+    [switch] $NoGhostscript,
+
+    # Original nach erfolgreicher Verarbeitung als _raw-Datei sichern.
+    [switch] $KeepOriginal
 )
 
 Set-StrictMode -Version Latest
@@ -219,7 +226,7 @@ function Get-MissingDependency {
     # Ghostscript ist optional: Ein Fehlen wird gemeldet, blockiert den Lauf
     # aber nicht (die Ghostscript-Stufe wird dann übersprungen).
     [CmdletBinding()]
-    param()
+    param([bool] $NoGhostscript = $false)
 
     $missing = [System.Collections.Generic.List[string]]::new()
     $optionalMissing = [System.Collections.Generic.List[string]]::new()
@@ -229,10 +236,13 @@ function Get-MissingDependency {
     if (-not (Get-ExecutablePath -Name 'tesseract')) { $missing.Add('Tesseract') }
 
     # Ghostscript ist die optionale Optimierungsstufe nach OCRmyPDF.
-    $ghostscriptPath = Get-ExecutablePath -Name 'gswin64c'
-    if (-not $ghostscriptPath) { $ghostscriptPath = Get-ExecutablePath -Name 'gswin32c' }
-    if (-not $ghostscriptPath) { $ghostscriptPath = Get-ExecutablePath -Name 'gs' }
-    if (-not $ghostscriptPath) { $optionalMissing.Add('Ghostscript (nur für -GhostscriptDpi erforderlich)') }
+    $ghostscriptPath = $null
+    if (-not $NoGhostscript) {
+        $ghostscriptPath = Get-ExecutablePath -Name 'gswin64c'
+        if (-not $ghostscriptPath) { $ghostscriptPath = Get-ExecutablePath -Name 'gswin32c' }
+        if (-not $ghostscriptPath) { $ghostscriptPath = Get-ExecutablePath -Name 'gs' }
+        if (-not $ghostscriptPath) { $optionalMissing.Add('Ghostscript (nur für -GhostscriptDpi erforderlich)') }
+    }
 
     # pngquant ist für die OCRmyPDF-Optimierung optional; ein Fehlen darf den
     # Lauf nicht blockieren. jbig2 wird bewusst nicht verwendet (nur für
@@ -345,8 +355,9 @@ function Get-PdfInputFile {
     if (-not (Test-Path -LiteralPath $Path)) { throw "Pfad nicht gefunden: $Path" }
     $item = Get-Item -LiteralPath $Path
     if ($item.PSIsContainer) {
-        # Nur Dateien direkt im Ordner, keine Unterordner.
-        return @(Get-ChildItem -LiteralPath $item.FullName -File -Filter '*.pdf')
+        # Nur Eingabe-PDFs direkt im Ordner; erzeugte _raw-Sicherungen nicht erneut verarbeiten.
+        return @(Get-ChildItem -LiteralPath $item.FullName -File -Filter '*.pdf' |
+            Where-Object { $_.BaseName -notmatch '_raw$' })
     }
     if ($item.Extension -ine '.pdf') { throw 'Die ausgewählte Datei hat keine .pdf-Endung.' }
     return @($item)
@@ -450,9 +461,9 @@ function Invoke-PdfProcessing {
     #      Ausgabe als normales PDF Version 1.5 (--output-type pdf), kein PDF/A-Archiv.
     #   2. Ghostscript (optional): Bilder auf die Zielauflösung nachkomprimieren.
     #      Läuft nur, wenn explizit eine DPI-Zahl übergeben wurde ($GhostscriptDpi > 0).
-    # Das Original bleibt unverändert; das Ergebnis wird als <Name>_ocr.pdf
-    # neben das Original gelegt. Ein Lauf gilt nur als Fehlschlag, wenn OCRmyPDF
-    # fehlschlägt oder das Endergebnis hash-gleich zum Original ist (keine Änderung).
+    # Das Ergebnis überschreibt die Eingabe; -KeepOriginal sichert sie als _raw.pdf.
+    # Ein Lauf gilt nur als Fehlschlag, wenn OCRmyPDF fehlschlägt oder das Ergebnis
+    # hash-gleich zum Original ist (keine Änderung).
     # `--optimize 1` statt 3: Stufe 3 erzeugt eine jbig2-Warnung, die wir nicht
     # benötigen (jbig2 wird bewusst nicht installiert).
     [CmdletBinding()]
@@ -464,14 +475,15 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][int] $GhostscriptDpi,
         [Parameter(Mandatory)][bool] $Deskew,
         [Parameter(Mandatory)][bool] $RotatePages,
-        [Parameter(Mandatory)][bool] $UseGhostscript,
+        [Parameter(Mandatory)][bool] $NoGhostscript,
+        [Parameter(Mandatory)][bool] $KeepOriginal,
         [string] $GhostscriptPath
     )
 
     # Temporäre Datei neben der Eingabe, damit Verschieben auf demselben Laufwerk bleibt.
     $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
-    # Das verarbeitete Ergebnis landet als <Name>_ocr.pdf neben dem Original.
-    $outputPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_ocr' + $Pdf.Extension)
+    $rawPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_raw' + $Pdf.Extension)
+    $replaceBackupPath = $tempPath + '.bak'
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
         # Normales PDF (Version 1.5) statt PDF/A-Archiv als Ergebnis.
@@ -486,7 +498,10 @@ function Invoke-PdfProcessing {
             '--language', $Language
         )
         if ($Deskew) { $ocrArgs += '--deskew' }
-        if ($RotatePages) { $ocrArgs += '--rotate-pages' }
+        if ($RotatePages) {
+            # Die niedrigere Schwelle lässt auch Rotationen mit geringer Tesseract-Konfidenz zu.
+            $ocrArgs += @('--rotate-pages', '--rotate-pages-threshold', '5')
+        }
 
         # Live-Ausgabe: OCRmyPDF läuft ohne Umleitung, Fortschrittsbalken und
         # Statusmeldungen erscheinen direkt auf der Konsole.
@@ -498,7 +513,7 @@ function Invoke-PdfProcessing {
         # Nachgelagerte Ghostscript-Optimierung: läuft nur, wenn explizit eine
         # Zielauflösung vorgegeben wurde (GhostscriptDpi > 0) und Ghostscript
         # verfügbar ist. Nur bei Verkleinerung wird das Ergebnis übernommen.
-        if ($UseGhostscript -and $GhostscriptDpi -gt 0 -and $GhostscriptPath) {
+        if (-not $NoGhostscript -and $GhostscriptDpi -gt 0 -and $GhostscriptPath) {
             $gsResult = Get-Item -LiteralPath $tempPath
             Optimize-WithGhostscript -GhostscriptPath $GhostscriptPath -Pdf $gsResult -Dpi $GhostscriptDpi | Out-Null
         }
@@ -516,18 +531,24 @@ function Invoke-PdfProcessing {
             return [pscustomobject]@{ Success = $false; OriginalBytes = [long]$originalSize; ResultBytes = [long]0 }
         }
 
-        # Bestehendes _ocr-Ergebnis aus einem früheren Lauf ersetzen.
-        if (Test-Path -LiteralPath $outputPath) {
-            Remove-Item -LiteralPath $outputPath -Force
+        # Erst nach erfolgreicher Verarbeitung und Hash-Prüfung atomar austauschen.
+        if ($KeepOriginal) {
+            if (Test-Path -LiteralPath $rawPath) {
+                throw "Die Sicherungsdatei '$rawPath' existiert bereits; sie wird nicht überschrieben."
+            }
+            [System.IO.File]::Replace($tempPath, $Pdf.FullName, $rawPath)
+            Write-Host "Original gesichert: $rawPath"
         }
-        Move-Item -LiteralPath $tempPath -Destination $outputPath -Force
+        else {
+            [System.IO.File]::Replace($tempPath, $Pdf.FullName, $replaceBackupPath)
+        }
         if ($resultSize -lt $originalSize) {
             Write-Host ('Optimiert: {0:N1} MB -> {1:N1} MB' -f ($originalSize / 1MB), ($resultSize / 1MB)) -ForegroundColor Green
         }
         else {
             Write-Host ('Verarbeitet (größer als Original): {0:N1} MB -> {1:N1} MB' -f ($originalSize / 1MB), ($resultSize / 1MB)) -ForegroundColor Cyan
         }
-        Write-Host "Gespeichert: $outputPath"
+        Write-Host "Gespeichert: $($Pdf.FullName)"
         return [pscustomobject]@{ Success = $true; OriginalBytes = [long]$originalSize; ResultBytes = [long]$resultSize }
     }
     catch {
@@ -539,6 +560,9 @@ function Invoke-PdfProcessing {
         if (Test-Path -LiteralPath $tempPath) {
             Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
         }
+        if (Test-Path -LiteralPath $replaceBackupPath) {
+            Remove-Item -LiteralPath $replaceBackupPath -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
@@ -546,22 +570,17 @@ function Invoke-PdfProcessing {
 
 # ASCII-Kopf: Kurzbeschreibung, was das Skript tut.
 Write-Host ''
-Write-Host '  +---------------------------------------------+' -ForegroundColor Cyan
-Write-Host '  |  ___  ___ ____  ____                        |' -ForegroundColor Cyan
-Write-Host '  | | _ \/ _ |  _ \|  _ \ ___ _ __ _ __  _   _  |' -ForegroundColor Cyan
-Write-Host '  | | | | | | | |_) | |_) / _ | `"__| `"_ \| | | | |' -ForegroundColor Cyan
-Write-Host '  | | |_| |_| |  __/|  __| (_| | |  | |_) | |_| | |' -ForegroundColor Cyan
-Write-Host '  | |____\___/|_|   |_|   \___/|_|  | .__/ \__, | |' -ForegroundColor Cyan
-Write-Host '  |                                 |_|    |___/  |' -ForegroundColor Cyan
-Write-Host '  +---------------------------------------------+' -ForegroundColor Cyan
+Write-Host '  +-----------------------+' -ForegroundColor Cyan
+Write-Host '  |        PDF-OCR        |' -ForegroundColor Cyan
+Write-Host '  +-----------------------+' -ForegroundColor Cyan
 Write-Host '  Fuegt PDFs eine OCR-Textebene hinzu, begradigt schiefe Seiten' -ForegroundColor Cyan
-Write-Host '  und optimiert die Dateigroesse. Originale bleiben unveraendert;' -ForegroundColor Cyan
-Write-Host '  Ergebnisse werden als <Name>_ocr.pdf daneben gespeichert.' -ForegroundColor Cyan
+Write-Host '  und optimiert die Dateigroesse. Dateien werden ueberschrieben;' -ForegroundColor Cyan
+Write-Host '  mit -KeepOriginal bleibt eine Sicherung als _raw erhalten.' -ForegroundColor Cyan
 Write-Host ''
 
 # Prüfe vor der Verarbeitung alle erforderlichen Programme und Module,
 # damit der Anwender alle Installationshinweise auf einmal erhält.
-$dependencyCheck = Get-MissingDependency
+$dependencyCheck = Get-MissingDependency -NoGhostscript $NoGhostscript.IsPresent
 if ($dependencyCheck.Missing.Count -gt 0) {
     Write-Host "`nFehlende Abhängigkeiten:" -ForegroundColor Yellow
     $dependencyCheck.Missing | ForEach-Object { Write-Host "  - $_" }
@@ -632,7 +651,7 @@ $languageSelection = $availableLanguages -join '+'
 
 # Kopfzeile.
 Write-Host ''
-Write-Host '=== PDF-Toolbox: Verarbeitung gestartet ===' -ForegroundColor Cyan
+Write-Host '=== PDF-OCR: Verarbeitung gestartet ===' -ForegroundColor Cyan
 Write-Host ('Anzahl Dateien: {0}' -f $pdfFiles.Count)
 Write-Host ('Sprachen: {0}' -f $languageSelection)
 Write-Host ('JPEG-Qualität: {0}' -f $JpegQuality)
@@ -653,8 +672,8 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
     Write-Host ('--- Datei {0}/{1}: {2} ---' -f ($i + 1), $pdfFiles.Count, $pdf.Name) -ForegroundColor Cyan
     $r = Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath `
         -Language $languageSelection -Quality $JpegQuality -GhostscriptDpi $GhostscriptDpi `
-        -Deskew $Deskew -RotatePages $RotatePages `
-        -UseGhostscript $UseGhostscript `
+        -Deskew $Deskew.IsPresent -RotatePages $RotatePages.IsPresent `
+        -NoGhostscript $NoGhostscript.IsPresent -KeepOriginal $KeepOriginal.IsPresent `
         -GhostscriptPath $dependencyCheck.GhostscriptPath
     if ($null -ne $r) { $results += $r }
 }
@@ -676,4 +695,4 @@ if ($successCount -gt 0) {
     Write-Host ('Ergebnis gesamt: {0:N2} MB' -f ($sumResult / 1MB))
     Write-Host ('Gesamteinsparung: {0:N2} MB ({1:N1} %)' -f $savedMb, $savedPct)
 }
-Write-Host 'Verarbeitete Dateien liegen mit dem Suffix _ocr neben den Originalen; die Originale bleiben unverändert.'
+Write-Host 'Verarbeitete Dateien ersetzen standardmäßig die Originale; -KeepOriginal legt Sicherungen mit dem Suffix _raw an.'

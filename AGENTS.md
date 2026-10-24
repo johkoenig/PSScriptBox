@@ -23,20 +23,21 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - Optionale Werkzeuge (z. B. Ghostscript) dürfen den Lauf nicht blockieren und werden nicht als Pflicht behandelt. `jbig2` wird nicht verwendet.
 
 ## Umgang mit Dateien und Daten
-- **Originale bleiben unverändert:** Eingabedateien werden nie überschrieben. Das verarbeitete Ergebnis wird als neue Datei mit dem Suffix `_ocr` neben das Original gelegt.
+- Eingabedateien werden nach erfolgreicher Verarbeitung standardmäßig überschrieben. Mit `-KeepOriginal` wird das Original als `<Name>_raw.pdf` gesichert.
 - Ein Lauf gilt nur dann als fehlgeschlagen, wenn OCRmyPDF tatsächlich fehlschlägt oder das Endergebnis hash-gleich (SHA-256) zum Original ist, d. h. keine Veränderung stattgefunden hat. Ein größeres, aber inhaltlich verändertes Ergebnis ist ein Erfolg.
 - Jede nachgelagerte Optimierungsstufe (Ghostscript) ersetzt das Zwischenergebnis nur, wenn es dadurch kleiner wird; bei fehlender Verkleinerung bleibt die kleinere Datei erhalten.
 - Temporäre Dateien landen neben der Eingabedatei und werden im `finally`-Block zuverlässig entfernt.
 - Keine Geheimnisse, Tokens, API-Schlüssel oder persönlichen Daten im Repository.
 
-## Projektkonventionen (choco/pdf-toolbox.ps1)
+## Projektkonventionen (choco/Invoke-PdfOcr.ps1)
 - Standard-Sprachfolge für die OCR: `deu+eng+fra+ita+spa` (Deutsch, Englisch, Französisch, Italienisch, Spanisch, in dieser Reihenfolge). Eine abweichende Sprachfolge kann per Parameter `-Language` vorgegeben werden; es gibt **keine interaktive Sprachabfrage** (die Liste aller installierten Sprachen wäre zu lang).
 - **Pflichtsprachen:** `deu` und `eng`. Fehlt eine davon, stoppt das Skript mit einem Zweizeiler: Aufforderung, den Download-Befehl in einer Admin-Shell auszuführen (lädt alle Sprachen aus https://github.com/tesseract-ocr/tessdata herunter), gefolgt vom Befehl. **Optionale Sprachen** (alle übrigen) werden bei Fehlen **stillschweigend aus der Sprachfolge entfernt** und per Hinweis gemeldet, ohne den Lauf zu unterbrechen.
 - **Begradigung von Scan-Seiten ist standardmäßig aktiv (`--deskew`).** Verdrehte Seiten werden automatisch um 90°, 180° oder 270° korrigiert (**`--rotate-pages`** ist standardmäßig **deaktiviert**).
 - **`--output-type pdf` wird bewusst nicht gesetzt.** OCRmyPDF läuft im `auto`-Modus; JPEG-Kompression (`--pdfa-image-compression jpeg`) ist dort ohnehin der Standard, daher wird die Option **nicht explizit übergeben** – sonst gibt OCRmyPDF den Hinweis `--pdfa-image-compression requires Ghostscript` aus.
 - **`--image-dpi` wird nicht übergeben:** Bei PDF-Eingaben ignoriert OCRmyPDF diese Option und meldet das auf der Konsole. Die Bildauflösung steuert stattdessen die Ghostscript-Stufe (200 DPI).
 - **`--optimize 1` statt `--optimize 3`:** Stufe 3 erzeugt eine jbig2-Warnung, da jbig2 nicht installiert ist. jbig2 wird bewusst nicht verwendet (nur für Schwarz-Weiß relevant).
-- **Zweistufige Optimierung:** Nach OCRmyPDF folgt eine optionale **Ghostscript**-Stufe (explizite Downsampling-Parameter, 200 DPI, JPEG q75, sRGB; Parameter `-UseGhostscript`, Standard `$true`). Ghostscript ist über Chocolatey installierbar (`choco install ghostscript`) und wird bei Fehlen gemeldet, ohne den Lauf zu blockieren. **qpdf wird nicht verwendet.**
+- **Zweistufige Optimierung:** Nach OCRmyPDF folgt eine optionale **Ghostscript**-Stufe (explizite Downsampling-Parameter, 200 DPI, JPEG q75, sRGB; standardmäßig erlaubt, durch `-NoGhostscript` deaktivierbar). Ghostscript ist über Chocolatey installierbar (`choco install ghostscript`) und wird bei Fehlen gemeldet, ohne den Lauf zu blockieren. **qpdf wird nicht verwendet.**
+- `-RotatePages` aktiviert OCRmyPDFs Drehkorrektur mit dem Konfidenzschwellwert 5.
 - Die rohe OCRmyPDF-Ausgabe (Fortschrittsbalken, interne Modulnamen wie `_pipeline.py`) erscheint unverändert auf der Konsole (Live-Ausgabe, keine Filterung).
 
 ## Qualitätssicherung vor dem Commit
