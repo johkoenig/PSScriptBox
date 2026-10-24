@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Optimiert PDFs, begradigt schiefe Scan-Seiten und ergänzt eine OCR-Textebene.
 
@@ -8,11 +8,13 @@
     verarbeitete Ergebnis wird als neue Datei mit dem Suffix _ocr neben das Original gelegt.
 
     VERARBEITUNG IN ZWEI STUFEN:
-      1. OCRmyPDF: OCR-Textebene ergänzen, schiefe Seiten begradigen und Bilder als
-         JPEG (Qualität 75) einbetten. Die Ausgabe erfolgt als PDF/A-2b.
-      2. Ghostscript: Bilder auf die Zielauflösung (Standard 150 DPI) herunterrechnen
-         und als JPEG einbetten. Diese Stufe ersetzt das Zwischenergebnis nur, wenn es
-         dadurch kleiner wird.
+      1. OCRmyPDF: OCR-Textebene ergänzen, schiefe Seiten begradigen. Die Ausgabe erfolgt
+         als normales PDF (Version 1.5), nicht als PDF/A-Archiv.
+      2. Ghostscript (optional): Bilder auf die Zielauflösung herunterrechnen und als JPEG
+         einbetten. Diese Stufe läuft nur, wenn eine Zielauflösung explizit über den
+         Parameter -GhostscriptDpi vorgegeben wird (z. B. -GhostscriptDpi 150). Ohne
+         diese Angabe bleibt das OCR-Ergebnis unverändert. Das Zwischenergebnis wird nur
+         ersetzt, wenn die Ghostscript-Stufe es kleiner macht.
 
     BEIGRADIGUNG:
       - Schiefe Scan-Seiten werden automatisch begradigt (`--deskew`, standardmäßig aktiv).
@@ -22,10 +24,10 @@
 
     SPRACHEN:
       Standardfolge ist 'deu+eng+fra+ita+spa'. Deutsch (deu) und Englisch (eng) sind
-      Pflicht: Fehlt eine der beiden Sprachdateien, stoppt das Skript mit einem
-      Download-Hinweis. Alle weiteren Sprachen sind optional: Fehlt eine, wird sie
-      stillschweigend aus der Sprachfolge entfernt, ohne den Lauf zu unterbrechen.
-      Es wird keine interaktive Sprachabfrage gestellt.
+      Pflicht: Fehlt eine der beiden Sprachdateien, stoppt das Skript mit einem Hinweis.
+      Alle weiteren Sprachen sind optional: Fehlt eine, wird sie stillschweigend aus der
+      Sprachfolge entfernt, ohne den Lauf zu unterbrechen. Es wird keine interaktive
+      Sprachabfrage gestellt.
 
     ERGEBNISPRÜFUNG:
       Ein Lauf gilt nur dann als fehlgeschlagen, wenn OCRmyPDF tatsächlich fehlschlägt oder
@@ -34,9 +36,7 @@
       Erfolg gewertet und als _ocr-Datei abgelegt.
 
     Das Skript selbst benötigt keine Administratorrechte und installiert keine Software.
-    Fehlende Programme meldet es mit Installationshinweisen. Fehlende Pflicht-Sprachdaten
-    (deu/eng) werden mit einem Zweizeiler gemeldet, der den Benutzer auffordert, einen
-    Download-Befehl in einer Admin-Shell auszuführen, um alle Sprachen herunterzuladen.
+    Fehlende Programme meldet es mit Installationshinweisen.
 
     Ausgabe: OCRmyPDF schreibt Fortschrittsbalken und Statusmeldungen direkt auf die
     Konsole (Live-Ausgabe, wird nicht gefiltert).
@@ -56,74 +56,57 @@
     Vorgabe ist 75: guter Kompromiss aus Dateigröße und Lesbarkeit.
 
 .PARAMETER GhostscriptDpi
-    Zielauflösung für die Bild-Downsampling-Stufe von Ghostscript in DPI (50-1200).
-    Vorgabe ist 150: deutlich kleinere Dateien als 200/300 DPI bei für Textdokumente
-    noch gut lesbarer Qualität. Für höhere Qualität (z. B. bei feinen Grafiken) den
-    Wert auf 200 oder 300 erhöhen.
+    Zielauflösung der Ghostscript-Downsampling-Stufe in DPI (50-1200).
+    Standard ist 0 = Stufe deaktiviert. Die Ghostscript-Komprimierung läuft nur, wenn
+    hier explizit ein Wert vorgegeben wird, z. B. -GhostscriptDpi 150.
 
 .PARAMETER Deskew
     Legt fest, ob schiefe Scan-Seiten begradigt werden sollen (Standard: $true).
-    Bei aktivierter Begradigung wird `--deskew` an OCRmyPDF übergeben.
 
 .PARAMETER RotatePages
     Legt fest, ob verdrehte Seiten (90°, 180°, 270°) automatisch korrigiert werden sollen
-    (Standard: $false). Bei Aktivierung wird `--rotate-pages` an OCRmyPDF übergeben.
+    (Standard: $false).
 
 .PARAMETER UseGhostscript
-    Legt fest, ob Ghostscript als nachgelagerte Optimierungsstufe verwendet werden soll
-    (Standard: $true). Erfordert Ghostscript (gswin64c/gswin32c/gs) im PATH;
-    ohne Ghostscript wird die Stufe übersprungen.
+    Legt fest, ob Ghostscript als nachgelagerte Optimierungsstufe verwendet werden darf
+    (Standard: $true). Wirksam nur in Kombination mit -GhostscriptDpi > 0.
 
 .EXAMPLE
     .\pdf-toolbox.ps1
     Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa, JPEG-Qualität 75,
-    150 DPI (Ghostscript), automatischer Begradigung schiefer Seiten und deaktivierter
-    automatischer Drehkorrektur. Ergebnisse werden als <Name>_ocr.pdf abgelegt.
+    automatischer Begradigung schiefer Seiten, ohne Ghostscript-Nachkomprimierung.
+    Ergebnisse werden als <Name>_ocr.pdf abgelegt.
 
 .EXAMPLE
-    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -JpegQuality 65 -GhostscriptDpi 200 -RotatePages:$true
-    Verarbeitet alle PDFs in C:\PDFs mit deutscher und englischer OCR, stärkerer JPEG-
-    Kompression, 200 DPI und automatischer Drehkorrektur.
-
-.EXAMPLE
-    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -UseGhostscript:$false
-    Deaktiviert die Ghostscript-Optimierungsstufe; nur OCRmyPDF wird angewendet.
+    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -GhostscriptDpi 150
+    Verarbeitet alle PDFs in C:\PDFs; Ghostscript rechnet die Bilder anschließend auf
+    150 DPI herunter und komprimiert sie als JPEG.
 
 .NOTES
     Abhängigkeiten:
       - Python
       - OCRmyPDF (Python-Modul)
       - Tesseract
-      - Ghostscript (empfohlen für die stärkste Kompression)
+      - Ghostscript (nur erforderlich bei -GhostscriptDpi > 0)
 
     Beispielinstallation aus einer PowerShell mit Administratorrechten:
       choco install python tesseract ghostscript -y
       py -m pip install --user ocrmypdf
 
-    Tesseract-Sprachdaten (.traineddata) werden nicht mitinstalliert.
-    Quelle für alle Sprachen: https://github.com/tesseract-ocr/tessdata
-    Fehlen deu oder eng, lädt der vom Skript ausgegebene Befehl in einer
-    Admin-Shell alle Sprachen herunter. Danach `tesseract --list-langs` prüfen und eine
-    neue PowerShell-Sitzung öffnen.
+    Tesseract-Sprachdaten (.traineddata) werden nicht mitinstalliert. Fehlen sie, weist
+    das Skript auf https://github.com/tesseract-ocr/tessdata_best hin und nennt den
+    lokalen tessdata-Ordner, in den die Dateien abgelegt werden müssen.
 
     TECHNISCHE HINWEISE:
+      - Die Ausgabe ist ein normales PDF in Version 1.5 (`--output-type pdf` bei
+        OCRmyPDF, `-dCompatibilityLevel=1.5` bei Ghostscript), kein PDF/A-Archiv.
       - `--optimize 1` statt `--optimize 3`: Stufe 3 würde eine jbig2-Warnung ausgeben,
-        da jbig2 bewusst nicht installiert wird (nur für Schwarz-Weiß relevant; hier
-        läuft JPEG-Kompression). Stufe 1 reicht, da Ghostscript die starke Kompression
-        übernimmt.
-      - `--output-type pdf` wird bewusst NICHT gesetzt, da OCRmyPDF die
-        JPEG-Kompression nur bei `--output-type auto` oder `pdfa*` anwendet. Ohne
-        `--output-type` greift die Kompression zuverlässig und die Ausgabe erfolgt als
-        PDF/A-2b.
-      - `--image-dpi` wird bei PDF-Eingaben von OCRmyPDF ignoriert; die Auflösung
-        wird allein von der Ghostscript-Stufe gesteuert (-GhostscriptDpi, Standard 150).
-
-    WEITERE MÖGLICHKEITEN ZUR REDUZIERUNG DER DATEIGRÖSSE:
-      - Niedrigere JPEG-Qualität: -JpegQuality 60 (noch gut lesbar, deutlich kleiner).
-      - Graustufen statt Farbe: OCRmyPDF-Option `--grayscale` (spart zusätzlich, wenn die
-        Dokumente keine Farbe benötigen).
-      - Reines Schwarz-Weiß: OCRmyPDF-Option `--threshold` (stärkste Kompression, aber
-        Verlust von Graustufen und Hintergrunddetails).
+        da jbig2 bewusst nicht installiert wird. Die starke Komprimierung übernimmt
+        optional die Ghostscript-Stufe.
+      - `--image-dpi` wird bei PDF-Eingaben von OCRmyPDF ignoriert und deshalb nicht
+        übergeben; die Auflösung steuert ausschließlich die Ghostscript-Stufe.
+      - Die Datei ist als UTF-8 mit BOM gespeichert; ohne BOM liest Windows PowerShell
+        5.1 sie als ANSI und Umlaute in den Ausgaben werden falsch dargestellt.
 #>
 
 [CmdletBinding()]
@@ -138,9 +121,10 @@ param(
     [ValidateRange(1, 100)]
     [int] $JpegQuality = 75,
 
-    # Zielauflösung der Ghostscript-Downsampling-Stufe in DPI. Vorgabe 150.
-    [ValidateRange(50, 1200)]
-    [int] $GhostscriptDpi = 150,
+    # Zielauflösung der Ghostscript-Downsampling-Stufe in DPI.
+    # Standard 0 = Stufe deaktiviert; Komprimierung läuft nur bei expliziter Vorgabe.
+    [ValidateRange(0, 1200)]
+    [int] $GhostscriptDpi = 0,
 
     # Begradigung schiefer Scan-Seiten aktivieren (Standard true).
     [bool] $Deskew = $true,
@@ -148,7 +132,8 @@ param(
     # Automatische Drehkorrektur für 90°/180°/270°-Verdrehungen (Standard false).
     [bool] $RotatePages = $false,
 
-    # Ghostscript als nachgelagerte Optimierungsstufe verwenden (Standard true).
+    # Ghostscript als nachgelagerte Optimierungsstufe zulassen (Standard true).
+    # Wirksam nur in Kombination mit -GhostscriptDpi > 0.
     [bool] $UseGhostscript = $true
 )
 
@@ -159,11 +144,12 @@ $ErrorActionPreference = 'Stop'
 # Italienisch, Spanisch - in dieser Reihenfolge.
 $script:DefaultLanguage = 'deu+eng+fra+ita+spa'
 
-# Pflichtsprachen: Ohne deu oder eng stoppt das Skript mit Download-Hinweis.
+# Pflichtsprachen: Ohne deu oder eng stoppt das Skript mit einem Hinweis.
 $script:RequiredLanguages = @('deu', 'eng')
 
-# Quelle der vollständigen Tesseract-Sprachdatensammlung (.traineddata).
-$script:TessdataZipUrl = 'https://github.com/tesseract-ocr/tessdata/archive/refs/heads/main.zip'
+# Quelle für Tesseract-Sprachdaten (.traineddata), die der Benutzer manuell
+# in den tessdata-Ordner herunterladen und ablegen muss.
+$script:TessdataUrl = 'https://github.com/tesseract-ocr/tessdata_best'
 
 # --- Hilfsfunktionen ------------------------------------------------------
 
@@ -242,11 +228,11 @@ function Get-MissingDependency {
     if (-not $pythonPath) { $missing.Add('Python (py.exe oder python.exe)') }
     if (-not (Get-ExecutablePath -Name 'tesseract')) { $missing.Add('Tesseract') }
 
-    # Ghostscript ist die empfohlene Optimierungsstufe nach OCRmyPDF.
+    # Ghostscript ist die optionale Optimierungsstufe nach OCRmyPDF.
     $ghostscriptPath = Get-ExecutablePath -Name 'gswin64c'
     if (-not $ghostscriptPath) { $ghostscriptPath = Get-ExecutablePath -Name 'gswin32c' }
     if (-not $ghostscriptPath) { $ghostscriptPath = Get-ExecutablePath -Name 'gs' }
-    if (-not $ghostscriptPath) { $optionalMissing.Add('Ghostscript (empfohlen für stärkste Kompression)') }
+    if (-not $ghostscriptPath) { $optionalMissing.Add('Ghostscript (nur für -GhostscriptDpi erforderlich)') }
 
     # pngquant ist für die OCRmyPDF-Optimierung optional; ein Fehlen darf den
     # Lauf nicht blockieren. jbig2 wird bewusst nicht verwendet (nur für
@@ -330,23 +316,19 @@ function Get-TesseractLanguages {
 }
 
 function Show-LanguageDownloadHint {
-    # Zweizeiler bei fehlenden Pflicht-Sprachdaten (deu/eng): Zeile 1 fordert
-    # den Benutzer auf, den Download in einer Admin-Shell auszuführen, Zeile 2
-    # ist der Befehl, der alle Sprachen aus dem tessdata-Repository herunterlädt
-    # und im tessdata-Ordner ablegt.
+    # Hinweis bei fehlenden Pflicht-Sprachdaten (deu/eng): Verweist auf das
+    # tessdata_best-Repository und nennt den lokalen Ordner, in den die
+    # .traineddata-Dateien abgelegt werden müssen.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string[]] $MissingLanguages,
         [Parameter(Mandatory)][string] $TessdataPath
     )
 
-    $downloadCommand = "Invoke-WebRequest '$script:TessdataZipUrl' -OutFile `$env:TEMP\tessdata.zip; " +
-        "Expand-Archive `$env:TEMP\tessdata.zip `$env:TEMP\tessdata -Force; " +
-        "Copy-Item `$env:TEMP\tessdata\tessdata-main\*.traineddata '$TessdataPath\' -Force"
-
     Write-Host ''
-    Write-Host "Fehlende Pflicht-Sprachdaten: $($MissingLanguages -join ', '). Bitte öffne eine PowerShell als Administrator und führe folgenden Befehl aus, um alle Sprachen herunterzuladen:"
-    Write-Host "  $downloadCommand"
+    Write-Host "Fehlende Pflicht-Sprachdaten: $($MissingLanguages -join ', ')."
+    Write-Host "Lade die gewünschten .traineddata-Dateien von $script:TessdataUrl herunter"
+    Write-Host "und lege sie in den lokalen tessdata-Ordner: $TessdataPath"
 }
 
 function Get-PdfInputFile {
@@ -389,9 +371,10 @@ function Get-FileSha256 {
     finally { $sha256.Dispose() }
 }
 
-# Komprimiert eine PDF-Datei mit Ghostscript: Zielauflösung (DPI), JPEG q75, sRGB.
-# Ersetzt die Eingabedatei nur, wenn das Ergebnis kleiner ist; anderenfalls
-# bleibt die Eingabe unverändert. Rückgabe: $true bei Verkleinerung.
+# Komprimiert eine PDF-Datei mit Ghostscript: Zielauflösung (DPI), JPEG q75,
+# Ausgabe als normales PDF Version 1.5. Ersetzt die Eingabedatei nur, wenn das
+# Ergebnis kleiner ist; anderenfalls bleibt die Eingabe unverändert.
+# Rückgabe: $true bei Verkleinerung.
 function Optimize-WithGhostscript {
     [CmdletBinding()]
     param(
@@ -404,6 +387,7 @@ function Optimize-WithGhostscript {
     try {
         # Explizite Downsampling-Parameter statt -dPDFSETTINGS: garantiert die
         # Zielauflösung für Farb-, Graustufen- und Schwarz-Weiß-Bilder, eingebettet als JPEG.
+        # -dCompatibilityLevel=1.5 spezifiziert die PDF-Version des Ergebnisses (1.5).
         $gsArgList = @(
             '-dBATCH', '-dNOPAUSE', '-dQUIET',
             '-sDEVICE=pdfwrite',
@@ -463,13 +447,12 @@ function Optimize-WithGhostscript {
 function Invoke-PdfProcessing {
     # Verarbeitet eine einzelne PDF-Datei in zwei Stufen:
     #   1. OCRmyPDF: OCR-Textebene ergänzen, optimieren und schiefe Seiten begradigen.
-    #      Die Scan-Bilder werden als JPEG mit der übergebenen Qualität eingebettet.
+    #      Ausgabe als normales PDF Version 1.5 (--output-type pdf), kein PDF/A-Archiv.
     #   2. Ghostscript (optional): Bilder auf die Zielauflösung nachkomprimieren.
+    #      Läuft nur, wenn explizit eine DPI-Zahl übergeben wurde ($GhostscriptDpi > 0).
     # Das Original bleibt unverändert; das Ergebnis wird als <Name>_ocr.pdf
     # neben das Original gelegt. Ein Lauf gilt nur als Fehlschlag, wenn OCRmyPDF
     # fehlschlägt oder das Endergebnis hash-gleich zum Original ist (keine Änderung).
-    # WICHTIG: `--output-type pdf` wird bewusst nicht an OCRmyPDF übergeben, da
-    # die JPEG-Kompression nur bei `--output-type auto` oder `pdfa*` greift.
     # `--optimize 1` statt 3: Stufe 3 erzeugt eine jbig2-Warnung, die wir nicht
     # benötigen (jbig2 wird bewusst nicht installiert).
     [CmdletBinding()]
@@ -491,10 +474,13 @@ function Invoke-PdfProcessing {
     $outputPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_ocr' + $Pdf.Extension)
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
-        # Kein --output-type pdf: sonst greift die JPEG-Kompression nicht.
+        # Normales PDF (Version 1.5) statt PDF/A-Archiv als Ergebnis.
+        # Kein --image-dpi: wird bei PDF-Eingaben ignoriert und gemeldet; die
+        # Auflösung steuert die Ghostscript-Stufe.
         # --optimize 1 statt 3: vermeidet die jbig2-Warnung (jbig2 wird nicht installiert).
         $ocrArgs = @(
             '--skip-text',
+            '--output-type', 'pdf',
             '--optimize', '1',
             '--jpeg-quality', $Quality,
             '--language', $Language
@@ -509,8 +495,10 @@ function Invoke-PdfProcessing {
             throw "OCRmyPDF fehlgeschlagen (Exitcode $LASTEXITCODE)."
         }
 
-        # Nachgelagerte Ghostscript-Optimierung (nur bei Verkleinerung übernommen).
-        if ($UseGhostscript -and $GhostscriptPath) {
+        # Nachgelagerte Ghostscript-Optimierung: läuft nur, wenn explizit eine
+        # Zielauflösung vorgegeben wurde (GhostscriptDpi > 0) und Ghostscript
+        # verfügbar ist. Nur bei Verkleinerung wird das Ergebnis übernommen.
+        if ($UseGhostscript -and $GhostscriptDpi -gt 0 -and $GhostscriptPath) {
             $gsResult = Get-Item -LiteralPath $tempPath
             Optimize-WithGhostscript -GhostscriptPath $GhostscriptPath -Pdf $gsResult -Dpi $GhostscriptDpi | Out-Null
         }
@@ -555,6 +543,21 @@ function Invoke-PdfProcessing {
 }
 
 # --- Hauptprogramm --------------------------------------------------------
+
+# ASCII-Kopf: Kurzbeschreibung, was das Skript tut.
+Write-Host ''
+Write-Host '  +---------------------------------------------+' -ForegroundColor Cyan
+Write-Host '  |  ___  ___ ____  ____                        |' -ForegroundColor Cyan
+Write-Host '  | | _ \/ _ |  _ \|  _ \ ___ _ __ _ __  _   _  |' -ForegroundColor Cyan
+Write-Host '  | | | | | | | |_) | |_) / _ | `"__| `"_ \| | | | |' -ForegroundColor Cyan
+Write-Host '  | | |_| |_| |  __/|  __| (_| | |  | |_) | |_| | |' -ForegroundColor Cyan
+Write-Host '  | |____\___/|_|   |_|   \___/|_|  | .__/ \__, | |' -ForegroundColor Cyan
+Write-Host '  |                                 |_|    |___/  |' -ForegroundColor Cyan
+Write-Host '  +---------------------------------------------+' -ForegroundColor Cyan
+Write-Host '  Fuegt PDFs eine OCR-Textebene hinzu, begradigt schiefe Seiten' -ForegroundColor Cyan
+Write-Host '  und optimiert die Dateigroesse. Originale bleiben unveraendert;' -ForegroundColor Cyan
+Write-Host '  Ergebnisse werden als <Name>_ocr.pdf daneben gespeichert.' -ForegroundColor Cyan
+Write-Host ''
 
 # Prüfe vor der Verarbeitung alle erforderlichen Programme und Module,
 # damit der Anwender alle Installationshinweise auf einmal erhält.
@@ -608,7 +611,7 @@ else {
 # Reihenfolge der Eingabe bleibt erhalten und wird so an OCRmyPDF übergeben.
 $requestedLanguages = @($languageSelection -split '\+' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 
-# Pflichtsprachen prüfen: Fehlt deu oder eng, Download-Hinweis und Programmende.
+# Pflichtsprachen prüfen: Fehlt deu oder eng, Hinweis auf tessdata_best und Programmende.
 $missingRequired = @($requestedLanguages | Where-Object { $script:RequiredLanguages -contains $_ -and $installedLanguages -notcontains $_ })
 if ($missingRequired.Count -gt 0) {
     Show-LanguageDownloadHint -MissingLanguages $missingRequired -TessdataPath $tesseractInfo.TessdataPath
@@ -633,9 +636,14 @@ Write-Host '=== PDF-Toolbox: Verarbeitung gestartet ===' -ForegroundColor Cyan
 Write-Host ('Anzahl Dateien: {0}' -f $pdfFiles.Count)
 Write-Host ('Sprachen: {0}' -f $languageSelection)
 Write-Host ('JPEG-Qualität: {0}' -f $JpegQuality)
-Write-Host ('Ghostscript-DPI: {0}' -f $GhostscriptDpi)
+if ($GhostscriptDpi -gt 0) {
+    Write-Host ('Ghostscript-DPI: {0}' -f $GhostscriptDpi)
+}
+else {
+    Write-Host 'Ghostscript-DPI: deaktiviert (Komprimierung nur mit -GhostscriptDpi)'
+}
 Write-Host ('Deskew: {0}' -f $Deskew)
-Write-Host ('Ghostscript-Optimierung: {0}' -f $UseGhostscript)
+Write-Host ('Ausgabeformat: normales PDF (Version 1.5)')
 
 # --- PDFs verarbeiten -----------------------------------------------------------
 $results = @()
