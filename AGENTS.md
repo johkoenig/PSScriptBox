@@ -6,7 +6,7 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - Benutzerseite (Texte, Ausgaben, Fehlermeldungen) und Kommentare in Skripten auf Deutsch; technische Fachbegriffe und Tesseract-Sprachcodes (z. B. `deu`, `eng`) auf Englisch.
 - Jedes Skript beginnt mit comment-based help (`.SYNOPSIS`, `.DESCRIPTION`, mindestens ein `.EXAMPLE`, `.NOTES` mit Abhängigkeiten).
 - Jede Funktion dokumentiert Zweck, Parameter und Rückgabewerte (Kommentarblock oder comment-based help).
-- Nicht offensichtliche Entscheidungen kommentieren (das Warum), z. B. warum ein externes Programm direkt über `[System.Diagnostics.Process]` gestartet wird.
+- Nicht offensichtliche Entscheidungen kommentieren (das Warum), z. B. warum ein externes Programm direkt über `[System.Diagnostics.Process]` gestartet wird und warum `--output-type pdf` bei OCRmyPDF vermieden wird.
 - Keine selbsterklärenden Kommentare; stattdessen Abschnitte im Hauptteil mit kurzen Überschriften strukturieren.
 
 ## PowerShell-Stil
@@ -29,11 +29,11 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - Keine Geheimnisse, Tokens, API-Schlüssel oder persönlichen Daten im Repository.
 
 ## Projektkonventionen (choco/pdf-toolbox.ps1)
-- Standard-Sprachfolge für die OCR: `deu+eng+fra+ita+spa` (Deutsch, Englisch, Französisch, Italienisch, Spanisch, in dieser Reihenfolge). Eine abweichende Sprachfolge kann per Parameter oder interaktiv vorgegeben werden; die Reihenfolge der Eingabe bestimmt die Priorität.
+- Standard-Sprachfolge für die OCR: `deu+eng+fra+ita+spa` (Deutsch, Englisch, Französisch, Italienisch, Spanisch, in dieser Reihenfolge). Eine abweichende Sprachfolge kann per Parameter `-Language` vorgegeben werden; es gibt **keine interaktive Sprachabfrage** (die Liste aller installierten Sprachen wäre zu lang).
+- **Pflichtsprachen:** `deu` und `eng`. Fehlt eine davon, stoppt das Skript mit einem Zweizeiler: Aufforderung, den Download-Befehl in einer Admin-Shell auszuführen (lädt alle Sprachen aus https://github.com/tesseract-ocr/tessdata herunter), gefolgt vom Befehl. **Optionale Sprachen** (alle übrigen) werden bei Fehlen **stillschweigend aus der Sprachfolge entfernt** und per Hinweis gemeldet, ohne den Lauf zu unterbrechen.
 - **Begradigung von Scan-Seiten ist standardmäßig aktiv (`--deskew`).** Verdrehte Seiten werden automatisch um 90°, 180° oder 270° korrigiert (**`--rotate-pages`** ist standardmäßig **deaktiviert**).
-- Quelle für Tesseract-Sprachdaten ist https://github.com/tesseract-ocr/tessdata . Sind angeforderte Sprachen lokal nicht installiert, gibt das Skript einen Zweizeiler aus: Aufforderung, den Download-Befehl in einer Admin-Shell auszuführen (lädt alle Sprachen herunter), gefolgt vom Befehl.
-- Die JPEG-Kompression für Scan-Bilder ist standardmäßig auf Qualität 75 eingestellt (`--pdfa-image-compression jpeg --jpeg-quality 75`), zusätzlich wird die Auflösung der eingebetteten Bilder auf **300 DPI** begrenzt (`--image-dpi 300`, Parameter `-ImageDpi`).
-- **Mehrstufige Optimierung:** Nach OCRmyPDF folgen zwei optionale Stufen: **qpdf** (`--optimize-images --object-streams=generate --linearize`, Parameter `-UseQpdf`, Standard `$true`) und **Ghostscript** (`-dPDFSETTINGS=/ebook`, Parameter `-UseGhostscript`, Standard `$true`). Beide sind über Chocolatey installierbar (`choco install qpdf ghostscript`) und werden bei Fehlen gemeldet, ohne den Lauf zu blockieren.
+- Die JPEG-Kompression für Scan-Bilder ist standardmäßig auf Qualität 75 eingestellt (`--pdfa-image-compression jpeg --jpeg-quality 75`), zusätzlich wird die Auflösung der eingebetteten Bilder auf **300 DPI** begrenzt (`--image-dpi 300`, Parameter `-ImageDpi`). **Wichtig:** `--output-type pdf` wird bewusst **nicht** gesetzt, da OCRmyPDF `--pdfa-image-compression` nur bei `--output-type auto` oder `pdfa*` anwendet.
+- **Mehrstufige Optimierung:** Nach OCRmyPDF folgen zwei optionale Stufen: **qpdf** (`--optimize-images --object-streams=generate --linearize`, Parameter `-UseQpdf`) und **Ghostscript** (`-dPDFSETTINGS=/ebook`, Parameter `-UseGhostscript`). Beide sind über Chocolatey installierbar (`choco install qpdf ghostscript`) und werden bei Fehlen gemeldet, ohne den Lauf zu blockieren. **Derzeit sind beide standardmäßig deaktiviert**, bis die JPEG-Kompression in OCRmyPDF zufriedenstellend läuft.
 
 ## Qualitätssicherung vor dem Commit
 - Skriptänderungen mindestens mit einem Beispiel-PDF testen (Parametermodus und interaktiver Modus), soweit in der Umgebung möglich.
