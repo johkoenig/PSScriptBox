@@ -1,32 +1,34 @@
 <#
 .SYNOPSIS
-    Optimiert PDFs, begradigt Scan-Seiten und ergänzt bei Bedarf eine OCR-Textebene.
+    Optimiert PDFs, begradigt schiefe Scan-Seiten und ergänzt bei Bedarf eine OCR-Textebene.
 
 .DESCRIPTION
-    Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien direkt in
-    einem angegebenen Ordner (keine Unterordner). Vor der Verarbeitung
-    wird eine Sicherung mit dem Suffix _orig angelegt. Das Original wird
-    nur durch ein erfolgreich verarbeitetes, kleineres Ergebnis ersetzt.
+    Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien direkt in einem angegebenen
+    Ordner (keine Unterordner). Vor der Verarbeitung wird eine Sicherung mit dem Suffix _orig
+    angelegt. Das Original wird nur durch ein erfolgreich verarbeitetes, kleineres Ergebnis
+    ersetzt.
 
-    Die Scan-Bilder werden für eine aggressive, aber noch gut lesbare
-    Kompression als JPEG mit Qualität 75 eingebettet (--pdfa-image-compression
-    jpeg --jpeg-quality 75). Bei reinen Textdokumenten ohne Bilder bleibt
-    diese Einstellung wirkungslos.
+    BEIGRADIGUNG:
+      - Schiefe Scan-Seiten werden automatisch begradigt (`--deskew`).
+      - Verdrehte Seiten (90°, 180°, 270°) werden automatisch korrigiert (`--rotate-pages`).
+        **Hinweis:** `--rotate-pages` ist standardmäßig **deaktiviert** und kann über den
+        Parameter `-RotatePages` explizit aktiviert werden.
 
-    Standardmäßig werden schiefe Scan-Seiten automatisch begradigt
-    (--deskew) und verdrehte Seiten korrigiert (--rotate-pages).
+    KOMPRESSION:
+      Die Scan-Bilder werden als JPEG mit Qualität 75 eingebettet (--pdfa-image-compression
+      jpeg --jpeg-quality 75). Bei reinen Textdokumenten ohne Bilder bleibt diese Einstellung
+      wirkungslos.
 
-    Das Skript selbst benötigt keine Administratorrechte und installiert
-    keine Software. Fehlende Programme meldet es mit Installationshinweisen.
-    Fehlende Tesseract-Sprachdaten meldet es mit einem Zweizeiler, der den
-    Benutzer auffordert, einen Download-Befehl in einer Admin-Shell
-    auszuführen, um alle Sprachen herunterzuladen.
+    Das Skript selbst benötigt keine Administratorrechte und installiert keine Software.
+    Fehlende Programme meldet es mit Installationshinweisen. Fehlende Tesseract-Sprachdaten
+    werden mit einem Zweizeiler gemeldet, der den Benutzer auffordert, einen Download-Befehl
+    in einer Admin-Shell auszuführen, um alle Sprachen herunterzuladen.
 
 .PARAMETER Language
     OCR-Sprachen als mit '+' kombinierte Tesseract-Codes, z. B. 'deu+eng'.
     Ohne Angabe wird interaktiv nachgefragt; Vorgabe ist die Standardfolge
-    'deu+eng+fra+ita+spa' (Deutsch, Englisch, Französisch, Italienisch,
-    Spanisch, in dieser Reihenfolge).
+    'deu+eng+fra+ita+spa' (Deutsch, Englisch, Französisch, Italienisch, Spanisch, in dieser
+    Reihenfolge).
 
 .PARAMETER InputPath
     Optionaler Pfad zu einer PDF-Datei oder einem Ordner mit PDF-Dateien.
@@ -37,23 +39,22 @@
     Vorgabe ist 75: guter Kompromiss aus Dateigröße und Lesbarkeit.
 
 .PARAMETER Deskew
-    Schalter, ob schiefe Scan-Seiten automatisch begradigt werden sollen.
-    Standard: $true
+    Legt fest, ob schiefe Scan-Seiten begradigt werden sollen (Standard: $true).
+    Bei aktivierter Begradigung wird `--deskew` an OCRmyPDF übergeben.
 
 .PARAMETER RotatePages
-    Schalter, ob verdrehte Seiten automatisch korrigiert werden sollen.
-    Standard: $true
+    Legt fest, ob verdrehte Seiten (90°, 180°, 270°) automatisch korrigiert werden sollen
+    (Standard: $false). Bei Aktivierung wird `--rotate-pages` an OCRmyPDF übergeben.
 
 .EXAMPLE
     .\pdf-toolbox.ps1
-    Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa
-    und JPEG-Qualität 75. Scan-Seiten werden begradigt und verdrehte
-    Seiten korrigiert.
+    Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa, JPEG-Qualität 75,
+    automatischer Begradigung schiefer Seiten und deaktivierter automatischer Drehkorrektur.
 
 .EXAMPLE
-    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -JpegQuality 65 -Deskew:$false
-    Verarbeitet alle PDFs in C:\PDFs mit deutscher und englischer OCR,
-    stärkerer JPEG-Kompression, aber ohne automatische Begradigung.
+    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -JpegQuality 65 -Deskew:$true -RotatePages:$true
+    Verarbeitet alle PDFs in C:\PDFs mit deutscher und englischer OCR, stärkerer JPEG-
+    Kompression, automatischer Begradigung und automatischer Drehkorrektur.
 
 .NOTES
     Abhängigkeiten:
@@ -85,11 +86,11 @@ param(
     [ValidateRange(1, 100)]
     [int] $JpegQuality = 75,
 
-    # Schalter: Scan-Seiten automatisch begradigen (Standard: $true).
-    [switch] $Deskew = $true,
+    # Begradigung schiefer Scan-Seiten aktivieren (Standard true).
+    [bool] $Deskew = $true,
 
-    # Schalter: verdrehte Seiten automatisch korrigieren (Standard: $true).
-    [switch] $RotatePages = $true
+    # Automatische Drehkorrektur für 90°/180°/270°-Verdrehungen (Standard false).
+    [bool] $RotatePages = $false
 )
 
 Set-StrictMode -Version Latest
@@ -283,35 +284,36 @@ function Invoke-PdfProcessing {
     # Verarbeitet eine einzelne PDF-Datei mit OCRmyPDF: OCR-Textebene
     # ergänzen und optimieren. Die Scan-Bilder werden dabei als JPEG mit
     # der übergebenen Qualität eingebettet, was die Dateigröße deutlich
-    # reduziert. Standardmäßig werden schiefe Seiten begradigt und
-    # verdrehte Seiten korrigiert.
-    # Das Original wird nur ersetzt, wenn das Ergebnis kleiner ist; vorher
-    # wird eine Sicherung mit _orig angelegt.
+    # reduziert. Optional werden schiefe Seiten begradigt und verdrehte
+    # Seiten korrigiert. Das Original wird nur ersetzt, wenn das Ergebnis
+    # kleiner ist; vorher wird eine Sicherung mit _orig angelegt.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
         [Parameter(Mandatory)][string] $PythonPath,
         [Parameter(Mandatory)][string] $Language,
         [Parameter(Mandatory)][int] $Quality,
-        [Parameter(Mandatory)][bool] $DoDeskew,
-        [Parameter(Mandatory)][bool] $DoRotatePages
+        [Parameter(Mandatory)][bool] $Deskew,
+        [Parameter(Mandatory)][bool] $RotatePages
     )
 
     # Temporäre Datei neben der Eingabe, damit Verschieben auf demselben Laufwerk bleibt.
     $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
     $backupPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
-
-    # OCRmyPDF-Argumente dynamisch zusammenstellen
-    $ocrArgs = @('ocrmypdf', '--skip-text', '--optimize', '3', '--output-type', 'pdf', '--language', $Language, '--pdfa-image-compression', 'jpeg', '--jpeg-quality', $Quality)
-
-    if ($DoDeskew) { $ocrArgs += '--deskew' }
-    if ($DoRotatePages) { $ocrArgs += '--rotate-pages' }
-
-    $ocrArgs += '--', $Pdf.FullName, $tempPath
-
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
-        & $PythonPath @ocrArgs
+        $ocrArgs = @(
+            '--skip-text',
+            '--optimize', '3',
+            '--output-type', 'pdf',
+            '--pdfa-image-compression', 'jpeg',
+            '--jpeg-quality', $Quality,
+            '--language', $Language
+        )
+        if ($Deskew) { $ocrArgs += '--deskew' }
+        if ($RotatePages) { $ocrArgs += '--rotate-pages' }
+
+        & $PythonPath -m ocrmypdf $ocrArgs -- $Pdf.FullName $tempPath
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
             throw "OCRmyPDF fehlgeschlagen (Exitcode $LASTEXITCODE)."
         }
@@ -345,6 +347,8 @@ function Invoke-PdfProcessing {
 }
 
 # --- Abhängigkeiten prüfen ---------------------------------------------------
+# Programme und Python-Module vorab gesammelt prüfen, damit der Benutzer
+# alle Installationshinweise auf einmal erhält.
 $dependencyCheck = Get-MissingDependency
 if ($dependencyCheck.Missing.Count -gt 0) {
     Write-Host "`nFehlende Abhängigkeiten:" -ForegroundColor Yellow
@@ -373,6 +377,9 @@ catch { Write-Error $_.Exception.Message; exit 1 }
 if ($pdfFiles.Count -eq 0) { Write-Host 'Keine PDFs gefunden.'; exit 0 }
 
 # --- Sprachfolge festlegen ------------------------------------------------------
+# Vorgabe ist die Standardfolge Deutsch, Englisch, Französisch, Italienisch,
+# Spanisch. Über -Language oder die interaktive Abfrage kann eine abweichende
+# Sprachfolge vorgegeben werden; die Reihenfolge bestimmt die Priorität.
 Write-Host "`nInstallierte Tesseract-Sprachen: $($installedLanguages -join ', ')" -ForegroundColor Cyan
 if (-not [string]::IsNullOrWhiteSpace($Language)) {
     $languageSelection = $Language.Trim()
@@ -394,7 +401,7 @@ if ($missingLanguages.Count -gt 0) {
 $successCount = 0
 $failureCount = 0
 foreach ($pdf in $pdfFiles) {
-    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $languageSelection -Quality $JpegQuality -DoDeskew:$Deskew -DoRotatePages:$RotatePages) { $successCount++ }
+    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $languageSelection -Quality $JpegQuality -Deskew:$Deskew -RotatePages:$RotatePages) { $successCount++ }
     else { $failureCount++ }
 }
 Write-Host "`nAbgeschlossen: $successCount erfolgreich, $failureCount fehlgeschlagen."

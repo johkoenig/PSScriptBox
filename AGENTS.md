@@ -28,7 +28,9 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 
 ## Projektkonventionen (choco/pdf-toolbox.ps1)
 - Standard-Sprachfolge für die OCR: `deu+eng+fra+ita+spa` (Deutsch, Englisch, Französisch, Italienisch, Spanisch, in dieser Reihenfolge). Eine abweichende Sprachfolge kann per Parameter oder interaktiv vorgegeben werden; die Reihenfolge der Eingabe bestimmt die Priorität.
+- **Begradigung von Scan-Seiten ist standardmäßig aktiv (`--deskew`).** Verdrehte Seiten werden automatisch um 90°, 180° oder 270° korrigiert (**`--rotate-pages`** ist standardmäßig **deaktiviert**).
 - Quelle für Tesseract-Sprachdaten ist https://github.com/tesseract-ocr/tessdata . Sind angeforderte Sprachen lokal nicht installiert, gibt das Skript einen Zweizeiler aus: Aufforderung, den Download-Befehl in einer Admin-Shell auszuführen (lädt alle Sprachen herunter), gefolgt vom Befehl.
+- Die JPEG-Kompression für Scan-Bilder ist standardmäßig auf 75 eingestellt (`--pdfa-image-compression jpeg --jpeg-quality 75`).
 
 ## Qualitätssicherung vor dem Commit
 - Skriptänderungen mindestens mit einem Beispiel-PDF testen (Parametermodus und interaktiver Modus), soweit in der Umgebung möglich.
