@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Optimiert PDFs und ergänzt bei Bedarf eine OCR-Textebene.
+    Optimiert PDFs, begradigt Scan-Seiten und ergänzt bei Bedarf eine OCR-Textebene.
 
 .DESCRIPTION
     Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien direkt in
@@ -12,6 +12,9 @@
     Kompression als JPEG mit Qualität 75 eingebettet (--pdfa-image-compression
     jpeg --jpeg-quality 75). Bei reinen Textdokumenten ohne Bilder bleibt
     diese Einstellung wirkungslos.
+
+    Standardmäßig werden schiefe Scan-Seiten automatisch begradigt
+    (--deskew) und verdrehte Seiten korrigiert (--rotate-pages).
 
     Das Skript selbst benötigt keine Administratorrechte und installiert
     keine Software. Fehlende Programme meldet es mit Installationshinweisen.
@@ -33,15 +36,24 @@
     JPEG-Qualität für die eingebetteten Scan-Bilder (1-100).
     Vorgabe ist 75: guter Kompromiss aus Dateigröße und Lesbarkeit.
 
+.PARAMETER Deskew
+    Schalter, ob schiefe Scan-Seiten automatisch begradigt werden sollen.
+    Standard: $true
+
+.PARAMETER RotatePages
+    Schalter, ob verdrehte Seiten automatisch korrigiert werden sollen.
+    Standard: $true
+
 .EXAMPLE
     .\pdf-toolbox.ps1
     Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa
-    und JPEG-Qualität 75.
+    und JPEG-Qualität 75. Scan-Seiten werden begradigt und verdrehte
+    Seiten korrigiert.
 
 .EXAMPLE
-    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -JpegQuality 65
-    Verarbeitet alle PDFs in C:\PDFs mit deutscher und englischer OCR und
-    stärkerer JPEG-Kompression.
+    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -JpegQuality 65 -Deskew:$false
+    Verarbeitet alle PDFs in C:\PDFs mit deutscher und englischer OCR,
+    stärkerer JPEG-Kompression, aber ohne automatische Begradigung.
 
 .NOTES
     Abhängigkeiten:
@@ -71,7 +83,13 @@ param(
 
     # JPEG-Qualität für eingebettete Scan-Bilder (1-100). Vorgabe 75.
     [ValidateRange(1, 100)]
-    [int] $JpegQuality = 75
+    [int] $JpegQuality = 75,
+
+    # Schalter: Scan-Seiten automatisch begradigen (Standard: $true).
+    [switch] $Deskew = $true,
+
+    # Schalter: verdrehte Seiten automatisch korrigieren (Standard: $true).
+    [switch] $RotatePages = $true
 )
 
 Set-StrictMode -Version Latest
@@ -265,24 +283,35 @@ function Invoke-PdfProcessing {
     # Verarbeitet eine einzelne PDF-Datei mit OCRmyPDF: OCR-Textebene
     # ergänzen und optimieren. Die Scan-Bilder werden dabei als JPEG mit
     # der übergebenen Qualität eingebettet, was die Dateigröße deutlich
-    # reduziert. Das Original wird nur ersetzt, wenn das Ergebnis kleiner
-    # ist; vorher wird eine Sicherung mit _orig angelegt.
+    # reduziert. Standardmäßig werden schiefe Seiten begradigt und
+    # verdrehte Seiten korrigiert.
+    # Das Original wird nur ersetzt, wenn das Ergebnis kleiner ist; vorher
+    # wird eine Sicherung mit _orig angelegt.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
         [Parameter(Mandatory)][string] $PythonPath,
         [Parameter(Mandatory)][string] $Language,
-        [Parameter(Mandatory)][int] $Quality
+        [Parameter(Mandatory)][int] $Quality,
+        [Parameter(Mandatory)][bool] $DoDeskew,
+        [Parameter(Mandatory)][bool] $DoRotatePages
     )
 
     # Temporäre Datei neben der Eingabe, damit Verschieben auf demselben Laufwerk bleibt.
     $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
     $backupPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
+
+    # OCRmyPDF-Argumente dynamisch zusammenstellen
+    $ocrArgs = @('ocrmypdf', '--skip-text', '--optimize', '3', '--output-type', 'pdf', '--language', $Language, '--pdfa-image-compression', 'jpeg', '--jpeg-quality', $Quality)
+
+    if ($DoDeskew) { $ocrArgs += '--deskew' }
+    if ($DoRotatePages) { $ocrArgs += '--rotate-pages' }
+
+    $ocrArgs += '--', $Pdf.FullName, $tempPath
+
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
-        # --pdfa-image-compression jpeg: Bilder verlustbehaftet als JPEG einbetten.
-        # --jpeg-quality: Qualitätsstufe des JPEG-Encoders (75 = guter Kompromiss).
-        & $PythonPath -m ocrmypdf --skip-text --optimize 3 --output-type pdf --pdfa-image-compression jpeg --jpeg-quality $Quality --language $Language -- $Pdf.FullName $tempPath
+        & $PythonPath @ocrArgs
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
             throw "OCRmyPDF fehlgeschlagen (Exitcode $LASTEXITCODE)."
         }
@@ -316,8 +345,6 @@ function Invoke-PdfProcessing {
 }
 
 # --- Abhängigkeiten prüfen ---------------------------------------------------
-# Programme und Python-Module vorab gesammelt prüfen, damit der Benutzer
-# alle Installationshinweise auf einmal erhält.
 $dependencyCheck = Get-MissingDependency
 if ($dependencyCheck.Missing.Count -gt 0) {
     Write-Host "`nFehlende Abhängigkeiten:" -ForegroundColor Yellow
@@ -346,9 +373,6 @@ catch { Write-Error $_.Exception.Message; exit 1 }
 if ($pdfFiles.Count -eq 0) { Write-Host 'Keine PDFs gefunden.'; exit 0 }
 
 # --- Sprachfolge festlegen ------------------------------------------------------
-# Vorgabe ist die Standardfolge Deutsch, Englisch, Französisch, Italienisch,
-# Spanisch. Über -Language oder die interaktive Abfrage kann eine abweichende
-# Sprachfolge vorgegeben werden; die Reihenfolge bestimmt die Priorität.
 Write-Host "`nInstallierte Tesseract-Sprachen: $($installedLanguages -join ', ')" -ForegroundColor Cyan
 if (-not [string]::IsNullOrWhiteSpace($Language)) {
     $languageSelection = $Language.Trim()
@@ -370,7 +394,7 @@ if ($missingLanguages.Count -gt 0) {
 $successCount = 0
 $failureCount = 0
 foreach ($pdf in $pdfFiles) {
-    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $languageSelection -Quality $JpegQuality) { $successCount++ }
+    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $languageSelection -Quality $JpegQuality -DoDeskew:$Deskew -DoRotatePages:$RotatePages) { $successCount++ }
     else { $failureCount++ }
 }
 Write-Host "`nAbgeschlossen: $successCount erfolgreich, $failureCount fehlgeschlagen."
