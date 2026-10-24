@@ -60,8 +60,8 @@
     Standard ist 0 = Stufe deaktiviert. Die Ghostscript-Komprimierung läuft nur, wenn
     hier explizit ein Wert vorgegeben wird, z. B. -GhostscriptDpi 150.
 
-.PARAMETER Deskew
-    Legt fest, ob schiefe Scan-Seiten begradigt werden sollen (Standard: $true).
+.PARAMETER NoDeskew
+    Deaktiviert die standardmäßig aktive Begradigung schiefer Scan-Seiten.
 
 .PARAMETER RotatePages
     Legt fest, ob verdrehte Seiten (90°, 180°, 270°) automatisch korrigiert werden sollen
@@ -130,8 +130,8 @@ param(
     [ValidateRange(0, 1200)]
     [int] $GhostscriptDpi = 0,
 
-    # Begradigung schiefer Scan-Seiten aktivieren (Standard true).
-    [switch] $Deskew = $true,
+    # Begradigung schiefer Scan-Seiten deaktivieren (Standard: aktiv).
+    [switch] $NoDeskew,
 
     # Automatische Drehkorrektur für 90°/180°/270°-Verdrehungen (Standard false).
     [switch] $RotatePages,
@@ -348,6 +348,17 @@ function Get-PdfInputFile {
     param([string] $Path)
 
     if ([string]::IsNullOrWhiteSpace($Path)) {
+        Write-Host ''
+        Write-Host 'Mögliche Parameter:' -ForegroundColor Cyan
+        Write-Host '  -InputPath <Pfad>       PDF-Datei oder Ordner; ohne Angabe erscheint diese Abfrage.'
+        Write-Host '  -Language <Sprachen>    OCR-Sprachen, z. B. deu+eng (Standard: deu+eng+fra+ita+spa).'
+        Write-Host '  -JpegQuality <1-100>   JPEG-Qualität (Standard: 75).'
+        Write-Host '  -GhostscriptDpi <DPI>  Optionale Ghostscript-Auflösung (Standard: deaktiviert).'
+        Write-Host '  -NoDeskew              Schräglagenkorrektur deaktivieren (Standard: aktiv).'
+        Write-Host '  -RotatePages           Verdrehte Seiten automatisch korrigieren (Standard: aus).'
+        Write-Host '  -NoGhostscript         Ghostscript-Komprimierung deaktivieren (Standard: erlaubt).'
+        Write-Host '  -KeepOriginal          Original als _raw-Datei sichern; sonst wird es überschrieben.'
+        Write-Host 'Mit Strg+C kannst du die Eingabe abbrechen.' -ForegroundColor Yellow
         $Path = Read-Host 'Pfad zu einer PDF-Datei oder einem Ordner mit PDFs'
     }
     if ([string]::IsNullOrWhiteSpace($Path)) { throw 'Es wurde kein Pfad eingegeben.' }
@@ -473,7 +484,7 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][string] $Language,
         [Parameter(Mandatory)][int] $Quality,
         [Parameter(Mandatory)][int] $GhostscriptDpi,
-        [Parameter(Mandatory)][bool] $Deskew,
+        [Parameter(Mandatory)][bool] $NoDeskew,
         [Parameter(Mandatory)][bool] $RotatePages,
         [Parameter(Mandatory)][bool] $NoGhostscript,
         [Parameter(Mandatory)][bool] $KeepOriginal,
@@ -497,7 +508,7 @@ function Invoke-PdfProcessing {
             '--jpeg-quality', $Quality,
             '--language', $Language
         )
-        if ($Deskew) { $ocrArgs += '--deskew' }
+        if (-not $NoDeskew) { $ocrArgs += '--deskew' }
         if ($RotatePages) {
             # Die niedrigere Schwelle lässt auch Rotationen mit geringer Tesseract-Konfidenz zu.
             $ocrArgs += @('--rotate-pages', '--rotate-pages-threshold', '5')
@@ -570,12 +581,20 @@ function Invoke-PdfProcessing {
 
 # ASCII-Kopf: Kurzbeschreibung, was das Skript tut.
 Write-Host ''
-Write-Host '  +-----------------------+' -ForegroundColor Cyan
-Write-Host '  |        PDF-OCR        |' -ForegroundColor Cyan
-Write-Host '  +-----------------------+' -ForegroundColor Cyan
-Write-Host '  Fuegt PDFs eine OCR-Textebene hinzu, begradigt schiefe Seiten' -ForegroundColor Cyan
-Write-Host '  und optimiert die Dateigroesse. Dateien werden ueberschrieben;' -ForegroundColor Cyan
-Write-Host '  mit -KeepOriginal bleibt eine Sicherung als _raw erhalten.' -ForegroundColor Cyan
+Write-Host '       .-------------------------------------------------------.' -ForegroundColor Cyan
+Write-Host '       |  +------------------+                                 |' -ForegroundColor Cyan
+Write-Host '       |  |   PDF  ->  OCR   |        P D F  -  O C R          |' -ForegroundColor Cyan
+Write-Host '       |  | [##########]     |                                 |' -ForegroundColor Cyan
+Write-Host '       |  | [__________] >>> |        SCAN  /  TEXT            |' -ForegroundColor Cyan
+Write-Host '       |  +------------------+        DESKEW / OPTIMIZE        |' -ForegroundColor Cyan
+Write-Host '       ''-------------------------------------------------------''' -ForegroundColor Cyan
+Write-Host '  Fuegt PDFs OCR-Textebenen hinzu, begradigt Seiten und optimiert Dateien.' -ForegroundColor Cyan
+if ($KeepOriginal) {
+    Write-Host '  Originale werden als _raw-Dateien gesichert.' -ForegroundColor Cyan
+}
+else {
+    Write-Host '  Originale werden ueberschrieben.' -ForegroundColor Cyan
+}
 Write-Host ''
 
 # Prüfe vor der Verarbeitung alle erforderlichen Programme und Module,
@@ -661,7 +680,7 @@ if ($GhostscriptDpi -gt 0) {
 else {
     Write-Host 'Ghostscript-DPI: deaktiviert (Komprimierung nur mit -GhostscriptDpi)'
 }
-Write-Host ('Deskew: {0}' -f $Deskew)
+Write-Host ('Deskew: {0}' -f (-not $NoDeskew))
 Write-Host ('Ausgabeformat: normales PDF (Version 1.5)')
 
 # --- PDFs verarbeiten -----------------------------------------------------------
@@ -672,7 +691,7 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
     Write-Host ('--- Datei {0}/{1}: {2} ---' -f ($i + 1), $pdfFiles.Count, $pdf.Name) -ForegroundColor Cyan
     $r = Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath `
         -Language $languageSelection -Quality $JpegQuality -GhostscriptDpi $GhostscriptDpi `
-        -Deskew $Deskew.IsPresent -RotatePages $RotatePages.IsPresent `
+        -NoDeskew $NoDeskew.IsPresent -RotatePages $RotatePages.IsPresent `
         -NoGhostscript $NoGhostscript.IsPresent -KeepOriginal $KeepOriginal.IsPresent `
         -GhostscriptPath $dependencyCheck.GhostscriptPath
     if ($null -ne $r) { $results += $r }
@@ -695,4 +714,9 @@ if ($successCount -gt 0) {
     Write-Host ('Ergebnis gesamt: {0:N2} MB' -f ($sumResult / 1MB))
     Write-Host ('Gesamteinsparung: {0:N2} MB ({1:N1} %)' -f $savedMb, $savedPct)
 }
-Write-Host 'Verarbeitete Dateien ersetzen standardmäßig die Originale; -KeepOriginal legt Sicherungen mit dem Suffix _raw an.'
+if ($KeepOriginal) {
+    Write-Host 'Originale wurden als _raw-Dateien gesichert.'
+}
+else {
+    Write-Host 'Originale wurden überschrieben.'
+}
