@@ -507,6 +507,7 @@ function Invoke-PdfProcessing {
     $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
     $originalPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
     $replaceBackupPath = $tempPath + '.bak'
+    $failureReason = $null
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
         # Normales PDF (Version 1.5) statt PDF/A-Archiv als Ergebnis.
@@ -527,10 +528,28 @@ function Invoke-PdfProcessing {
         }
 
         # Live-Ausgabe: OCRmyPDF läuft ohne Umleitung, Fortschrittsbalken und
-        # Statusmeldungen erscheinen direkt auf der Konsole.
-        & $PythonPath -m ocrmypdf @ocrArgs -- $Pdf.FullName $tempPath
-        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
-            throw "OCRmyPDF fehlgeschlagen (Exitcode $LASTEXITCODE)."
+        # Statusmeldungen erscheinen während des Laufs auf der Konsole.
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            # OCRmyPDF schreibt auch normale Statusmeldungen auf stderr. Unter
+            # StrictMode dürfen diese nicht als PowerShell-Fehler den Lauf abbrechen.
+            $ErrorActionPreference = 'Continue'
+            & $PythonPath -m ocrmypdf @ocrArgs -- $Pdf.FullName $tempPath 2>&1 |
+                ForEach-Object {
+                    $outputLine = $_.ToString()
+                    Write-Host $outputLine
+                    if ($outputLine -match '^\s*(?<reason>[A-Za-z][A-Za-z0-9]*Error):') {
+                        $failureReason = $Matches['reason']
+                    }
+                }
+            $ocrExitCode = $LASTEXITCODE
+        }
+        finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+        if ($ocrExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
+            if (-not $failureReason) { $failureReason = "OCRmyPDF-Fehler (Exitcode $ocrExitCode)" }
+            throw "OCRmyPDF fehlgeschlagen (Exitcode $ocrExitCode)."
         }
 
         # Nachgelagerte Ghostscript-Optimierung: läuft nur, wenn explizit eine
@@ -551,7 +570,7 @@ function Invoke-PdfProcessing {
         $resultHash = Get-FileSha256 -Path $tempPath
         if ($originalHash -eq $resultHash) {
             Write-Host 'Ergebnis ist identisch zum Original (keine Änderung); Datei wird verworfen.' -ForegroundColor Yellow
-            return [pscustomobject]@{ Success = $false; OriginalBytes = [long]$originalSize; ResultBytes = [long]0 }
+            return [pscustomobject]@{ Success = $false; FilePath = $Pdf.FullName; FailureReason = 'Keine Änderung'; OriginalBytes = [long]$originalSize; ResultBytes = [long]0 }
         }
 
         # Erst nach erfolgreicher Verarbeitung und Hash-Prüfung atomar austauschen.
@@ -572,11 +591,14 @@ function Invoke-PdfProcessing {
             Write-Host ('Verarbeitet (größer als Original): {0:N1} MB -> {1:N1} MB' -f ($originalSize / 1MB), ($resultSize / 1MB)) -ForegroundColor Cyan
         }
         Write-Host "Gespeichert: $($Pdf.FullName)"
-        return [pscustomobject]@{ Success = $true; OriginalBytes = [long]$originalSize; ResultBytes = [long]$resultSize }
+        return [pscustomobject]@{ Success = $true; FilePath = $Pdf.FullName; FailureReason = $null; OriginalBytes = [long]$originalSize; ResultBytes = [long]$resultSize }
     }
     catch {
         Write-Warning "Fehler bei '$($Pdf.Name)': $($_.Exception.Message)"
-        return [pscustomobject]@{ Success = $false; OriginalBytes = [long]0; ResultBytes = [long]0 }
+        if (-not $failureReason) {
+            $failureReason = $_.Exception.Message -split '[\r\n]' | Select-Object -First 1
+        }
+        return [pscustomobject]@{ Success = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; OriginalBytes = [long]0; ResultBytes = [long]0 }
     }
     finally {
         # Temporäre Datei auch im Fehlerfall zuverlässig entfernen.
@@ -647,6 +669,10 @@ if ($pdfFiles.Count -eq 0) { Write-Host 'Keine PDFs gefunden.'; exit 0 }
 $summaryPathSegments = @($script:InputDirectoryPath.TrimEnd('\') -split '[\\/]' | Where-Object { $_ })
 $summaryPathTail = @($summaryPathSegments | Select-Object -Last 3)
 $summaryPath = '.\' + ($summaryPathTail -join '\') + '\'
+$basePathPrefix = $script:InputDirectoryPath
+if (-not $basePathPrefix.EndsWith([string][System.IO.Path]::DirectorySeparatorChar)) {
+    $basePathPrefix += [System.IO.Path]::DirectorySeparatorChar
+}
 
 # --- Sprachfolge festlegen ------------------------------------------------------
 # Vorgabe ist die Standardfolge Deutsch, Englisch, Französisch, Italienisch,
@@ -735,4 +761,16 @@ if (-not $Replace) {
 }
 else {
     Write-Host 'Originale wurden überschrieben.'
+}
+$failedFiles = @($results | Where-Object { -not $_.Success })
+Write-Host ''
+Write-Host 'Fehlgeschlagene Dateien:' -ForegroundColor Cyan
+if ($failedFiles.Count -eq 0) {
+    Write-Host '  Keine.'
+}
+else {
+    foreach ($failedFile in $failedFiles) {
+        $relativePath = $failedFile.FilePath.Substring($basePathPrefix.Length)
+        Write-Host "  - $relativePath ($($failedFile.FailureReason))" -ForegroundColor Yellow
+    }
 }
