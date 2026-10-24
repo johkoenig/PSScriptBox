@@ -1,3 +1,4 @@
+﻿#>
 <#
 .SYNOPSIS
     Optimiert PDFs, begradigt schiefe Scan-Seiten und ergänzt eine OCR-Textebene.
@@ -9,8 +10,7 @@
 
     VERARBEITUNG IN ZWEI STUFEN:
       1. OCRmyPDF: OCR-Textebene ergänzen, schiefe Seiten begradigen und Bilder als
-         JPEG (Qualität 75) einbetten (`--pdfa-image-compression jpeg`). Die Ausgabe
-         erfolgt als PDF/A-2b.
+         JPEG (Qualität 75) einbetten. Die Ausgabe erfolgt im Auto-Modus als PDF/A-2b.
       2. Ghostscript: Bilder auf 200 DPI herunterrechnen und als JPEG einbetten.
          Diese Stufe ersetzt das Zwischenergebnis nur, wenn es dadurch kleiner wird.
 
@@ -54,12 +54,6 @@
 .PARAMETER JpegQuality
     JPEG-Qualität für die eingebetteten Scan-Bilder (1-100).
     Vorgabe ist 75: guter Kompromiss aus Dateigröße und Lesbarkeit.
-
-.PARAMETER ImageDpi
-    Gewünschte Auflösung der eingebetteten Scan-Bilder in DPI (50-1200).
-    Vorgabe ist 300. Hinweis: OCRmyPDF ignoriert --image-dpi bei PDF-Eingaben
-    (gilt nur für Bilddateien); die tatsächliche Auflösungssteuerung bei PDFs
-    übernimmt die Ghostscript-Stufe (200 DPI).
 
 .PARAMETER Deskew
     Legt fest, ob schiefe Scan-Seiten begradigt werden sollen (Standard: $true).
@@ -111,12 +105,15 @@
         da jbig2 bewusst nicht installiert wird (nur für Schwarz-Weiß relevant; hier
         läuft JPEG-Kompression). Stufe 1 reicht, da Ghostscript die starke Kompression
         übernimmt.
-      - `--output-type pdf` wird bewusst NICHT gesetzt, da OCRmyPDF die
-        JPEG-Kompression (`--pdfa-image-compression`) nur bei `--output-type auto`
-        oder `pdfa*` anwendet. Ohne `--output-type` greift die Kompression zuverlässig
-        und die Ausgabe erfolgt als PDF/A-2b.
-      - `--image-dpi` wird bei PDF-Eingaben von OCRmyPDF ignoriert; die Auflösung
-        wird von der Ghostscript-Stufe gesteuert.
+      - `--output-type pdf` wird bewusst NICHT gesetzt: Im Auto-Modus ist JPEG-
+        Kompression (`--pdfa-image-compression jpeg`) ohnehin der Standard. Würde die
+        Option explizit übergeben, meldet OCRmyPDF `--pdfa-image-compression requires
+        Ghostscript` auf der Konsole.
+      - `--image-dpi` wird NICHT übergeben: Bei PDF-Eingaben ignoriert OCRmyPDF die
+        Option und meldet das auf der Konsole. Die Bildauflösung steuert stattdessen
+        die Ghostscript-Stufe (200 DPI).
+      - Die Datei ist als UTF-8 mit BOM gespeichert; ohne BOM liest Windows PowerShell
+        5.1 sie als ANSI und Umlaute in den Ausgaben werden falsch dargestellt.
 
     WEITERE MÖGLICHKEITEN ZUR REDUZIERUNG DER DATEIGRÖSSE:
       - Niedrigere JPEG-Qualität: -JpegQuality 60 (noch gut lesbar, deutlich kleiner).
@@ -137,12 +134,6 @@ param(
     # JPEG-Qualität für eingebettete Scan-Bilder (1-100). Vorgabe 75.
     [ValidateRange(1, 100)]
     [int] $JpegQuality = 75,
-
-    # Gewünschte Auflösung der eingebetteten Scan-Bilder in DPI. Vorgabe 300.
-    # Hinweis: Bei PDF-Eingaben ignoriert OCRmyPDF diesen Wert; die Ghostscript-Stufe
-    # steuert die tatsächliche Auflösung (200 DPI).
-    [ValidateRange(50, 1200)]
-    [int] $ImageDpi = 300,
 
     # Begradigung schiefer Scan-Seiten aktivieren (Standard true).
     [bool] $Deskew = $true,
@@ -469,8 +460,11 @@ function Invoke-PdfProcessing {
     # Das Original bleibt unverändert; das Ergebnis wird als <Name>_ocr.pdf
     # neben das Original gelegt. Ein Lauf gilt nur als Fehlschlag, wenn OCRmyPDF
     # fehlschlägt oder das Endergebnis hash-gleich zum Original ist (keine Änderung).
-    # WICHTIG: `--output-type pdf` wird bewusst nicht an OCRmyPDF übergeben, da
-    # `--pdfa-image-compression` nur bei `--output-type auto` oder `pdfa*` greift.
+    # WICHTIG: `--output-type pdf` wird bewusst nicht an OCRmyPDF übergeben; im
+    # Auto-Modus ist JPEG-Kompression ohnehin der Standard, und die explizite Option
+    # würde den Hinweis `--pdfa-image-compression requires Ghostscript` auslösen.
+    # `--image-dpi` wird ebenfalls nicht übergeben: Bei PDF-Eingaben ignoriert OCRmyPDF
+    # die Option und meldet das auf der Konsole; die Auflösung steuert Ghostscript.
     # `--optimize 1` statt 3: Stufe 3 erzeugt eine jbig2-Warnung, die wir nicht
     # benötigen (jbig2 wird bewusst nicht installiert).
     [CmdletBinding()]
@@ -479,7 +473,6 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][string] $PythonPath,
         [Parameter(Mandatory)][string] $Language,
         [Parameter(Mandatory)][int] $Quality,
-        [Parameter(Mandatory)][int] $Dpi,
         [Parameter(Mandatory)][bool] $Deskew,
         [Parameter(Mandatory)][bool] $RotatePages,
         [Parameter(Mandatory)][bool] $UseGhostscript,
@@ -492,14 +485,15 @@ function Invoke-PdfProcessing {
     $outputPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_ocr' + $Pdf.Extension)
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
-        # Kein --output-type pdf: sonst ignoriert OCRmyPDF --pdfa-image-compression.
+        # Kein --output-type pdf und kein --pdfa-image-compression: JPEG ist im
+        # Auto-Modus ohnehin der Standard; die explizite Option würde den Hinweis
+        # `requires Ghostscript` auslösen. Kein --image-dpi: wird bei PDF-Eingaben
+        # ignoriert und gemeldet; die Auflösung steuert die Ghostscript-Stufe.
         # --optimize 1 statt 3: vermeidet die jbig2-Warnung (jbig2 wird nicht installiert).
         $ocrArgs = @(
             '--skip-text',
             '--optimize', '1',
-            '--pdfa-image-compression', 'jpeg',
             '--jpeg-quality', $Quality,
-            '--image-dpi', $Dpi,
             '--language', $Language
         )
         if ($Deskew) { $ocrArgs += '--deskew' }
@@ -636,7 +630,7 @@ Write-Host '=== PDF-Toolbox: Verarbeitung gestartet ===' -ForegroundColor Cyan
 Write-Host ('Anzahl Dateien: {0}' -f $pdfFiles.Count)
 Write-Host ('Sprachen: {0}' -f $languageSelection)
 Write-Host ('JPEG-Qualität: {0}' -f $JpegQuality)
-Write-Host ('Ghostscript-DPI: 200')
+Write-Host 'Ghostscript-DPI: 200'
 Write-Host ('Deskew: {0}' -f $Deskew)
 Write-Host ('Ghostscript-Optimierung: {0}' -f $UseGhostscript)
 
@@ -647,7 +641,7 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
     Write-Host ''
     Write-Host ('--- Datei {0}/{1}: {2} ---' -f ($i + 1), $pdfFiles.Count, $pdf.Name) -ForegroundColor Cyan
     $r = Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath `
-        -Language $languageSelection -Quality $JpegQuality -Dpi $ImageDpi `
+        -Language $languageSelection -Quality $JpegQuality `
         -Deskew $Deskew -RotatePages $RotatePages `
         -UseGhostscript $UseGhostscript `
         -GhostscriptPath $dependencyCheck.GhostscriptPath

@@ -1,4 +1,4 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-Skripte.
 
@@ -14,12 +14,13 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - `[CmdletBinding()]` an Skript und Funktionen; Pflichtparameter mit `[Parameter(Mandatory)]` kennzeichnen.
 - Benutzerfeedback über `Write-Host` / `Write-Warning` / `Write-Error`, nicht über `Write-Output`.
 - Dateipfade konsequent mit `-LiteralPath` und `Join-Path` behandeln; Benutzereingaben vor Verwendung mit `Trim()` und `ExpandEnvironmentVariables` normalisieren.
-- Externe Konsolenprogramme mit umgeleiteten Streams starten und asynchron lesen, damit deren Fehler nicht als PowerShell-Terminierungsfehler fehlinterpretiert werden und große Ausgaben die Pipe nicht blockieren. Ausnahme: OCRmyPDF läuft bewusst ohne Umleitung, damit Fortschrittsbalken und Statusmeldungen live auf der Konsole erscheinen.
+- Externe Konsolenprogramme mit umgeleiteten Streams starten und asynchron lesen, damit deren Fehler nicht als PowerShell-Terminierungsfehler fehlinterpretiert werden und große Ausgaben die Pipe nicht blockieren. Ausnahme: OCRmyPDF läuft ohne Stream-Umleitung, damit der Fortschrittsbalken live auf der Konsole erscheint.
+- **PowerShell-Skripte mit UTF-8-BOM speichern** (U+FEFF am Dateianfang). Ohne BOM liest Windows PowerShell 5.1 die Datei als ANSI und Umlaute in Ausgaben werden falsch dargestellt (z. B. `QualitÃ¤t`).
 
 ## Abhängigkeiten und Installation
 - Skripte installieren keine Software und benötigen keine Administratorrechte.
 - Fehlende Pflicht-Abhängigkeiten werden gesammelt geprüft und am Stück mit Installationshinweisen gemeldet.
-- Optionale Werkzeuge (z. B. `Ghostscript`, `pngquant`) dürfen den Lauf nicht blockieren und werden nicht als Pflicht behandelt. `jbig2` wird nicht verwendet.
+- Optionale Werkzeuge (z. B. Ghostscript) dürfen den Lauf nicht blockieren und werden nicht als Pflicht behandelt. `jbig2` wird nicht verwendet.
 
 ## Umgang mit Dateien und Daten
 - **Originale bleiben unverändert:** Eingabedateien werden nie überschrieben. Das verarbeitete Ergebnis wird als neue Datei mit dem Suffix `_ocr` neben das Original gelegt.
@@ -32,10 +33,11 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - Standard-Sprachfolge für die OCR: `deu+eng+fra+ita+spa` (Deutsch, Englisch, Französisch, Italienisch, Spanisch, in dieser Reihenfolge). Eine abweichende Sprachfolge kann per Parameter `-Language` vorgegeben werden; es gibt **keine interaktive Sprachabfrage** (die Liste aller installierten Sprachen wäre zu lang).
 - **Pflichtsprachen:** `deu` und `eng`. Fehlt eine davon, stoppt das Skript mit einem Zweizeiler: Aufforderung, den Download-Befehl in einer Admin-Shell auszuführen (lädt alle Sprachen aus https://github.com/tesseract-ocr/tessdata herunter), gefolgt vom Befehl. **Optionale Sprachen** (alle übrigen) werden bei Fehlen **stillschweigend aus der Sprachfolge entfernt** und per Hinweis gemeldet, ohne den Lauf zu unterbrechen.
 - **Begradigung von Scan-Seiten ist standardmäßig aktiv (`--deskew`).** Verdrehte Seiten werden automatisch um 90°, 180° oder 270° korrigiert (**`--rotate-pages`** ist standardmäßig **deaktiviert**).
-- Die JPEG-Kompression für Scan-Bilder ist standardmäßig auf Qualität 75 eingestellt (`--pdfa-image-compression jpeg --jpeg-quality 75`). **Wichtig:** `--output-type pdf` wird bewusst **nicht** gesetzt, da OCRmyPDF `--pdfa-image-compression` nur bei `--output-type auto` oder `pdfa*` anwendet.
+- **`--output-type pdf` wird bewusst nicht gesetzt.** OCRmyPDF läuft im `auto`-Modus; JPEG-Kompression (`--pdfa-image-compression jpeg`) ist dort ohnehin der Standard, daher wird die Option **nicht explizit übergeben** – sonst gibt OCRmyPDF den Hinweis `--pdfa-image-compression requires Ghostscript` aus.
+- **`--image-dpi` wird nicht übergeben:** Bei PDF-Eingaben ignoriert OCRmyPDF diese Option und meldet das auf der Konsole. Die Bildauflösung steuert stattdessen die Ghostscript-Stufe (200 DPI).
 - **`--optimize 1` statt `--optimize 3`:** Stufe 3 erzeugt eine jbig2-Warnung, da jbig2 nicht installiert ist. jbig2 wird bewusst nicht verwendet (nur für Schwarz-Weiß relevant).
-- **Zweistufige Optimierung:** Nach OCRmyPDF folgt eine optionale **Ghostscript**-Stufe (200 DPI JPEG, explizite Downsampling-Parameter statt `-dPDFSETTINGS`, Parameter `-UseGhostscript`, Standard `$true`). Ghostscript ist über Chocolatey installierbar (`choco install ghostscript`) und wird bei Fehlen gemeldet, ohne den Lauf zu blockieren. **qpdf wird nicht verwendet.**
-- Die rohe OCRmyPDF-Ausgabe (Fortschrittsbalken, Statusmeldungen) erscheint **ungefiltert und live** auf der Konsole; OCRmyPDF wird nicht über umgeleitete Streams gestartet.
+- **Zweistufige Optimierung:** Nach OCRmyPDF folgt eine optionale **Ghostscript**-Stufe (explizite Downsampling-Parameter, 200 DPI, JPEG q75, sRGB; Parameter `-UseGhostscript`, Standard `$true`). Ghostscript ist über Chocolatey installierbar (`choco install ghostscript`) und wird bei Fehlen gemeldet, ohne den Lauf zu blockieren. **qpdf wird nicht verwendet.**
+- Die rohe OCRmyPDF-Ausgabe (Fortschrittsbalken, interne Modulnamen wie `_pipeline.py`) erscheint unverändert auf der Konsole (Live-Ausgabe, keine Filterung).
 
 ## Qualitätssicherung vor dem Commit
 - Skriptänderungen mindestens mit einem Beispiel-PDF testen (Parametermodus und interaktiver Modus), soweit in der Umgebung möglich.
