@@ -23,7 +23,7 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - Optionale Werkzeuge (z. B. Ghostscript) dürfen den Lauf nicht blockieren und werden nicht als Pflicht behandelt. `jbig2` wird nicht verwendet.
 
 ## Umgang mit Dateien und Daten
-- Eingabedateien werden nach erfolgreicher Verarbeitung standardmäßig überschrieben. Mit `-KeepOriginal` wird das Original als `<Name>_raw.pdf` gesichert.
+- Eingabedateien werden nach erfolgreicher Verarbeitung standardmäßig als `<Name>_orig.pdf` gesichert. Mit `-Replace` wird das Original ohne Sicherung überschrieben.
 - Ein Lauf gilt nur dann als fehlgeschlagen, wenn OCRmyPDF tatsächlich fehlschlägt oder das Endergebnis hash-gleich (SHA-256) zum Original ist, d. h. keine Veränderung stattgefunden hat. Ein größeres, aber inhaltlich verändertes Ergebnis ist ein Erfolg.
 - Jede nachgelagerte Optimierungsstufe (Ghostscript) ersetzt das Zwischenergebnis nur, wenn es dadurch kleiner wird; bei fehlender Verkleinerung bleibt die kleinere Datei erhalten.
 - Temporäre Dateien landen neben der Eingabedatei und werden im `finally`-Block zuverlässig entfernt.
@@ -38,6 +38,7 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - **`--optimize 1` statt `--optimize 3`:** Stufe 3 erzeugt eine jbig2-Warnung, da jbig2 nicht installiert ist. jbig2 wird bewusst nicht verwendet (nur für Schwarz-Weiß relevant).
 - **Zweistufige Optimierung:** Nach OCRmyPDF folgt eine optionale **Ghostscript**-Stufe (explizite Downsampling-Parameter, 200 DPI, JPEG q75, sRGB; standardmäßig erlaubt, durch `-NoGhostscript` deaktivierbar). Ghostscript ist über Chocolatey installierbar (`choco install ghostscript`) und wird bei Fehlen gemeldet, ohne den Lauf zu blockieren. **qpdf wird nicht verwendet.**
 - `-RotatePages` aktiviert OCRmyPDFs Drehkorrektur mit dem Konfidenzschwellwert 5.
+- `Clean-Originals.ps1` entfernt `_orig`-Sicherungen nur, wenn die bearbeitete Datei ohne `_orig`-Zusatz daneben existiert; `-WhatIf` zeigt die Löschungen vorab an.
 - Die rohe OCRmyPDF-Ausgabe (Fortschrittsbalken, interne Modulnamen wie `_pipeline.py`) erscheint unverändert auf der Konsole (Live-Ausgabe, keine Filterung).
 
 ## Qualitätssicherung vor dem Commit

@@ -5,7 +5,8 @@
 .DESCRIPTION
     Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien in einem angegebenen Ordner
     einschließlich seiner Unterordner. Nach erfolgreicher OCR wird die Eingabedatei überschrieben.
-    Mit -KeepOriginal wird das bisherige Original als <Name>_raw.pdf gesichert.
+    Das bisherige Original wird standardmäßig als <Name>_orig.pdf gesichert.
+    Mit -Replace wird die Eingabedatei ohne Sicherung überschrieben.
 
     VERARBEITUNG IN ZWEI STUFEN:
       1. OCRmyPDF: OCR-Textebene ergänzen, schiefe Seiten begradigen. Die Ausgabe erfolgt
@@ -71,20 +72,25 @@
     Deaktiviert Ghostscript als nachgelagerte Optimierungsstufe. Standardmäßig darf
     Ghostscript verwendet werden; es läuft nur in Kombination mit -GhostscriptDpi > 0.
 
-.PARAMETER KeepOriginal
-    Sichert das Original nach erfolgreicher Verarbeitung neben der bearbeiteten Datei
-    unter <Name>_raw.pdf. Ohne diesen Parameter wird die Eingabedatei überschrieben.
+.PARAMETER Replace
+    Überschreibt die Eingabedatei ohne Sicherung. Standardmäßig wird das Original
+    nach erfolgreicher Verarbeitung als <Name>_orig.pdf gesichert.
 
 .EXAMPLE
     .\Invoke-PdfOcr.ps1
     Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa, JPEG-Qualität 75,
-    automatischer Begradigung schiefer Seiten. Die Eingabedatei wird überschrieben.
+    automatischer Begradigung schiefer Seiten. Das Original wird nach erfolgreicher
+    Verarbeitung als _orig-Datei gesichert.
 
 .EXAMPLE
-    .\Invoke-PdfOcr.ps1 -InputPath 'C:\PDFs' -RotatePages -KeepOriginal -GhostscriptDpi 150
+    .\Invoke-PdfOcr.ps1 -InputPath 'C:\PDFs' -RotatePages -GhostscriptDpi 150
     Verarbeitet alle PDFs in C:\PDFs; Ghostscript rechnet die Bilder anschließend auf
-    150 DPI herunter und komprimiert sie als JPEG. Die Originale bleiben als _raw-Dateien
+    150 DPI herunter und komprimiert sie als JPEG. Die Originale bleiben als _orig-Dateien
     erhalten und die automatische Seitendrehung wird aktiviert.
+
+.EXAMPLE
+    .\Invoke-PdfOcr.ps1 -InputPath 'C:\PDFs' -Replace
+    Verarbeitet alle PDFs in C:\PDFs und überschreibt die Originale ohne Sicherung.
 
 .NOTES
     Abhängigkeiten:
@@ -140,8 +146,8 @@ param(
     # Wirksam nur in Kombination mit -GhostscriptDpi > 0.
     [switch] $NoGhostscript,
 
-    # Original nach erfolgreicher Verarbeitung als _raw-Datei sichern.
-    [switch] $KeepOriginal
+    # Eingabedatei ohne Sicherung überschreiben (standardmäßig wird _orig angelegt).
+    [switch] $Replace
 )
 
 Set-StrictMode -Version Latest
@@ -357,7 +363,7 @@ function Get-PdfInputFile {
         Write-Host '  -NoDeskew              Schräglagenkorrektur deaktivieren (Standard: aktiv).'
         Write-Host '  -RotatePages           Verdrehte Seiten automatisch korrigieren (Standard: aus).'
         Write-Host '  -NoGhostscript         Ghostscript-Komprimierung deaktivieren (Standard: erlaubt).'
-        Write-Host '  -KeepOriginal          Original als _raw-Datei sichern; sonst wird es überschrieben.'
+        Write-Host '  -Replace               Original ohne _orig-Sicherung überschreiben.'
         Write-Host 'Mit Strg+C kannst du die Eingabe abbrechen.' -ForegroundColor Yellow
         $Path = Read-Host 'Pfad zu einer PDF-Datei oder einem Ordner mit PDFs'
     }
@@ -365,10 +371,16 @@ function Get-PdfInputFile {
     $Path = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"'))
     if (-not (Test-Path -LiteralPath $Path)) { throw "Pfad nicht gefunden: $Path" }
     $item = Get-Item -LiteralPath $Path
+    $script:InputDirectoryPath = if ($item.PSIsContainer) {
+        $item.FullName
+    }
+    else {
+        $item.DirectoryName
+    }
     if ($item.PSIsContainer) {
-        # _raw-Sicherungen bei der rekursiven Suche nicht erneut verarbeiten.
+        # _orig-Sicherungen bei der rekursiven Suche nicht erneut verarbeiten.
         return @(Get-ChildItem -LiteralPath $item.FullName -File -Filter '*.pdf' -Recurse |
-            Where-Object { $_.BaseName -notmatch '_raw$' })
+            Where-Object { $_.BaseName -notmatch '_orig$' })
     }
     if ($item.Extension -ine '.pdf') { throw 'Die ausgewählte Datei hat keine .pdf-Endung.' }
     return @($item)
@@ -472,7 +484,7 @@ function Invoke-PdfProcessing {
     #      Ausgabe als normales PDF Version 1.5 (--output-type pdf), kein PDF/A-Archiv.
     #   2. Ghostscript (optional): Bilder auf die Zielauflösung nachkomprimieren.
     #      Läuft nur, wenn explizit eine DPI-Zahl übergeben wurde ($GhostscriptDpi > 0).
-    # Das Ergebnis überschreibt die Eingabe; -KeepOriginal sichert sie als _raw.pdf.
+    # Das Ergebnis ersetzt die Eingabe; standardmäßig wird sie vorher als _orig.pdf gesichert.
     # Ein Lauf gilt nur als Fehlschlag, wenn OCRmyPDF fehlschlägt oder das Ergebnis
     # hash-gleich zum Original ist (keine Änderung).
     # `--optimize 1` statt 3: Stufe 3 erzeugt eine jbig2-Warnung, die wir nicht
@@ -487,13 +499,13 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][bool] $NoDeskew,
         [Parameter(Mandatory)][bool] $RotatePages,
         [Parameter(Mandatory)][bool] $NoGhostscript,
-        [Parameter(Mandatory)][bool] $KeepOriginal,
+        [Parameter(Mandatory)][bool] $Replace,
         [string] $GhostscriptPath
     )
 
     # Temporäre Datei neben der Eingabe, damit Verschieben auf demselben Laufwerk bleibt.
     $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
-    $rawPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_raw' + $Pdf.Extension)
+    $originalPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
     $replaceBackupPath = $tempPath + '.bak'
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
@@ -543,12 +555,12 @@ function Invoke-PdfProcessing {
         }
 
         # Erst nach erfolgreicher Verarbeitung und Hash-Prüfung atomar austauschen.
-        if ($KeepOriginal) {
-            if (Test-Path -LiteralPath $rawPath) {
-                throw "Die Sicherungsdatei '$rawPath' existiert bereits; sie wird nicht überschrieben."
+        if (-not $Replace) {
+            if (Test-Path -LiteralPath $originalPath) {
+                throw "Die Sicherungsdatei '$originalPath' existiert bereits; sie wird nicht überschrieben."
             }
-            [System.IO.File]::Replace($tempPath, $Pdf.FullName, $rawPath)
-            Write-Host "Original gesichert: $rawPath"
+            [System.IO.File]::Replace($tempPath, $Pdf.FullName, $originalPath)
+            Write-Host "Original gesichert: $originalPath"
         }
         else {
             [System.IO.File]::Replace($tempPath, $Pdf.FullName, $replaceBackupPath)
@@ -589,8 +601,8 @@ Write-Host '       |  | [__________] >>> |        SCAN  /  TEXT            |' -F
 Write-Host '       |  +------------------+        DESKEW / OPTIMIZE        |' -ForegroundColor Cyan
 Write-Host '       ''-------------------------------------------------------''' -ForegroundColor Cyan
 Write-Host '  Fuegt PDFs OCR-Textebenen hinzu, begradigt Seiten und optimiert Dateien.' -ForegroundColor Cyan
-if ($KeepOriginal) {
-    Write-Host '  Originale werden als _raw-Dateien gesichert.' -ForegroundColor Cyan
+if (-not $Replace) {
+    Write-Host '  Originale werden als _orig-Dateien gesichert.' -ForegroundColor Cyan
 }
 else {
     Write-Host '  Originale werden ueberschrieben.' -ForegroundColor Cyan
@@ -632,6 +644,9 @@ $installedLanguages = @($tesseractInfo.Languages)
 try { $pdfFiles = @(Get-PdfInputFile -Path $InputPath) }
 catch { Write-Error $_.Exception.Message; exit 1 }
 if ($pdfFiles.Count -eq 0) { Write-Host 'Keine PDFs gefunden.'; exit 0 }
+$summaryPathSegments = @($script:InputDirectoryPath.TrimEnd('\') -split '[\\/]' | Where-Object { $_ })
+$summaryPathTail = @($summaryPathSegments | Select-Object -Last 3)
+$summaryPath = '.\' + ($summaryPathTail -join '\') + '\'
 
 # --- Sprachfolge festlegen ------------------------------------------------------
 # Vorgabe ist die Standardfolge Deutsch, Englisch, Französisch, Italienisch,
@@ -692,7 +707,7 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
     $r = Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath `
         -Language $languageSelection -Quality $JpegQuality -GhostscriptDpi $GhostscriptDpi `
         -NoDeskew $NoDeskew.IsPresent -RotatePages $RotatePages.IsPresent `
-        -NoGhostscript $NoGhostscript.IsPresent -KeepOriginal $KeepOriginal.IsPresent `
+        -NoGhostscript $NoGhostscript.IsPresent -Replace $Replace.IsPresent `
         -GhostscriptPath $dependencyCheck.GhostscriptPath
     if ($null -ne $r) { $results += $r }
 }
@@ -708,14 +723,15 @@ $savedPct = if ($sumOriginal -gt 0) { (1 - ($sumResult / $sumOriginal)) * 100 } 
 
 Write-Host ''
 Write-Host '=== Zusammenfassung ===' -ForegroundColor Cyan
+Write-Host "Pfad: $summaryPath"
 Write-Host ('Erfolgreich: {0}, Fehlgeschlagen: {1}' -f $successCount, $failureCount)
 if ($successCount -gt 0) {
     Write-Host ('Original gesamt: {0:N2} MB' -f ($sumOriginal / 1MB))
     Write-Host ('Ergebnis gesamt: {0:N2} MB' -f ($sumResult / 1MB))
     Write-Host ('Gesamteinsparung: {0:N2} MB ({1:N1} %)' -f $savedMb, $savedPct)
 }
-if ($KeepOriginal) {
-    Write-Host 'Originale wurden als _raw-Dateien gesichert.'
+if (-not $Replace) {
+    Write-Host 'Originale wurden als _orig-Dateien gesichert.'
 }
 else {
     Write-Host 'Originale wurden überschrieben.'
