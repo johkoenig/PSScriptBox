@@ -1,23 +1,30 @@
 <#
 .SYNOPSIS
-    Optimiert PDFs, begradigt schiefe Scan-Seiten und ergänzt bei Bedarf eine OCR-Textebene.
+    Optimiert PDFs, begradigt schiefe Scan-Seiten und ergänzt eine OCR-Textebene.
 
 .DESCRIPTION
     Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien direkt in einem angegebenen
-    Ordner (keine Unterordner). Vor der Verarbeitung wird eine Sicherung mit dem Suffix _orig
-    angelegt. Das Original wird nur durch ein erfolgreich verarbeitetes, kleineres Ergebnis
-    ersetzt.
+    Ordner (keine Unterordner). Das Original bleibt stets unverändert erhalten; das
+    verarbeitete Ergebnis wird als neue Datei mit dem Suffix _ocr neben das Original gelegt.
 
     BEIGRADIGUNG:
-      - Schiefe Scan-Seiten werden automatisch begradigt (`--deskew`).
-      - Verdrehte Seiten (90°, 180°, 270°) werden automatisch korrigiert (`--rotate-pages`).
-        **Hinweis:** `--rotate-pages` ist standardmäßig **deaktiviert** und kann über den
-        Parameter `-RotatePages` explizit aktiviert werden.
+      - Schiefe Scan-Seiten werden automatisch begradigt (`--deskew`, standardmäßig aktiv).
+      - Verdrehte Seiten (90°, 180°, 270°) werden NICHT automatisch korrigiert
+        (`--rotate-pages` ist standardmäßig deaktiviert und kann über den Parameter
+        `-RotatePages` explizit aktiviert werden).
 
     KOMPRESSION:
-      Die Scan-Bilder werden als JPEG mit Qualität 75 eingebettet (--pdfa-image-compression
-      jpeg --jpeg-quality 75). Bei reinen Textdokumenten ohne Bilder bleibt diese Einstellung
-      wirkungslos.
+      Die Scan-Bilder werden mit 300 DPI neu abgetastet und als JPEG mit Qualität 75
+      eingebettet (`--pdfa-image-compression jpeg --jpeg-quality 75 --image-dpi 300`).
+      Die Auflösungsbegrenzung auf 300 DPI reduziert die Dateigröße deutlich, ohne die
+      Lesbarkeit nennenswert zu beeinträchtigen. Bei reinen Textdokumenten ohne Bilder
+      bleibt diese Einstellung wirkungslos.
+
+    ERGEBNISPRÜFUNG:
+      Ein Lauf gilt nur dann als fehlgeschlagen, wenn OCRmyPDF tatsächlich fehlschlägt oder
+      das Ergebnis byte-identisch (hash-gleich) zum Original ist, d. h. keine Veränderung
+      stattgefunden hat. Ein größeres, aber inhaltlich verändertes Ergebnis wird als
+      Erfolg gewertet und als _ocr-Datei abgelegt.
 
     Das Skript selbst benötigt keine Administratorrechte und installiert keine Software.
     Fehlende Programme meldet es mit Installationshinweisen. Fehlende Tesseract-Sprachdaten
@@ -38,6 +45,12 @@
     JPEG-Qualität für die eingebetteten Scan-Bilder (1-100).
     Vorgabe ist 75: guter Kompromiss aus Dateigröße und Lesbarkeit.
 
+.PARAMETER ImageDpi
+    Maximale Auflösung der eingebetteten Scan-Bilder in DPI.
+    Vorgabe ist 300: typische Scan-Auflösung für gut lesbare Dokumente bei deutlich
+    reduzierter Dateigröße. Höhere Werte (z. B. 400-600) nur bei sehr kleinen Schriften
+    oder Grafiken nötig.
+
 .PARAMETER Deskew
     Legt fest, ob schiefe Scan-Seiten begradigt werden sollen (Standard: $true).
     Bei aktivierter Begradigung wird `--deskew` an OCRmyPDF übergeben.
@@ -49,12 +62,13 @@
 .EXAMPLE
     .\pdf-toolbox.ps1
     Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa, JPEG-Qualität 75,
-    automatischer Begradigung schiefer Seiten und deaktivierter automatischer Drehkorrektur.
+    300 DPI, automatischer Begradigung schiefer Seiten und deaktivierter automatischer
+    Drehkorrektur. Ergebnisse werden als <Name>_ocr.pdf abgelegt.
 
 .EXAMPLE
-    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -JpegQuality 65 -Deskew:$true -RotatePages:$true
+    .\pdf-toolbox.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -JpegQuality 65 -ImageDpi 200 -Deskew:$true -RotatePages:$true
     Verarbeitet alle PDFs in C:\PDFs mit deutscher und englischer OCR, stärkerer JPEG-
-    Kompression, automatischer Begradigung und automatischer Drehkorrektur.
+    Kompression, 200 DPI, automatischer Begradigung und automatischer Drehkorrektur.
 
 .NOTES
     Abhängigkeiten:
@@ -72,6 +86,16 @@
     Fehlende Sprachen lädt der vom Skript ausgegebene Befehl in einer
     Admin-Shell herunter. Danach `tesseract --list-langs` prüfen und eine
     neue PowerShell-Sitzung öffnen.
+
+    WEITERE MÖGLICHKEITEN ZUR REDUZIERUNG DER DATEIGRÖSSE:
+      - Niedrigere JPEG-Qualität: -JpegQuality 60 (noch gut lesbar, deutlich kleiner).
+      - Niedrigere Auflösung: -ImageDpi 200 (für Dokumente ohne kleine Schriften ausreichend).
+      - Graustufen statt Farbe: OCRmyPDF-Option `--grayscale` (spart zusätzlich, wenn die
+        Dokumente keine Farbe benötigen).
+      - Reines Schwarz-Weiß: OCRmyPDF-Option `--threshold` (stärkste Kompression, aber
+        Verlust von Graustufen und Hintergrunddetails).
+      - Externe Werkzeuge: `qpdf --optimize-images` oder Ghostscript direkt
+        (`gs -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook`) als nachgelagerter Schritt.
 #>
 
 [CmdletBinding()]
@@ -85,6 +109,10 @@ param(
     # JPEG-Qualität für eingebettete Scan-Bilder (1-100). Vorgabe 75.
     [ValidateRange(1, 100)]
     [int] $JpegQuality = 75,
+
+    # Maximale Auflösung der eingebetteten Scan-Bilder in DPI. Vorgabe 300.
+    [ValidateRange(50, 1200)]
+    [int] $ImageDpi = 300,
 
     # Begradigung schiefer Scan-Seiten aktivieren (Standard true).
     [bool] $Deskew = $true,
@@ -163,8 +191,9 @@ function Get-MissingDependency {
         -not (Get-ExecutablePath -Name 'gs')
     ) { $missing.Add('Ghostscript') }
 
-    # pngquant und jbig2enc sind für die OCRmyPDF-Optimierung optional;
-    # fehlende optionale Werkzeuge dürfen den Lauf nicht blockieren.
+    # pngquant ist für die OCRmyPDF-Optimierung optional; ein Fehlen darf den
+    # Lauf nicht blockieren. jbig2 wird bewusst nicht verwendet (nur für
+    # Schwarz-Weiß-Bilder relevant, hier JPEG-Kompression im Einsatz).
     if ($pythonPath -and -not (Test-PythonModule -PythonPath $pythonPath -ModuleName 'ocrmypdf')) {
         $missing.Add('OCRmyPDF (Python-Modul)')
     }
@@ -280,26 +309,48 @@ function Get-PdfInputFile {
     return @($item)
 }
 
+function Get-FileSha256 {
+    # Berechnet den SHA-256-Hash einer Datei und liefert ihn als Hex-String.
+    # Wird verwendet, um ein unverändertes Ergebnis (hash-gleich zum Original)
+    # als Fehlschlag zu erkennen.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string] $Path)
+
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [System.IO.File]::OpenRead($Path)
+        try {
+            $hashBytes = $sha256.ComputeHash($stream)
+            return [System.BitConverter]::ToString($hashBytes).Replace('-', '')
+        }
+        finally { $stream.Dispose() }
+    }
+    finally { $sha256.Dispose() }
+}
+
 function Invoke-PdfProcessing {
-    # Verarbeitet eine einzelne PDF-Datei mit OCRmyPDF: OCR-Textebene
-    # ergänzen und optimieren. Die Scan-Bilder werden dabei als JPEG mit
-    # der übergebenen Qualität eingebettet, was die Dateigröße deutlich
-    # reduziert. Optional werden schiefe Seiten begradigt und verdrehte
-    # Seiten korrigiert. Das Original wird nur ersetzt, wenn das Ergebnis
-    # kleiner ist; vorher wird eine Sicherung mit _orig angelegt.
+    # Verarbeitet eine einzelne PDF-Datei mit OCRmyPDF: OCR-Textebene ergänzen,
+    # optimieren und schiefe Seiten begradigen. Die Scan-Bilder werden mit der
+    # übergebenen Auflösung (DPI) neu abgetastet und als JPEG mit der übergebenen
+    # Qualität eingebettet, was die Dateigröße deutlich reduziert.
+    # Das Original bleibt unverändert; das Ergebnis wird als <Name>_ocr.pdf
+    # neben das Original gelegt. Ein Lauf gilt nur als Fehlschlag, wenn OCRmyPDF
+    # fehlschlägt oder das Ergebnis hash-gleich zum Original ist (keine Änderung).
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
         [Parameter(Mandatory)][string] $PythonPath,
         [Parameter(Mandatory)][string] $Language,
         [Parameter(Mandatory)][int] $Quality,
+        [Parameter(Mandatory)][int] $Dpi,
         [Parameter(Mandatory)][bool] $Deskew,
         [Parameter(Mandatory)][bool] $RotatePages
     )
 
     # Temporäre Datei neben der Eingabe, damit Verschieben auf demselben Laufwerk bleibt.
     $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.{1}.tmp.pdf' -f $Pdf.BaseName, [guid]::NewGuid().ToString('N'))
-    $backupPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
+    # Das verarbeitete Ergebnis landet als <Name>_ocr.pdf neben dem Original.
+    $outputPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_ocr' + $Pdf.Extension)
     try {
         Write-Host "Bearbeite: $($Pdf.Name)"
         $ocrArgs = @(
@@ -308,6 +359,7 @@ function Invoke-PdfProcessing {
             '--output-type', 'pdf',
             '--pdfa-image-compression', 'jpeg',
             '--jpeg-quality', $Quality,
+            '--image-dpi', $Dpi,
             '--language', $Language
         )
         if ($Deskew) { $ocrArgs += '--deskew' }
@@ -317,21 +369,31 @@ function Invoke-PdfProcessing {
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
             throw "OCRmyPDF fehlgeschlagen (Exitcode $LASTEXITCODE)."
         }
+
         $originalSize = (Get-Item -LiteralPath $Pdf.FullName).Length
         $resultSize = (Get-Item -LiteralPath $tempPath).Length
-        if ($resultSize -ge $originalSize) {
-            Write-Host 'Ergebnis ist nicht kleiner; Original bleibt unverändert und es wird keine Sicherung angelegt.' -ForegroundColor Yellow
+
+        # Hash-Vergleich: Ein hash-gleiches Ergebnis bedeutet, dass keine
+        # inhaltliche Veränderung stattgefunden hat - dann ist der Lauf ein
+        # Fehlschlag. Ein größeres, aber verändertes Ergebnis ist ein Erfolg.
+        $originalHash = Get-FileSha256 -Path $Pdf.FullName
+        $resultHash = Get-FileSha256 -Path $tempPath
+        if ($originalHash -eq $resultHash) {
+            Write-Host 'Ergebnis ist identisch zum Original (keine Änderung); Datei wird verworfen.' -ForegroundColor Yellow
             return $false
         }
-        # Sicherung nur einmalig anlegen; eine vorhandene _orig-Datei bleibt unverändert.
-        if (-not (Test-Path -LiteralPath $backupPath)) {
-            Copy-Item -LiteralPath $Pdf.FullName -Destination $backupPath
+
+        # Bestehendes _ocr-Ergebnis aus einem früheren Lauf ersetzen.
+        if (Test-Path -LiteralPath $outputPath) {
+            Remove-Item -LiteralPath $outputPath -Force
+        }
+        Move-Item -LiteralPath $tempPath -Destination $outputPath -Force
+        if ($resultSize -lt $originalSize) {
+            Write-Host ('Optimiert: {0:N1} MB -> {1:N1} MB ({2})' -f ($originalSize / 1MB), ($resultSize / 1MB), $outputPath) -ForegroundColor Green
         }
         else {
-            Write-Host "Vorhandene Sicherung bleibt unverändert: $backupPath" -ForegroundColor DarkYellow
+            Write-Host ('Verarbeitet (größer als Original): {0:N1} MB -> {1:N1} MB ({2})' -f ($originalSize / 1MB), ($resultSize / 1MB), $outputPath) -ForegroundColor Cyan
         }
-        Move-Item -LiteralPath $tempPath -Destination $Pdf.FullName -Force
-        Write-Host ('Optimiert: {0:N1} MB -> {1:N1} MB' -f ($originalSize / 1MB), ($resultSize / 1MB)) -ForegroundColor Green
         return $true
     }
     catch {
@@ -401,8 +463,8 @@ if ($missingLanguages.Count -gt 0) {
 $successCount = 0
 $failureCount = 0
 foreach ($pdf in $pdfFiles) {
-    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $languageSelection -Quality $JpegQuality -Deskew:$Deskew -RotatePages:$RotatePages) { $successCount++ }
+    if (Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath -Language $languageSelection -Quality $JpegQuality -Dpi $ImageDpi -Deskew:$Deskew -RotatePages:$RotatePages) { $successCount++ }
     else { $failureCount++ }
 }
 Write-Host "`nAbgeschlossen: $successCount erfolgreich, $failureCount fehlgeschlagen."
-Write-Host 'Sicherungskopien mit dem Suffix _orig liegen neben den Originalen.'
+Write-Host 'Verarbeitete Dateien liegen mit dem Suffix _ocr neben den Originalen; die Originale bleiben unverändert.'

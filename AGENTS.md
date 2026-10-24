@@ -19,10 +19,11 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 ## Abhängigkeiten und Installation
 - Skripte installieren keine Software und benötigen keine Administratorrechte.
 - Fehlende Abhängigkeiten werden gesammelt geprüft und am Stück mit Installationshinweisen gemeldet.
-- Optionale Werkzeuge (z. B. `pngquant`, `jbig2enc`) dürfen den Lauf nicht blockieren und werden nicht als Pflicht behandelt.
+- Optionale Werkzeuge (z. B. `pngquant`) dürfen den Lauf nicht blockieren und werden nicht als Pflicht behandelt. `jbig2` wird nicht verwendet.
 
 ## Umgang mit Dateien und Daten
-- Eingabedateien nie ohne Sicherung überschreiben: Das Original wird nur durch ein erfolgreich verarbeitetes, kleineres Ergebnis ersetzt; die Sicherung mit dem Suffix `_orig` wird nur einmalig angelegt.
+- **Originale bleiben unverändert:** Eingabedateien werden nie überschrieben. Das verarbeitete Ergebnis wird als neue Datei mit dem Suffix `_ocr` neben das Original gelegt.
+- Ein Lauf gilt nur dann als fehlgeschlagen, wenn OCRmyPDF tatsächlich fehlschlägt oder das Ergebnis hash-gleich (SHA-256) zum Original ist, d. h. keine Veränderung stattgefunden hat. Ein größeres, aber inhaltlich verändertes Ergebnis ist ein Erfolg.
 - Temporäre Dateien landen neben der Eingabedatei und werden im `finally`-Block zuverlässig entfernt.
 - Keine Geheimnisse, Tokens, API-Schlüssel oder persönlichen Daten im Repository.
 
@@ -30,7 +31,7 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - Standard-Sprachfolge für die OCR: `deu+eng+fra+ita+spa` (Deutsch, Englisch, Französisch, Italienisch, Spanisch, in dieser Reihenfolge). Eine abweichende Sprachfolge kann per Parameter oder interaktiv vorgegeben werden; die Reihenfolge der Eingabe bestimmt die Priorität.
 - **Begradigung von Scan-Seiten ist standardmäßig aktiv (`--deskew`).** Verdrehte Seiten werden automatisch um 90°, 180° oder 270° korrigiert (**`--rotate-pages`** ist standardmäßig **deaktiviert**).
 - Quelle für Tesseract-Sprachdaten ist https://github.com/tesseract-ocr/tessdata . Sind angeforderte Sprachen lokal nicht installiert, gibt das Skript einen Zweizeiler aus: Aufforderung, den Download-Befehl in einer Admin-Shell auszuführen (lädt alle Sprachen herunter), gefolgt vom Befehl.
-- Die JPEG-Kompression für Scan-Bilder ist standardmäßig auf 75 eingestellt (`--pdfa-image-compression jpeg --jpeg-quality 75`).
+- Die JPEG-Kompression für Scan-Bilder ist standardmäßig auf Qualität 75 eingestellt (`--pdfa-image-compression jpeg --jpeg-quality 75`), zusätzlich wird die Auflösung der eingebetteten Bilder auf **300 DPI** begrenzt (`--image-dpi 300`, Parameter `-ImageDpi`).
 
 ## Qualitätssicherung vor dem Commit
 - Skriptänderungen mindestens mit einem Beispiel-PDF testen (Parametermodus und interaktiver Modus), soweit in der Umgebung möglich.
