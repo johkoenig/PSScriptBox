@@ -14,7 +14,7 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - `[CmdletBinding()]` an Skript und Funktionen; Pflichtparameter mit `[Parameter(Mandatory)]` kennzeichnen.
 - Benutzerfeedback über `Write-Host` / `Write-Warning` / `Write-Error`, nicht über `Write-Output`.
 - Dateipfade konsequent mit `-LiteralPath` und `Join-Path` behandeln; Benutzereingaben vor Verwendung mit `Trim()` und `ExpandEnvironmentVariables` normalisieren.
-- Externe Konsolenprogramme mit umgeleiteten Streams starten und asynchron lesen, damit deren Fehler nicht als PowerShell-Terminierungsfehler fehlinterpretiert werden und große Ausgaben die Pipe nicht blockieren.
+- Externe Konsolenprogramme mit umgeleiteten Streams starten und asynchron lesen, damit deren Fehler nicht als PowerShell-Terminierungsfehler fehlinterpretiert werden und große Ausgaben die Pipe nicht blockieren. Ausnahme: OCRmyPDF läuft bewusst ohne Umleitung, damit Fortschrittsbalken und Statusmeldungen live auf der Konsole erscheinen.
 
 ## Abhängigkeiten und Installation
 - Skripte installieren keine Software und benötigen keine Administratorrechte.
@@ -34,8 +34,8 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - **Begradigung von Scan-Seiten ist standardmäßig aktiv (`--deskew`).** Verdrehte Seiten werden automatisch um 90°, 180° oder 270° korrigiert (**`--rotate-pages`** ist standardmäßig **deaktiviert**).
 - Die JPEG-Kompression für Scan-Bilder ist standardmäßig auf Qualität 75 eingestellt (`--pdfa-image-compression jpeg --jpeg-quality 75`). **Wichtig:** `--output-type pdf` wird bewusst **nicht** gesetzt, da OCRmyPDF `--pdfa-image-compression` nur bei `--output-type auto` oder `pdfa*` anwendet.
 - **`--optimize 1` statt `--optimize 3`:** Stufe 3 erzeugt eine jbig2-Warnung, da jbig2 nicht installiert ist. jbig2 wird bewusst nicht verwendet (nur für Schwarz-Weiß relevant).
-- **Zweistufige Optimierung:** Nach OCRmyPDF folgt eine optionale **Ghostscript**-Stufe (`-dPDFSETTINGS=/ebook`, 150 DPI JPEG, Parameter `-UseGhostscript`, Standard `$true`). Ghostscript ist über Chocolatey installierbar (`choco install ghostscript`) und wird bei Fehlen gemeldet, ohne den Lauf zu blockieren. **qpdf wird nicht verwendet.**
-- Die rohe OCRmyPDF-Ausgabe (Fortschrittsbalken, interne Modulnamen wie `_pipeline.py`) wird gefiltert; nur Warnungen und Statuszeilen werden als `[OCRmyPDF]`-Zeilen ausgegeben.
+- **Zweistufige Optimierung:** Nach OCRmyPDF folgt eine optionale **Ghostscript**-Stufe (200 DPI JPEG, explizite Downsampling-Parameter statt `-dPDFSETTINGS`, Parameter `-UseGhostscript`, Standard `$true`). Ghostscript ist über Chocolatey installierbar (`choco install ghostscript`) und wird bei Fehlen gemeldet, ohne den Lauf zu blockieren. **qpdf wird nicht verwendet.**
+- Die rohe OCRmyPDF-Ausgabe (Fortschrittsbalken, Statusmeldungen) erscheint **ungefiltert und live** auf der Konsole; OCRmyPDF wird nicht über umgeleitete Streams gestartet.
 
 ## Qualitätssicherung vor dem Commit
 - Skriptänderungen mindestens mit einem Beispiel-PDF testen (Parametermodus und interaktiver Modus), soweit in der Umgebung möglich.
