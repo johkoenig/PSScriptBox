@@ -98,19 +98,29 @@ if ($WhatIfPreference) {
     return
 }
 
-Write-Host ''
-Write-Host 'Lösche gesicherte Originale...' -ForegroundColor Cyan
-foreach ($originalFile in $eligibleFiles) {
-    $processedBaseName = $originalFile.BaseName -replace '_orig$', ''
-    $processedPath = Join-Path -Path $originalFile.DirectoryName -ChildPath ($processedBaseName + $originalFile.Extension)
-    $relativePath = $originalFile.FullName.Substring($basePathPrefix.Length)
-    $relativeProcessedPath = $processedPath.Substring($basePathPrefix.Length)
-    $action = "Gesicherte Originaldatei löschen; bearbeitete Datei bleibt erhalten: $relativeProcessedPath"
-    if ($PSCmdlet.ShouldProcess($relativePath, $action)) {
-        Remove-Item -LiteralPath $originalFile.FullName -Force
-        Write-Host "  Gelöscht: $relativePath" -ForegroundColor Green
-        $deletedCount++
+$approvedFiles = @(
+    foreach ($originalFile in $eligibleFiles) {
+        $processedBaseName = $originalFile.BaseName -replace '_orig$', ''
+        $processedPath = Join-Path -Path $originalFile.DirectoryName -ChildPath ($processedBaseName + $originalFile.Extension)
+        $relativePath = $originalFile.FullName.Substring($basePathPrefix.Length)
+        $relativeProcessedPath = $processedPath.Substring($basePathPrefix.Length)
+        $action = "Gesicherte Originaldatei löschen; bearbeitete Datei bleibt erhalten: $relativeProcessedPath"
+        if ($PSCmdlet.ShouldProcess($relativePath, $action)) {
+            $originalFile
+        }
     }
+)
+
+if ($approvedFiles.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Lösche gesicherte Originale...' -ForegroundColor Cyan
+}
+
+foreach ($originalFile in $approvedFiles) {
+    $relativePath = $originalFile.FullName.Substring($basePathPrefix.Length)
+    Remove-Item -LiteralPath $originalFile.FullName -Force
+    Write-Host "  Gelöscht: $relativePath" -ForegroundColor Green
+    $deletedCount++
 }
 
 Write-Host ''
