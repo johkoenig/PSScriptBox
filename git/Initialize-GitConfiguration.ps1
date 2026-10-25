@@ -588,37 +588,62 @@ function Set-RecommendedGitSettings {
     }
 }
 
+# --- Banner ---------------------------------------------------------------
+$headerLines = @(
+    '       .-------------------------------------------.'
+    '      /                                           /|'
+    '     /___________________________________________/ |'
+    '     |  .-------------------------------------.  | |'
+    '     |  | GIT CONFIGURATION                   |  | |'
+    '     |  | IDENTITY / STANDARD SETTINGS        |  | /'
+    '     |  ''-------------------------------------''  |/'
+    '     ''-------------------------------------------'''
+)
+
+Write-Host ''
+foreach ($headerLine in $headerLines) {
+    Write-Host $headerLine -ForegroundColor Cyan
+}
+Write-Host (Get-LocalizedText '  Sets the Git author identity and confirms recommended standard settings.') -ForegroundColor Cyan
+Write-Host ''
+
+try {
 # --- Resolve and validate the repository ---------------------------------
-$repositoryRoot = ''
-if ($Scope -eq 'Local') {
-    $RepositoryPath = [Environment]::ExpandEnvironmentVariables($RepositoryPath.Trim().Trim('"'))
-    if (-not (Test-Path -LiteralPath $RepositoryPath -PathType Container)) {
-        throw (Get-LocalizedText -Text 'Repository path not found: {0}' -Arguments @($RepositoryPath))
+    $repositoryRoot = ''
+    if ($Scope -eq 'Local') {
+        $RepositoryPath = [Environment]::ExpandEnvironmentVariables($RepositoryPath.Trim().Trim('"'))
+        if (-not (Test-Path -LiteralPath $RepositoryPath -PathType Container)) {
+            throw (Get-LocalizedText -Text 'Repository path not found: {0}' -Arguments @($RepositoryPath))
+        }
+        $repositoryRoot = (Invoke-GitCommand -Repository $RepositoryPath -Arguments @('rev-parse', '--show-toplevel') | Select-Object -First 1).Trim()
     }
-    $repositoryRoot = (Invoke-GitCommand -Repository $RepositoryPath -Arguments @('rev-parse', '--show-toplevel') | Select-Object -First 1).Trim()
-}
 
-# --- Fill identity values -------------------------------------------------
-Write-Host (Get-LocalizedText -Text 'Checking Git identity ({0} scope).' -Arguments @($Scope)) -ForegroundColor Cyan
-$provided = @{ 'user.name' = $Name; 'user.email' = $Email }
-foreach ($key in @('user.name', 'user.email')) {
-    $current = Get-GitConfigValue -Key $key -Scope $Scope -Repository $repositoryRoot
-    $value = if (-not [string]::IsNullOrWhiteSpace($provided[$key])) {
-        $provided[$key].Trim()
+    # --- Fill identity values -------------------------------------------------
+    Write-Host (Get-LocalizedText -Text 'Checking Git identity ({0} scope).' -Arguments @($Scope)) -ForegroundColor Cyan
+    $provided = @{ 'user.name' = $Name; 'user.email' = $Email }
+    foreach ($key in @('user.name', 'user.email')) {
+        $current = Get-GitConfigValue -Key $key -Scope $Scope -Repository $repositoryRoot
+        $value = if (-not [string]::IsNullOrWhiteSpace($provided[$key])) {
+            $provided[$key].Trim()
+        }
+        else {
+            Select-IdentityValue -Key $key -Candidates @(Get-IdentityCandidates -Key $key -Repository $repositoryRoot)
+        }
+        if (-not (Test-IdentityValue -Key $key -Value $value)) {
+            throw (Get-LocalizedText $(if ($key -eq 'user.name') { 'Git author name cannot be empty.' } else { 'Enter a non-empty, valid email address.' }))
+        }
+        if ($value -ceq $current) {
+            Write-Host (Get-LocalizedText -Text 'Preserving existing {0}: {1}' -Arguments @($key, $current))
+            continue
+        }
+        Set-GitConfigValue -Key $key -Value $value -Scope $Scope -Repository $repositoryRoot
+        Write-Host (Get-LocalizedText -Text 'Configured {0}: {1}' -Arguments @($key, $value)) -ForegroundColor Green
     }
-    else {
-        Select-IdentityValue -Key $key -Candidates @(Get-IdentityCandidates -Key $key -Repository $repositoryRoot)
-    }
-    if (-not (Test-IdentityValue -Key $key -Value $value)) {
-        throw (Get-LocalizedText $(if ($key -eq 'user.name') { 'Git author name cannot be empty.' } else { 'Enter a non-empty, valid email address.' }))
-    }
-    if ($value -ceq $current) {
-        Write-Host (Get-LocalizedText -Text 'Preserving existing {0}: {1}' -Arguments @($key, $current))
-        continue
-    }
-    Set-GitConfigValue -Key $key -Value $value -Scope $Scope -Repository $repositoryRoot
-    Write-Host (Get-LocalizedText -Text 'Configured {0}: {1}' -Arguments @($key, $value)) -ForegroundColor Green
-}
 
-# --- Recommended standard settings ----------------------------------------
-Set-RecommendedGitSettings -Repository $repositoryRoot
+    # --- Recommended standard settings ----------------------------------------
+    Set-RecommendedGitSettings -Repository $repositoryRoot
+}
+catch {
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    exit 1
+}

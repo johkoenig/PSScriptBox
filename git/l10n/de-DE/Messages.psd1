@@ -53,4 +53,5 @@
     'Adds no Signed-off-by line to patches' = 'Fügt Patches keine Signed-off-by-Zeile hinzu'
     'Defines the shortcut "git cs". With "commit --signoff" it creates a commit with a Signed-off-by line (certifying the Developer Certificate of Origin).' = 'Definiert das Kürzel "git cs". Mit "commit --signoff" erstellt es einen Commit mit Signed-off-by-Zeile (Bestätigung des Developer Certificate of Origin).'
     'Defines "git cs" as "git commit --signoff"' = 'Definiert "git cs" als "git commit --signoff"'
+    '  Sets the Git author identity and confirms recommended standard settings.' = '  Setzt die Git-Autorenidentität und bestätigt empfohlene Standardeinstellungen.'
 }
