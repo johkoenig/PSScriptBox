@@ -11,6 +11,14 @@
     Sicherung bereits, bleibt sie erhalten; die Eingabedatei wird direkt ersetzt und als Warnung
     aufgeführt. Mit -ReplaceOriginal wird die Eingabedatei ohne Sicherung überschrieben.
     PDFs mit digitaler Signatur werden vor dem OCR-Aufruf erkannt und übersprungen.
+    Verschlüsselte PDFs, die sich ohne Passwort nicht öffnen lassen, werden ebenfalls
+    vor der Verarbeitung erkannt und als übersprungen aufgeführt.
+    PDFs, auf deren sämtlichen Seiten bereits Textoperatoren vorhanden sind, werden
+    standardmäßig mit OCRmyPDFs Skip-Modus verarbeitet: OCR wird übersprungen, die
+    PDF-Optimierung bleibt aktiv. OCRmyPDFs abschließende Optimierung und die optionale
+    Ghostscript-Stufe laufen weiterhin. Die OCR-Vorverarbeitung Deskew/Rotation wird von
+    OCRmyPDF auf übersprungenen Seiten nicht ausgeführt. -ForceOcrRescan erzwingt OCR
+    auf allen Seiten.
 
     VERARBEITUNG IN ZWEI STUFEN:
       1. OCRmyPDF: OCR-Textebene ergänzen, schiefe Seiten begradigen. Die Ausgabe erfolgt
@@ -81,6 +89,11 @@
     nach erfolgreicher Verarbeitung als <Name>_orig.pdf gesichert. Existiert die
     Sicherungsdatei bereits, wird sie nicht überschrieben und das PDF direkt ersetzt.
 
+.PARAMETER ForceOcrRescan
+    Erzwingt OCR auf allen Seiten, auch wenn bereits auf jeder Seite Text vorhanden ist.
+    OCRmyPDF rastert dabei Text und Vektorgrafiken vor der erneuten OCR-Verarbeitung.
+    OCRmyPDFs Optimierung und die optionale Ghostscript-Stufe bleiben aktiv.
+
 .EXAMPLE
     .\Invoke-PdfOptimization.ps1
     Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa, JPEG-Qualität 75,
@@ -96,6 +109,10 @@
 .EXAMPLE
     .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -ReplaceOriginal
     Verarbeitet alle PDFs in C:\PDFs und überschreibt die Originale ohne Sicherung.
+
+.EXAMPLE
+    .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -ForceOcrRescan
+    Erzwingt eine erneute OCR-Erkennung, auch für PDFs mit vollständiger Textebene.
 
 .NOTES
     Abhängigkeiten:
@@ -153,7 +170,10 @@ param(
     [switch] $NoGhostscript,
 
     # Eingabedatei ohne Sicherung überschreiben (standardmäßig wird _orig angelegt).
-    [switch] $ReplaceOriginal
+    [switch] $ReplaceOriginal,
+
+    # OCR auch auf Seiten mit vorhandener Textebene erzwingen.
+    [switch] $ForceOcrRescan
 )
 
 Set-StrictMode -Version Latest
@@ -370,6 +390,7 @@ function Get-PdfInputFile {
         Write-Host '  -RotatePages           Verdrehte Seiten automatisch korrigieren (Standard: aus).'
         Write-Host '  -NoGhostscript         Ghostscript-Komprimierung deaktivieren (Standard: erlaubt).'
         Write-Host '  -ReplaceOriginal       Original ohne _orig-Sicherung überschreiben.'
+        Write-Host '  -ForceOcrRescan        OCR auch bei vollständiger Textebene erzwingen.'
         Write-Host 'Mit Strg+C kannst du die Eingabe abbrechen.' -ForegroundColor Yellow
         $Path = Read-Host 'Pfad zu einer PDF-Datei oder einem Ordner mit PDFs'
     }
@@ -495,6 +516,8 @@ function Invoke-PdfProcessing {
     # hash-gleich zum Original ist (keine Änderung).
     # `--optimize 1` statt 3: Stufe 3 erzeugt eine jbig2-Warnung, die wir nicht
     # benötigen (jbig2 wird bewusst nicht installiert).
+    # Bei vollständiger Textebene überspringt OCRmyPDF die Seitenvorverarbeitung,
+    # führt aber seine abschließende PDF-Optimierung weiterhin aus.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
@@ -506,6 +529,7 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][bool] $RotatePages,
         [Parameter(Mandatory)][bool] $NoGhostscript,
         [Parameter(Mandatory)][bool] $ReplaceOriginal,
+        [Parameter(Mandatory)][bool] $ForceOcrRescan,
         [string] $GhostscriptPath
     )
 
@@ -524,6 +548,8 @@ function Invoke-PdfProcessing {
 import sys
 import pikepdf
 
+TEXT_OPERATORS = {"Tj", "TJ", "'", '"'}
+
 def has_signature_value(value):
     return value is not None and "/ByteRange" in value and "/Contents" in value
 
@@ -533,7 +559,48 @@ def field_is_signed(field, inherited_type=None):
         return True
     return any(field_is_signed(child, field_type) for child in field.get("/Kids", []))
 
-with pikepdf.open(sys.argv[1]) as pdf:
+def object_key(obj):
+    try:
+        object_number, generation = obj.objgen
+        if object_number:
+            return (object_number, generation)
+    except (AttributeError, TypeError):
+        pass
+    return id(obj)
+
+def inherited_resources(page):
+    node = page
+    while node is not None:
+        resources = node.get("/Resources")
+        if resources is not None:
+            return resources
+        node = node.get("/Parent")
+    return pikepdf.Dictionary()
+
+def stream_has_text(stream, resources, visited):
+    key = object_key(stream)
+    if key in visited:
+        return False
+    visited.add(key)
+    xobjects = resources.get("/XObject", {})
+    for operands, operator in pikepdf.parse_content_stream(stream):
+        if str(operator) in TEXT_OPERATORS:
+            return True
+        if str(operator) == "Do" and operands:
+            child = xobjects.get(operands[0])
+            if child is not None and str(child.get("/Subtype")) == "/Form":
+                child_resources = child.get("/Resources", resources)
+                if stream_has_text(child, child_resources, visited):
+                    return True
+    return False
+
+try:
+    pdf = pikepdf.open(sys.argv[1])
+except pikepdf.PasswordError:
+    print("ENCRYPTED")
+    sys.exit(0)
+
+with pdf:
     acro_form = pdf.Root.get("/AcroForm")
     fields = acro_form.get("/Fields", []) if acro_form is not None else []
     permissions = pdf.Root.get("/Perms")
@@ -543,7 +610,11 @@ with pikepdf.open(sys.argv[1]) as pdf:
     )
     signed = any(field_is_signed(field) for field in fields)
     signed = signed or any(has_signature_value(value) for value in permission_signatures)
-    print("SIGNED" if signed else "UNSIGNED")
+    text_pages = sum(
+        stream_has_text(page, inherited_resources(page.obj), set())
+        for page in pdf.pages
+    )
+    print(f"{'SIGNED' if signed else 'UNSIGNED'}\t{len(pdf.pages)}\t{text_pages}")
 '@
         [System.IO.File]::WriteAllText($signatureCheckPath, $signatureCheck, [System.Text.UTF8Encoding]::new($false))
 
@@ -562,10 +633,27 @@ with pikepdf.open(sys.argv[1]) as pdf:
             throw "Signaturprüfung fehlgeschlagen (Exitcode $signatureCheckExitCode): $checkDetails"
         }
         $signatureStatus = ($signatureCheckOutput | ForEach-Object { $_.ToString() }) -join ''
-        $signatureStatus = $signatureStatus.Trim()
-        if ($signatureStatus -notin @('SIGNED', 'UNSIGNED')) {
-            throw "Signaturprüfung lieferte ein ungültiges Ergebnis: '$signatureStatus'"
+        if ($signatureStatus.Trim() -eq 'ENCRYPTED') {
+            $failureReason = 'Verschlüsselt (Passwort erforderlich)'
+            Write-Warning "Übersprungen: '$($Pdf.Name)'`nPDF ist verschlüsselt und kann ohne Passwort nicht verarbeitet werden."
+            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
+        $signatureValues = $signatureStatus.Trim() -split "`t"
+        if (
+            $signatureValues.Count -ne 3 -or
+            $signatureValues[0] -notin @('SIGNED', 'UNSIGNED') -or
+            $signatureValues[1] -notmatch '^\d+$' -or
+            $signatureValues[2] -notmatch '^\d+$'
+        ) {
+            throw "Signatur- und Textebenenprüfung lieferte ein ungültiges Ergebnis: '$signatureStatus'"
+        }
+        $signatureStatus = $signatureValues[0]
+        $pageCount = [int]$signatureValues[1]
+        $textPageCount = [int]$signatureValues[2]
+        if ($pageCount -eq 0) {
+            throw 'Die PDF-Datei enthält keine Seiten.'
+        }
+        $hasFullTextLayer = $textPageCount -eq $pageCount
         if ($signatureStatus -eq 'SIGNED') {
             $failureReason = 'DigitalSignatureError'
             $failureDetails = 'DigitalSignatureError: Input PDF has a digital signature. OCR would alter the document, invalidating the signature.'
@@ -579,14 +667,23 @@ with pikepdf.open(sys.argv[1]) as pdf:
             Write-Warning "Sicherung '$relativeOriginalPath' existiert bereits und bleibt erhalten; das PDF wird direkt ersetzt."
         }
 
+        if ($hasFullTextLayer -and -not $ForceOcrRescan) {
+            Write-Host "Vollständige Textebene auf allen $pageCount Seiten gefunden; OCRmyPDF überspringt die OCR-Verarbeitung und führt die PDF-Optimierung fort." -ForegroundColor Green
+        }
+
         $ocrArguments = @(
             '-m', 'ocrmypdf',
-            '--skip-text',
             '--output-type', 'pdf',
             '--optimize', '1',
             '--jpeg-quality', "$Quality",
             '--language', $Language
         )
+        if ($ForceOcrRescan) {
+            $ocrArguments += '--force-ocr'
+        }
+        else {
+            $ocrArguments += '--skip-text'
+        }
         if (-not $NoDeskew) { $ocrArguments += '--deskew' }
         if ($RotatePages) { $ocrArguments += @('--rotate-pages', '--rotate-pages-threshold', '5') }
         $ocrArguments += @($Pdf.FullName, $tempPath)
@@ -796,6 +893,7 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
         -Language $languageSelection -Quality $JpegQuality -GhostscriptDpi $GhostscriptDpi `
         -NoDeskew $NoDeskew.IsPresent -RotatePages $RotatePages.IsPresent `
         -NoGhostscript $NoGhostscript.IsPresent -ReplaceOriginal $ReplaceOriginal.IsPresent `
+        -ForceOcrRescan $ForceOcrRescan.IsPresent `
         -GhostscriptPath $dependencyCheck.GhostscriptPath
     if ($null -ne $r) { $results += $r }
 }
