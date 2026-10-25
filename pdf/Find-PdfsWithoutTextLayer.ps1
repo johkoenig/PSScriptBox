@@ -198,6 +198,21 @@ except Exception as error:
     }
 }
 
+$headerWidth = 71
+$headerLines = @(
+    '  +----------------------+  PDF TOOLBOX / DOCUMENT WORKFLOW'
+    '  | [PDF] ---> [TEXT]   |  FIND MISSING TEXT LAYERS'
+    '  | SCAN / CLASSIFY     |  CHECK EVERY PAGE'
+    '  +----------------------+'
+)
+
+Write-Host ''
+Write-Host ('       .{0}.' -f ('=' * $headerWidth)) -ForegroundColor Cyan
+foreach ($headerLine in $headerLines) {
+    Write-Host ('       |{0}|' -f $headerLine.PadRight($headerWidth)) -ForegroundColor Cyan
+}
+Write-Host ("       '{0}'" -f ('=' * $headerWidth)) -ForegroundColor Cyan
+
 # --- Eingabe und Abhängigkeiten ------------------------------------------
 
 if ([string]::IsNullOrWhiteSpace($InputPath)) {
@@ -264,12 +279,6 @@ if (-not $basePathPrefix.EndsWith([string][System.IO.Path]::DirectorySeparatorCh
 
 # --- PDFs prüfen ---------------------------------------------------------
 
-Write-Host ''
-Write-Host '       .-----------------------------------------------.' -ForegroundColor Cyan
-Write-Host '       |  +----------------+                           |' -ForegroundColor Cyan
-Write-Host '       |  |  PDF  ->  Text |   FIND PDFS WITHOUT TEXT  |' -ForegroundColor Cyan
-Write-Host '       |  +----------------+                           |' -ForegroundColor Cyan
-Write-Host '       ''-----------------------------------------------''' -ForegroundColor Cyan
 Write-Host "  Ordner: $baseDirectory"
 Write-Host "  Zu prüfende PDFs: $($pdfFiles.Count)"
 

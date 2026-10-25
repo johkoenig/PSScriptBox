@@ -670,18 +670,26 @@ with pikepdf.open(sys.argv[1]) as pdf:
 # --- Hauptprogramm --------------------------------------------------------
 
 # ASCII-Kopf: Kurzbeschreibung, was das Skript tut.
+$headerWidth = 71
+$headerLines = @(
+    '  +----------------------+  PDF TOOLBOX / DOCUMENT WORKFLOW'
+    '  | [PDF] ---> [OCR]    |  PDF OPTIMIZATION'
+    '  | OCR / DESKEW / SIZE |  SEARCHABLE, COMPACT OUTPUT'
+    '  +----------------------+'
+)
+
 Write-Host ''
-Write-Host '       .-----------------------------------------------.' -ForegroundColor Cyan
-Write-Host '       |  +----------------+                           |' -ForegroundColor Cyan
-Write-Host '       |  |  PDF -> OCR    |   PDF OPTIMIZATION        |' -ForegroundColor Cyan
-Write-Host '       |  +----------------+                           |' -ForegroundColor Cyan
-Write-Host '       ''-----------------------------------------------''' -ForegroundColor Cyan
-Write-Host '  Fuegt PDFs OCR-Textebenen hinzu, begradigt Seiten und optimiert Dateien.' -ForegroundColor Cyan
+Write-Host ('       .{0}.' -f ('=' * $headerWidth)) -ForegroundColor Cyan
+foreach ($headerLine in $headerLines) {
+    Write-Host ('       |{0}|' -f $headerLine.PadRight($headerWidth)) -ForegroundColor Cyan
+}
+Write-Host ("       '{0}'" -f ('=' * $headerWidth)) -ForegroundColor Cyan
+Write-Host '  Adds OCR text layers, deskews pages and optimizes PDFs.' -ForegroundColor Cyan
 if (-not $ReplaceOriginal) {
-    Write-Host '  Originale werden als _orig-Dateien gesichert.' -ForegroundColor Cyan
+    Write-Host '  Originals are saved as _orig files.' -ForegroundColor Cyan
 }
 else {
-    Write-Host '  Originale werden ueberschrieben.' -ForegroundColor Cyan
+    Write-Host '  Originals are replaced without a backup.' -ForegroundColor Cyan
 }
 Write-Host ''
 

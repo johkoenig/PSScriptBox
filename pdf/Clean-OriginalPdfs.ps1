@@ -10,6 +10,11 @@
 
 .PARAMETER InputPath
     Ordner, der rekursiv nach passenden _orig-PDFs durchsucht werden soll.
+    Ohne Angabe wird der Pfad interaktiv abgefragt.
+
+.EXAMPLE
+    .\Clean-OriginalPdfs.ps1
+    Fragt interaktiv nach einem Ordner.
 
 .EXAMPLE
     .\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs' -WhatIf
@@ -26,13 +31,34 @@
 
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
 param(
-    [Parameter(Mandatory)]
-    [ValidateNotNullOrEmpty()]
     [string] $InputPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+$headerWidth = 71
+$headerLines = @(
+    '  +----------------------+  PDF TOOLBOX / DOCUMENT WORKFLOW'
+    '  | [ORIG] ---> [ X ]   |  ORIGINAL PDF CLEANUP'
+    '  | VERIFY / REMOVE     |  SAFE BACKUP MANAGEMENT'
+    '  +----------------------+'
+)
+
+Write-Host ''
+Write-Host ('       .{0}.' -f ('=' * $headerWidth)) -ForegroundColor Cyan
+foreach ($headerLine in $headerLines) {
+    Write-Host ('       |{0}|' -f $headerLine.PadRight($headerWidth)) -ForegroundColor Cyan
+}
+Write-Host ("       '{0}'" -f ('=' * $headerWidth)) -ForegroundColor Cyan
+
+if ([string]::IsNullOrWhiteSpace($InputPath)) {
+    Write-Host 'Ordner mit gesicherten Original-PDFs eingeben.'
+    $InputPath = Read-Host 'InputPath'
+}
+if ([string]::IsNullOrWhiteSpace($InputPath)) {
+    throw 'Es wurde kein Ordner angegeben.'
+}
 
 $InputPath = [Environment]::ExpandEnvironmentVariables($InputPath.Trim().Trim('"'))
 if (-not (Test-Path -LiteralPath $InputPath -PathType Container)) {
@@ -62,12 +88,6 @@ $eligibleFiles = @(
 $eligibleCount = $eligibleFiles.Count
 $deletedCount = 0
 
-Write-Host ''
-Write-Host '       .-----------------------------------------------.' -ForegroundColor Cyan
-Write-Host '       |  +----------------+                           |' -ForegroundColor Cyan
-Write-Host '       |  |  _orig  ->  X  |     CLEAN ORIGINAL PDFS    |' -ForegroundColor Cyan
-Write-Host '       |  +----------------+                           |' -ForegroundColor Cyan
-Write-Host '       ''-----------------------------------------------''' -ForegroundColor Cyan
 Write-Host "  Ordner: $($directory.FullName)"
 Write-Host "  Zu löschende Original-PDFs: $eligibleCount" -ForegroundColor Yellow
 
