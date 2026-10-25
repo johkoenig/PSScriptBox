@@ -20,13 +20,13 @@ Führe die Skripte in PowerShell aus. Bei deutscher Windows-Anzeigesprache ersch
 | Skript | Parameter und Schalter |
 | --- | --- |
 | `Initialize-PdfProcessor.ps1` | `-EnglishOutput`. Interne ausgeblendete Parameter: `-ElevatedChild`, `-RuntimePythonPath`. |
-| `Optimize-ScannedPdfs.ps1` | `-InputPath <Pfad>`, `-Language <Codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-NoRotationOfPages`, `-ProcessDigitallyBornPdfs`, `-NoGhostscript`, `-ReplaceOriginal`, `-RedoOcr`, `-ForceReprocess`, `-EnglishOutput`. |
+| `Optimize-ScannedPdfs.ps1` | `-InputPath <Pfad>`, `-Language <Codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-NoRotationOfPages`, `-ProcessDigitallyBornPdfs`, `-NoGhostscript`, `-ReplaceOriginal`, `-ForceReprocess`, `-EnglishOutput`. |
 | `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <Pfad>`, `-EnglishOutput`. |
 | `Clear-OriginalPdfBackups.ps1` | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm` (mit `-Confirm:$false` werden Rückfragen unterdrückt), `-EnglishOutput`. |
 
 Die [PDF-Anleitung](pdf/README.de.md) beschreibt das Verhalten der Parameter, Beispiele, Einrichtung, Abhängigkeiten und Sicherheitsaspekte.
 
-Die Verarbeitung gescannter PDFs verwendet eine bestmögliche zustandslose Klassifizierung: digital erzeugte PDFs werden standardmäßig übersprungen; neben der PDF wird kein dauerhafter Marker abgelegt. Seiten mit vorhandener OCR werden standardmäßig erhalten und übersprungen. Mit `-RedoOcr` kann OCR erneut ausgeführt werden, damit Rotation und Begradigung angewendet werden. `-ProcessDigitallyBornPdfs` verarbeitet digital erzeugte PDFs ausdrücklich. Die Klassifizierung ist eine Heuristik und kann gemischte oder ungewöhnliche PDFs falsch einordnen.
+Die Verarbeitung gescannter PDFs verwendet eine bestmögliche zustandslose Klassifizierung: digital erzeugte PDFs werden standardmäßig übersprungen; neben der PDF wird kein dauerhafter Marker abgelegt. Gescannte PDFs mit vorhandener OCR werden automatisch erneut verarbeitet, damit Schräglagen- und Rotationskorrektur angewendet werden. Die OCR wird neu erzeugt und der Seiteninhalt gerastert. `-ProcessDigitallyBornPdfs` verarbeitet digital erzeugte PDFs ausdrücklich. Die Klassifizierung ist eine Heuristik und kann gemischte oder ungewöhnliche PDFs falsch einordnen.
 
 Das Projekt steht unter der [MIT-Lizenz](LICENSE.md).
 Hinweise zum Mitwirken stehen in [CONTRIBUTING.md](CONTRIBUTING.md).

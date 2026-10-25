@@ -54,7 +54,7 @@ Beispiele:
 
 Verarbeitet gescannte PDFs in einer einzelnen Datei oder einem Ordnerbaum. Digital erzeugte PDFs werden standardmäßig übersprungen. Zur Klassifizierung dienen die Sichtbarkeit des PDF-Texts und Hinweise auf Bildseiten; gemischte und ungewöhnliche Dokumente können falsch eingeordnet werden. Mit `-ProcessDigitallyBornPdfs` lassen sich digital erzeugte PDFs dennoch verarbeiten. OCRmyPDF ergänzt fehlende Textebenen, begradigt Scans und erkennt standardmäßig verdrehte Seiten. Nach erfolgreicher Verarbeitung wird die Eingabedatei ersetzt; standardmäßig wird vorher eine Sicherung `<Name>_orig.pdf` erstellt. Existiert diese Sicherung bereits, bleibt sie erhalten und die Eingabedatei wird ohne Überschreiben der Sicherung ersetzt.
 
-Seiten mit vorhandener OCR-Textebene werden standardmäßig übersprungen, damit die Textebene erhalten bleibt und keine wiederholte Verarbeitung stattfindet. OCRmyPDF wendet auf mit `--skip-text` übersprungene Seiten weder Rotationskorrektur noch Begradigung an. Mit `-RedoOcr` (oder `-ForceReprocess` bei gescannten PDFs mit vollständiger Textebene) wird die OCR erneuert, sodass Seitenkorrekturen ausgeführt werden können. Wiederholte Läufe können das Ergebnis verändern.
+Gescannte PDFs mit vorhandener OCR-Textebene werden standardmäßig erneut verarbeitet, damit Schräglagen- und Rotationskorrektur ausgeführt werden. OCRmyPDF verwendet dafür `--force-ocr`, erzeugt die OCR-Textebene neu und rastert den Seiteninhalt; dadurch können Vektorinhalte verändert werden und wiederholte Läufe können das PDF erneut ändern. Mit `-NoDeskew` oder `-NoRotationOfPages` lässt sich die jeweilige Korrektur deaktivieren.
 
 | Parameter / Schalter | Beschreibung |
 | --- | --- |
@@ -67,8 +67,7 @@ Seiten mit vorhandener OCR-Textebene werden standardmäßig übersprungen, damit
 | `-ProcessDigitallyBornPdfs` | Verarbeitet als digital erzeugt eingestufte PDFs; standardmäßig werden sie übersprungen. |
 | `-NoGhostscript` | Deaktiviert den optionalen Ghostscript-Schritt. |
 | `-ReplaceOriginal` | Ersetzt die Eingabe, ohne eine neue `_orig`-Sicherung anzulegen. |
-| `-RedoOcr` | Erneuert die vorhandene OCR mit OCRmyPDF `--redo-ocr`, sodass Seitenkorrekturen auch dort ausgeführt werden können. |
-| `-ForceReprocess` | Verarbeitet eine gescannte PDF mit vollständiger Textebene erneut; vorhandene OCR wird erneuert. Wiederholte erzwungene Läufe können die PDF erneut verändern. |
+| `-ForceReprocess` | Verarbeitet PDFs mit vorhandenem Text ausdrücklich erneut, wenn digital erzeugte PDFs freigegeben wurden. Gescannte PDFs mit vorhandener OCR werden standardmäßig erneut verarbeitet. |
 | `-EnglishOutput` | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
 
 Beispiele:
@@ -77,12 +76,12 @@ Beispiele:
 .\Optimize-ScannedPdfs.ps1
 .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -GhostscriptDpi 150
 .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -NoRotationOfPages
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs\Scan.pdf' -RedoOcr -ReplaceOriginal
+.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs\Scan.pdf' -ReplaceOriginal
 .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -ProcessDigitallyBornPdfs
 .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -EnglishOutput
 ```
 
-Digital erzeugte PDFs werden standardmäßig übersprungen, ohne sie erneut zu schreiben. Eine gescannte PDF, deren Seiten bereits alle eine OCR-Textebene enthalten, wird ebenfalls übersprungen, damit die Textebene erhalten bleibt. Mit `-RedoOcr` wird die OCR erneuert, sodass Seitenkorrekturen ausgeführt werden; `-ProcessDigitallyBornPdfs` verarbeitet digital erzeugte PDFs. Diese ausdrücklichen Optionen können die PDF bei wiederholten Läufen verändern; Idempotenz ist dann nicht garantiert. Signierte PDFs und verschlüsselte PDFs, die sich nicht ohne Passwort öffnen lassen, werden übersprungen. Das Ergebnis ist eine normale PDF und kein PDF/A. Ghostscript läuft nur, wenn `-GhostscriptDpi` angegeben wurde.
+Digital erzeugte PDFs werden standardmäßig übersprungen, ohne sie erneut zu schreiben. Gescannte PDFs mit vorhandener Textebene werden automatisch mit OCRmyPDFs Force-Modus verarbeitet, damit Schräglagen- und Rotationskorrektur ausgeführt werden. Dabei wird die OCR-Textebene neu erzeugt und der Seiteninhalt gerastert; Vektorinhalte können sich dadurch ändern. `-ProcessDigitallyBornPdfs` verarbeitet digital erzeugte PDFs ausdrücklich; `-ForceReprocess` kann deren Textebene erneuern. Wiederholte Verarbeitung kann das PDF ändern und ist nicht garantiert idempotent. Signierte PDFs und verschlüsselte PDFs, die sich nicht ohne Passwort öffnen lassen, werden übersprungen. Das Ergebnis ist eine normale PDF und kein PDF/A. Ghostscript läuft nur, wenn `-GhostscriptDpi` angegeben wurde.
 
 ### `Find-PdfsWithoutTextLayer.ps1`
 
@@ -127,7 +126,7 @@ Skripte unterstützen, soweit anwendbar, außerdem PowerShell-Standardparameter 
 
 - `Optimize-ScannedPdfs.ps1` legt temporäre Dateien neben der Eingabe an und entfernt sie nach der Verarbeitung.
 - Neben der PDF werden keine dauerhaften Status- oder Markierungsdateien angelegt. Temporäre Verarbeitungsdateien werden nach dem Lauf entfernt.
-- Die zustandslose Klassifizierung verwendet sichtbaren Text und Hinweise auf gescannte Bildseiten. Sie ist eine bestmögliche Heuristik; gemischte oder ungewöhnliche PDFs können falsch eingeordnet werden. Seiten mit bestehender OCR bleiben erhalten und werden übersprungen, außer `-RedoOcr` oder `-ForceReprocess` wird verwendet; auf übersprungenen Seiten laufen weder Rotationskorrektur noch Begradigung.
+- Die zustandslose Klassifizierung verwendet sichtbaren Text und Hinweise auf gescannte Bildseiten. Sie ist eine bestmögliche Heuristik; gemischte oder ungewöhnliche PDFs können falsch eingeordnet werden. Vorhandene OCR gescannter PDFs wird erneuert, damit Seitenkorrekturen angewendet werden können; dabei wird der Seiteninhalt gerastert.
 - Eine PDF gilt nur dann als erfolgreich verändert, wenn die Verarbeitung erfolgreich war und sich der Ergebnis-Hash von der Originaldatei unterscheidet. Auch größere Ergebnisse können gültig sein.
 - Vorhandene `_orig`-Sicherungen bleiben erhalten.
 - `Clear-OriginalPdfBackups.ps1` löscht nur Sicherungen, zu denen die bearbeitete PDF vorhanden ist.

@@ -54,7 +54,7 @@ Examples:
 
 Processes scanned PDFs in one file or a folder tree. Digitally born PDFs are skipped by default. The script uses PDF text visibility and image-resource evidence as a heuristic; mixed and unusual documents may be classified imperfectly. Use `-ProcessDigitallyBornPdfs` to process digitally born PDFs anyway. OCRmyPDF adds a text layer to pages that need it, deskews scans, and detects rotated pages by default. The input is replaced after successful processing; by default, a backup named `<Name>_orig.pdf` is created. If that backup already exists, it is preserved and the input is replaced without overwriting the backup.
 
-Pages that already contain OCR text are skipped by default to preserve their text and avoid repeated processing. OCRmyPDF's `--skip-text` does not apply rotation correction or deskew to those skipped pages. Use `-RedoOcr` (or `-ForceReprocess` for a scanned PDF with a full text layer) to rebuild the OCR and apply page correction. This can change the output again on repeated runs.
+Scanned PDFs that already contain OCR text are reprocessed by default so deskew and rotation correction can run. OCRmyPDF uses `--force-ocr` for those files, regenerating the OCR layer and rasterizing page content; this can alter vector content and can change the PDF on repeated runs. Use `-NoDeskew` or `-NoRotationOfPages` to disable the corresponding correction.
 
 | Parameter / switch | Description |
 | --- | --- |
@@ -67,8 +67,7 @@ Pages that already contain OCR text are skipped by default to preserve their tex
 | `-ProcessDigitallyBornPdfs` | Processes PDFs classified as digitally born; these are skipped by default. |
 | `-NoGhostscript` | Disables the optional Ghostscript stage. |
 | `-ReplaceOriginal` | Replaces the input without creating a new `_orig` backup. |
-| `-RedoOcr` | Rebuilds existing OCR text with OCRmyPDF `--redo-ocr`, allowing page correction to run on those pages. |
-| `-ForceReprocess` | Reprocesses a scanned PDF that has a full text layer; existing OCR is rebuilt. Repeated forced runs can change the PDF again. |
+| `-ForceReprocess` | Explicitly reprocesses PDFs with existing text when digitally born PDFs are enabled. Scanned PDFs with existing OCR are already reprocessed by default. |
 | `-EnglishOutput` | Forces English console output regardless of Windows UI language. |
 
 Examples:
@@ -77,12 +76,12 @@ Examples:
 .\Optimize-ScannedPdfs.ps1
 .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -GhostscriptDpi 150
 .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -NoRotationOfPages
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs\Scan.pdf' -RedoOcr -ReplaceOriginal
+.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs\Scan.pdf' -ReplaceOriginal
 .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -ProcessDigitallyBornPdfs
 .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -EnglishOutput
 ```
 
-Digitally born PDFs are skipped by default, without rewriting them. A scanned PDF whose every page already has OCR text is also skipped to preserve that text. Use `-RedoOcr` to rebuild existing OCR so page correction can run; use `-ProcessDigitallyBornPdfs` to process digitally born PDFs. These explicit options can modify the PDF on repeated runs and are not guaranteed to be idempotent. Signed PDFs and encrypted PDFs that cannot be opened without a password are skipped. The result is a standard PDF, not PDF/A. Ghostscript runs only when `-GhostscriptDpi` is specified.
+Digitally born PDFs are skipped by default, without rewriting them. Scanned PDFs with existing text are automatically processed with OCRmyPDF force mode so deskew and rotation correction can run; OCR is regenerated and page content is rasterized. `-ProcessDigitallyBornPdfs` opts into processing digitally born PDFs, and `-ForceReprocess` can explicitly rebuild their existing text layer. Repeated processing may change the output and is not guaranteed to be idempotent. Signed PDFs and encrypted PDFs that cannot be opened without a password are skipped. The result is a standard PDF, not PDF/A. Ghostscript runs only when `-GhostscriptDpi` is specified.
 
 ### `Find-PdfsWithoutTextLayer.ps1`
 
@@ -127,7 +126,7 @@ Scripts also support PowerShell common parameters where applicable, including `-
 
 - `Optimize-ScannedPdfs.ps1` uses temporary files beside the input and cleans them up after processing.
 - No persistent state or marker file is created beside a PDF. Temporary processing files are removed after the run.
-- Classification is stateless and uses visible text and scanned-image evidence. It is best-effort and may misclassify mixed or unusual PDFs. Pages with existing OCR are preserved/skipped unless `-RedoOcr` or `-ForceReprocess` is used; rotation and deskew do not run on skipped pages.
+- Classification is stateless and uses visible text and scanned-image evidence. It is best-effort and may misclassify mixed or unusual PDFs. Existing OCR on scanned PDFs is regenerated to enable page corrections; this also rasterizes page content.
 - A PDF is considered successfully changed only when processing succeeds and the result hash differs from the original. Larger results can still be valid.
 - Existing `_orig` backups are preserved.
 - `Clear-OriginalPdfBackups.ps1` deletes only backups whose corresponding processed PDF exists.

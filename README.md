@@ -20,13 +20,13 @@ Run scripts from PowerShell. The scripts select German console messages on a Ger
 | Script | Parameters and switches |
 | --- | --- |
 | `Initialize-PdfProcessor.ps1` | `-EnglishOutput`. Internal hidden parameters: `-ElevatedChild`, `-RuntimePythonPath`. |
-| `Optimize-ScannedPdfs.ps1` | `-InputPath <path>`, `-Language <codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-NoRotationOfPages`, `-ProcessDigitallyBornPdfs`, `-NoGhostscript`, `-ReplaceOriginal`, `-RedoOcr`, `-ForceReprocess`, `-EnglishOutput`. |
+| `Optimize-ScannedPdfs.ps1` | `-InputPath <path>`, `-Language <codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-NoRotationOfPages`, `-ProcessDigitallyBornPdfs`, `-NoGhostscript`, `-ReplaceOriginal`, `-ForceReprocess`, `-EnglishOutput`. |
 | `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <path>`, `-EnglishOutput`. |
 | `Clear-OriginalPdfBackups.ps1` | `-InputPath <folder>`, `-WhatIf`, `-Confirm` (use `-Confirm:$false` to suppress confirmation), `-EnglishOutput`. |
 
 See the [PDF tools guide](pdf/README.md) for parameter behavior, examples, setup, dependencies, and safety notes.
 
-Scanned-PDF processing uses best-effort, stateless classification: digitally born PDFs are skipped by default, and no persistent marker is written beside them. Pages with existing OCR are preserved/skipped by default; use `-RedoOcr` to reprocess them and allow rotation/deskew to run. `-ProcessDigitallyBornPdfs` opts into processing digitally born PDFs. Classification is heuristic and may not identify mixed or unusual PDFs correctly.
+Scanned-PDF processing uses best-effort, stateless classification: digitally born PDFs are skipped by default, and no persistent marker is written beside them. Scanned PDFs with existing OCR are reprocessed automatically so deskew and rotation correction can run; OCR is regenerated and page content is rasterized. `-ProcessDigitallyBornPdfs` opts into processing digitally born PDFs. Classification is heuristic and may not identify mixed or unusual PDFs correctly.
 
 The project is licensed under the [MIT License](LICENSE.md).
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.

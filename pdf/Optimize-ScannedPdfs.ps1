@@ -8,10 +8,9 @@
     -ProcessDigitallyBornPdfs to process them. Classification is heuristic:
     visible text without evidence of scanned image pages is treated as digitally
     born, while image pages with hidden OCR text are treated as scanned.
-    OCRmyPDF skips pages with existing text by default, preserving their OCR
-    text. Consequently, page rotation and deskew are not applied to those
-    skipped pages. -RedoOcr or -ForceReprocess explicitly rebuilds existing OCR
-    text so page correction can be applied; repeat runs can change output.
+    Scanned PDFs with existing text are reprocessed by default using OCRmyPDF's
+    force mode, regenerating the OCR layer while applying deskew and rotation.
+    This rasterizes page content and can change output on repeated runs.
     Digitally signed PDFs and encrypted PDFs that cannot be opened without a
     password are skipped.
 
@@ -87,19 +86,13 @@
     <Name>_orig.pdf after successful processing. An existing backup is preserved
     and the PDF is replaced directly.
 
-.PARAMETER RedoOcr
-    Reprocesses existing OCR text and OCRs text in images using OCRmyPDF's
-    `--redo-ocr` mode. This allows page correction to run on pages with existing
-    OCR. It preserves visible text and vector graphics instead of rasterizing
-    the entire page.
-
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
 .PARAMETER ForceReprocess
-    Processes scanned PDFs with a complete text layer instead of skipping them.
-    Existing OCR is rebuilt to allow page correction. Repeated runs can change
-    the PDF again; idempotency is not guaranteed.
+    Explicitly reprocesses PDFs with existing text when digitally born PDFs are
+    allowed. Scanned PDFs with existing text are already reprocessed by default.
+    Repeated runs can change the PDF again.
 
 .EXAMPLE
     .\Optimize-ScannedPdfs.ps1
@@ -116,8 +109,9 @@
     Processes all PDFs in C:\PDFs and replaces the originals without backups.
 
 .EXAMPLE
-    .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -RedoOcr
-    Rebuilds existing OCR text so rotation and deskew can run on those pages.
+    .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs'
+    Reprocesses scanned PDFs with existing OCR, applying deskew and rotation
+    correction while regenerating their OCR text.
 
 .EXAMPLE
     .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -ProcessDigitallyBornPdfs
@@ -186,8 +180,6 @@ param(
     [switch] $ReplaceOriginal,
 
     # Reprocess existing OCR text to allow page correction on those pages.
-    [switch] $RedoOcr,
-
     # Reprocess files even when the same settings have already been applied.
     [switch] $ForceReprocess,
 
@@ -554,8 +546,7 @@ function Get-PdfInputFile {
         Write-Host (Get-LocalizedText '  -ProcessDigitallyBornPdfs Process PDFs classified as digitally born (default: skip).')
         Write-Host (Get-LocalizedText '  -NoGhostscript         Disable Ghostscript compression (allowed by default).')
         Write-Host (Get-LocalizedText '  -ReplaceOriginal       Replace original without an _orig backup.')
-        Write-Host (Get-LocalizedText '  -RedoOcr               Rebuild existing OCR text so page correction can run.')
-        Write-Host (Get-LocalizedText '  -ForceReprocess        Reprocess scanned PDFs with a full text layer.')
+        Write-Host (Get-LocalizedText '  -ForceReprocess        Explicitly reprocess eligible PDFs.')
         Write-Host (Get-LocalizedText '  -EnglishOutput         Force English console output.')
         Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.') -ForegroundColor Yellow
         $Path = Read-Host -Prompt (Get-LocalizedText 'Path to a PDF file or a folder containing PDFs')
@@ -707,8 +698,8 @@ function Invoke-PdfProcessing {
 .DESCRIPTION
     Checks signatures and the text layer, runs OCRmyPDF, and optionally applies
     Ghostscript optimization. Digitally born PDFs are skipped by default;
-    scanned PDFs with complete OCR are also skipped unless reprocessing is
-    explicitly requested. Encrypted and digitally signed PDFs are skipped.
+    scanned     PDFs with existing OCR are automatically reprocessed so deskew and rotation
+    can run. Encrypted and digitally signed PDFs are skipped.
     The result replaces the input; by default, the original is first saved as
     _orig.pdf. --optimize 1 avoids the optional jbig2 dependency.
 
@@ -742,12 +733,9 @@ function Invoke-PdfProcessing {
 .PARAMETER ReplaceOriginal
     Replaces the input without creating an _orig backup.
 
-.PARAMETER RedoOcr
-    Reprocesses existing OCR text with OCRmyPDF's `--redo-ocr` mode.
-
 .PARAMETER ForceReprocess
-    Processes scanned PDFs with a complete text layer instead of skipping them.
-    Existing OCR is rebuilt. Repeated use can modify a PDF again.
+    Explicitly reprocesses eligible PDFs. Scanned PDFs with existing text are
+    already reprocessed by default.
 
 .PARAMETER GhostscriptPath
     Path to Ghostscript, if available.
@@ -768,7 +756,6 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][bool] $ProcessDigitallyBornPdfs,
         [Parameter(Mandatory)][bool] $NoGhostscript,
         [Parameter(Mandatory)][bool] $ReplaceOriginal,
-        [Parameter(Mandatory)][bool] $RedoOcr,
         [Parameter(Mandatory)][bool] $ForceReprocess,
         [string] $GhostscriptPath
     )
@@ -930,7 +917,6 @@ with pdf:
         if ($pageCount -eq 0) {
             throw (Get-LocalizedText 'The PDF file contains no pages.')
         }
-        $hasFullTextLayer = $textPageCount -eq $pageCount
         $isDigitallyBorn = $visibleTextPageCount -gt 0 -and $scannedPageCount -eq 0
         if ($signatureStatus -eq 'SIGNED') {
             $failureReason = Get-LocalizedText 'Digitally signed PDF'
@@ -951,13 +937,9 @@ with pdf:
             Write-Warning (Get-LocalizedText -Text "Backup '{0}' already exists and will be preserved; replacing the PDF directly." -Arguments @($relativeOriginalPath))
         }
 
-        if ($hasFullTextLayer -and -not $RedoOcr -and -not $ForceReprocess -and -not $isDigitallyBorn) {
-            $failureReason = Get-LocalizedText 'Existing OCR found; skipped to preserve text and avoid repeated processing'
-            Write-Host (Get-LocalizedText -Text 'Existing OCR text was found on all {0} pages; skipping without rewriting the PDF. Use -RedoOcr to rebuild OCR and apply page correction.' -Arguments @($pageCount)) -ForegroundColor Green
-            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
-        }
-        if ($hasFullTextLayer -and ($ForceReprocess -or $RedoOcr) -and -not $isDigitallyBorn) {
-            Write-Host (Get-LocalizedText 'Existing OCR text will be rebuilt; repeated runs may change the PDF again.') -ForegroundColor Yellow
+        $rebuildOcr = $textPageCount -gt 0 -and (-not $isDigitallyBorn -or $ForceReprocess)
+        if ($rebuildOcr) {
+            Write-Host (Get-LocalizedText 'Existing OCR text will be rebuilt so deskew and rotation correction can run; repeated runs may change the PDF again.') -ForegroundColor Yellow
         }
 
         $ocrArguments = @(
@@ -967,8 +949,8 @@ with pdf:
             '--jpeg-quality', "$Quality",
             '--language', $Language
         )
-        if ($RedoOcr -or ($ForceReprocess -and $hasFullTextLayer -and -not $isDigitallyBorn)) {
-            $ocrArguments += '--redo-ocr'
+        if ($rebuildOcr) {
+            $ocrArguments += '--force-ocr'
         }
         else {
             $ocrArguments += '--skip-text'
@@ -1166,6 +1148,7 @@ else {
 Write-Host (Get-LocalizedText -Text 'Deskew: {0}' -Arguments @(-not $NoDeskew))
 Write-Host (Get-LocalizedText -Text 'Rotation correction: {0}' -Arguments @(-not $NoRotationOfPages))
 Write-Host (Get-LocalizedText -Text 'Process digitally born PDFs: {0}' -Arguments @($ProcessDigitallyBornPdfs.IsPresent))
+Write-Host (Get-LocalizedText 'Existing OCR on scanned PDFs is rebuilt by default to apply page corrections.')
 if ($ForceReprocess) {
     Write-Host (Get-LocalizedText 'Force reprocessing: enabled')
 }
@@ -1182,7 +1165,7 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
         -NoDeskew $NoDeskew.IsPresent -NoRotationOfPages $NoRotationOfPages.IsPresent `
         -ProcessDigitallyBornPdfs $ProcessDigitallyBornPdfs.IsPresent `
         -NoGhostscript $NoGhostscript.IsPresent -ReplaceOriginal $ReplaceOriginal.IsPresent `
-        -RedoOcr $RedoOcr.IsPresent -ForceReprocess $ForceReprocess.IsPresent `
+        -ForceReprocess $ForceReprocess.IsPresent `
         -GhostscriptPath $dependencyCheck.GhostscriptPath
     if ($null -ne $r) { $results += $r }
 }
