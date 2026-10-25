@@ -1,0 +1,169 @@
+﻿<#
+.SYNOPSIS
+    Provides the changed-file copy helper for the Nextcloud scripts.
+
+.DESCRIPTION
+    Defines Copy-ChangedFiles. Requires Get-LocalizedText.ps1, Get-FileSha256.ps1,
+    and Invoke-RobocopyFile.ps1 from the same folder.
+
+.NOTES
+    Dependencies: Windows PowerShell 5.1 or PowerShell 7.
+#>
+
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 scriptbox contributors
+# Contributors:
+# - Johannes Koenig <dev@jokoenig.de>
+
+<#
+.SYNOPSIS
+    Copies non-identical files and verifies destination content.
+
+.DESCRIPTION
+    Skips a source file when any file in the destination has the same SHA-256
+    hash, and also skips a source file whose content is already planned for
+    copying from an earlier source file. Transfers other files with Robocopy
+    and verifies copied content by hash. Creates missing destination folders.
+    Progress is passed to the ProgressReporter callback instead of being written
+    to the console.
+
+.PARAMETER Source
+    Source folder.
+
+.PARAMETER Destination
+    Existing destination folder.
+
+.PARAMETER SourceInventory
+    Inventory captured before copying (Files, Directories, TotalBytes).
+
+.PARAMETER DestinationInventory
+    Inventory captured before copying (Files).
+
+.PARAMETER FolderName
+    Display name of the selected user folder, used in progress and errors.
+
+.PARAMETER Language
+    'de' selects German messages; any other value selects English.
+
+.PARAMETER Messages
+    German message catalog keyed by the English source text.
+
+.PARAMETER ProgressReporter
+    Callback invoked with -Activity, -Status, and -PercentComplete while checking
+    and copying, and with -Activity -Completed at the end. The default callback
+    does nothing.
+
+.OUTPUTS
+    PSCustomObject with CopiedFiles, IdenticalFiles, and CopiedBytes.
+
+.NOTES
+    Throws when a source file changes during the identical-content check or when
+    a copied file does not match its source hash.
+#>
+function Copy-ChangedFiles {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $Source,
+        [Parameter(Mandatory)][string] $Destination,
+        [Parameter(Mandatory)][psobject] $SourceInventory,
+        [Parameter(Mandatory)][psobject] $DestinationInventory,
+        [Parameter(Mandatory)][string] $FolderName,
+        [string] $Language = 'en',
+        [hashtable] $Messages = @{},
+        [scriptblock] $ProgressReporter = { param([string] $Activity, [string] $Status, [int] $PercentComplete, [switch] $Completed) }
+    )
+
+    $sourceSizes = @{}
+    foreach ($file in $SourceInventory.Files) {
+        $sourceSizes[[long]$file.Length] = $true
+    }
+    $destinationHashes = @{}
+    foreach ($file in $DestinationInventory.Files) {
+        if (-not $sourceSizes.ContainsKey([long]$file.Length)) { continue }
+        $destinationFilePath = Join-Path $Destination $file.RelativePath
+        $hash = Get-FileSha256 -Path $destinationFilePath
+        if (-not $destinationHashes.ContainsKey($hash)) {
+            $destinationHashes[$hash] = [System.Collections.Generic.List[string]]::new()
+        }
+        $destinationHashes[$hash].Add($destinationFilePath)
+    }
+
+    $copiedFiles = 0
+    $identicalFiles = 0
+    $copiedBytes = [long]0
+    $identicalBytes = [long]0
+    $copyPlan = [System.Collections.Generic.List[object]]::new()
+    $plannedHashes = @{}
+    foreach ($relativeDirectory in ($SourceInventory.Directories | Sort-Object { $_.Length })) {
+        [System.IO.Directory]::CreateDirectory((Join-Path $Destination $relativeDirectory)) | Out-Null
+    }
+    $activity = Get-LocalizedText -Text 'Copying folder {0}' -Arguments @($FolderName) -Language $Language -Messages $Messages
+    for ($i = 0; $i -lt $SourceInventory.Files.Count; $i++) {
+        $file = $SourceInventory.Files[$i]
+        if ($SourceInventory.Files.Count -gt 0) {
+            $checkPercent = [int](100 * $i / $SourceInventory.Files.Count)
+            & $ProgressReporter -Activity $activity `
+                -Status (Get-LocalizedText -Text 'Checking files for identical content' -Language $Language -Messages $Messages) `
+                -PercentComplete $checkPercent
+        }
+        $sourceFilePath = Join-Path $Source $file.RelativePath
+        $sourceHash = Get-FileSha256 -Path $sourceFilePath
+        $alreadyPresent = $false
+        if ($destinationHashes.ContainsKey($sourceHash)) {
+            foreach ($candidatePath in $destinationHashes[$sourceHash]) {
+                if (-not (Test-Path -LiteralPath $candidatePath -PathType Leaf)) { continue }
+                $candidateHash = Get-FileSha256 -Path $candidatePath
+                if ($sourceHash -eq $candidateHash) {
+                    $alreadyPresent = $true
+                    break
+                }
+            }
+        }
+        if (-not $alreadyPresent -and $plannedHashes.ContainsKey($sourceHash)) {
+            $alreadyPresent = $true
+        }
+        if ($alreadyPresent) {
+            $sourceHashAfterCheck = Get-FileSha256 -Path $sourceFilePath
+            if ($sourceHashAfterCheck -ne $sourceHash) {
+                throw (Get-LocalizedText -Text 'Source file changed while checking for identical content: {0}' `
+                        -Arguments @($file.RelativePath) -Language $Language -Messages $Messages)
+            }
+            $identicalFiles++
+            $identicalBytes += [long]$file.Length
+            continue
+        }
+        $plannedHashes[$sourceHash] = $true
+        $copyPlan.Add([pscustomobject]@{ File = $file; Hash = $sourceHash })
+    }
+
+    $completedBytes = $identicalBytes
+    foreach ($copyItem in $copyPlan) {
+        $file = $copyItem.File
+        $sourceFilePath = Join-Path $Source $file.RelativePath
+        $destinationFilePath = Join-Path $Destination $file.RelativePath
+        $sourceFileDirectory = [System.IO.Path]::GetDirectoryName($sourceFilePath)
+        $sourceFileName = [System.IO.Path]::GetFileName($sourceFilePath)
+        $destinationFileDirectory = [System.IO.Path]::GetDirectoryName($destinationFilePath)
+        Invoke-RobocopyFile -SourceDirectory $sourceFileDirectory `
+            -DestinationDirectory $destinationFileDirectory -FileName $sourceFileName `
+            -RelativePath $file.RelativePath -FileLength ([long]$file.Length) `
+            -CompletedBytes $completedBytes -TotalBytes ([long]$SourceInventory.TotalBytes) `
+            -FolderName $FolderName -Language $Language -Messages $Messages -ProgressReporter $ProgressReporter
+        $sourceHashAfterCopy = Get-FileSha256 -Path $sourceFilePath
+        $destinationHash = Get-FileSha256 -Path $destinationFilePath
+        if ($sourceHashAfterCopy -ne $copyItem.Hash -or $destinationHash -ne $copyItem.Hash) {
+            throw (Get-LocalizedText -Text 'File content does not match at destination: {0}' `
+                    -Arguments @($file.RelativePath) -Language $Language -Messages $Messages)
+        }
+        $copiedFiles++
+        $copiedBytes += [long]$file.Length
+        $completedBytes += [long]$file.Length
+    }
+    & $ProgressReporter -Activity $activity -Completed
+
+    [pscustomobject]@{
+        CopiedFiles    = $copiedFiles
+        IdenticalFiles = $identicalFiles
+        CopiedBytes    = $copiedBytes
+    }
+}

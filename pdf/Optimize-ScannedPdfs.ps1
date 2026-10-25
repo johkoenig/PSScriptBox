@@ -190,6 +190,19 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-PdfPythonRuntime.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot 'internal\ConvertTo-QuotedArgument.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-ExecutablePath.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-GhostscriptExecutablePath.ps1')
+. (Join-Path $PSScriptRoot 'internal\Test-PythonModule.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-MissingDependency.ps1')
+. (Join-Path $PSScriptRoot 'internal\Invoke-Tesseract.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-TesseractLanguages.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-LanguageDownloadHint.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-PdfInputFile.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-FileSha256.ps1')
+. (Join-Path $PSScriptRoot 'internal\Optimize-WithGhostscript.ps1')
+. (Join-Path $PSScriptRoot 'internal\Invoke-PdfProcessing.ps1')
 
 $script:OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
@@ -198,39 +211,6 @@ $script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
     Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1')
 }
 else { @{} }
-
-<#
-.SYNOPSIS
-    Returns a localized console message.
-
-.DESCRIPTION
-    Uses the German message catalog when German output is selected; otherwise
-    returns the English source string. Formats the selected template when
-    formatting arguments are provided.
-
-.PARAMETER Text
-    English source message and lookup key.
-
-.PARAMETER Arguments
-    Optional values used to format placeholders in the message.
-
-.OUTPUTS
-    System.String. The localized and optionally formatted message.
-#>
-function Get-LocalizedText {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string] $Text,
-        [AllowEmptyCollection()][object[]] $Arguments = @()
-    )
-
-    $template = if ($script:OutputLanguage -eq 'de' -and $script:GermanMessages.ContainsKey($Text)) {
-        $script:GermanMessages[$Text]
-    }
-    else { $Text }
-    if ($Arguments.Count -gt 0) { return $template -f $Arguments }
-    return $template
-}
 
 # Default OCR language sequence: German, English, French, Italian, Spanish, and
 # Tesseract's optional equation recognition model.
@@ -243,795 +223,7 @@ $script:RequiredLanguages = @('deu', 'eng')
 # and place in the local tessdata folder.
 $script:TessdataUrl = 'https://github.com/tesseract-ocr/tessdata_best'
 
-# --- Helper functions ------------------------------------------------------
 
-<#
-.SYNOPSIS
-    Formats an argument for ProcessStartInfo.Arguments.
-
-.DESCRIPTION
-    Encloses an argument in quotation marks and escapes embedded quotation
-    marks and trailing backslashes for Windows PowerShell 5.1.
-
-.PARAMETER Value
-    Argument text to pass as a single process argument.
-
-.OUTPUTS
-    System.String. The correctly quoted argument.
-#>
-function ConvertTo-QuotedArgument {
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string] $Value)
-
-    # Double each backslash immediately before a quotation mark.
-    $escaped = [regex]::Replace($Value, '(\\)(?=")', '$1$1')
-    # Double any remaining trailing backslashes.
-    if ($escaped.EndsWith('\')) { $escaped = $escaped + '\' }
-    # Escape embedded quotation marks.
-    $escaped = $escaped -replace '"', '\"'
-    return '"' + $escaped + '"'
-}
-
-function Get-ExecutablePath {
-<#
-.SYNOPSIS
-    Gets the path to a program.
-
-.DESCRIPTION
-    Searches the current PATH and returns the path of the first matching command.
-
-.PARAMETER Name
-    Name of the executable command.
-
-.OUTPUTS
-    System.String, or $null if the command was not found.
-#>
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string] $Name)
-
-    $command = Get-Command -Name $Name -ErrorAction SilentlyContinue |
-        Select-Object -First 1
-    if ($null -eq $command) { return $null }
-    return $command.Source
-}
-
-function Test-PythonModule {
-<#
-.SYNOPSIS
-    Tests whether a Python module can be imported.
-
-.DESCRIPTION
-    Starts Python directly with redirected streams and checks the import exit code.
-
-.PARAMETER PythonPath
-    Path to the Python installation.
-
-.PARAMETER ModuleName
-    Name of the Python module to import.
-
-.OUTPUTS
-    System.Boolean. $true if the module was imported successfully.
-#>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string] $PythonPath,
-        [Parameter(Mandatory)][string] $ModuleName
-    )
-
-    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-    $startInfo.FileName = $PythonPath
-    $startInfo.Arguments = "-c `"import $ModuleName`""
-    $startInfo.UseShellExecute = $false
-    $startInfo.CreateNoWindow = $true
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-
-    $process = [System.Diagnostics.Process]::new()
-    $process.StartInfo = $startInfo
-    try {
-        if (-not $process.Start()) { return $false }
-        # Read both streams asynchronously to prevent pipe deadlocks.
-        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-        $stderrTask = $process.StandardError.ReadToEndAsync()
-        $process.WaitForExit()
-        $stdoutTask.GetAwaiter().GetResult() | Out-Null
-        $stderrTask.GetAwaiter().GetResult() | Out-Null
-        return ($process.ExitCode -eq 0)
-    }
-    catch { return $false }
-    finally { $process.Dispose() }
-}
-
-function Get-MissingDependency {
-<#
-.SYNOPSIS
-    Checks required and optional dependencies.
-
-.DESCRIPTION
-    Gets the selected Python interpreter, checks each required Python module,
-    and resolves other executables. Missing Ghostscript is reported as an
-    optional dependency and does not block processing.
-
-.PARAMETER NoGhostscript
-    Skips the Ghostscript lookup.
-
-.OUTPUTS
-    PSCustomObject with PythonPath, GhostscriptPath, Missing, and OptionalMissing.
-#>
-    [CmdletBinding()]
-    param([bool] $NoGhostscript = $false)
-
-    $missing = [System.Collections.Generic.List[string]]::new()
-    $optionalMissing = [System.Collections.Generic.List[string]]::new()
-    $pythonRuntime = Get-PdfPythonRuntime
-    $pythonPath = if ($pythonRuntime) { $pythonRuntime.Path } else { $null }
-    if (-not $pythonPath) { $missing.Add((Get-LocalizedText 'Python interpreter')) }
-    if (-not (Get-ExecutablePath -Name 'tesseract')) { $missing.Add('Tesseract') }
-
-    # Ghostscript is the optional optimization stage after OCRmyPDF.
-    $ghostscriptPath = $null
-    if (-not $NoGhostscript) {
-        $ghostscriptPath = Get-ExecutablePath -Name 'gswin64c'
-        if (-not $ghostscriptPath) { $ghostscriptPath = Get-ExecutablePath -Name 'gswin32c' }
-        if (-not $ghostscriptPath) { $ghostscriptPath = Get-ExecutablePath -Name 'gs' }
-        if (-not $ghostscriptPath) { $optionalMissing.Add((Get-LocalizedText 'Ghostscript (required only with -GhostscriptDpi)')) }
-    }
-
-    # pngquant is optional for OCRmyPDF optimization and must not block the run.
-    # jbig2 is intentionally not used; it is relevant only for monochrome images.
-    if ($pythonPath -and -not (Test-PythonModule -PythonPath $pythonPath -ModuleName 'ocrmypdf')) {
-        $missing.Add((Get-LocalizedText 'OCRmyPDF (Python module)'))
-    }
-    if ($pythonPath -and -not (Test-PythonModule -PythonPath $pythonPath -ModuleName 'pikepdf')) {
-        $missing.Add((Get-LocalizedText 'pikepdf (Python module)'))
-    }
-
-    [pscustomobject]@{
-        PythonPath      = $pythonPath
-        PythonScope     = if ($pythonRuntime) { $pythonRuntime.Scope } else { $null }
-        GhostscriptPath = $ghostscriptPath
-        Missing         = $missing
-        OptionalMissing = $optionalMissing
-    }
-}
-
-function Invoke-Tesseract {
-<#
-.SYNOPSIS
-    Runs Tesseract with the specified arguments.
-
-.DESCRIPTION
-    Starts Tesseract directly and reads redirected output streams asynchronously
-    so errors can be evaluated reliably and the pipes do not block.
-
-.PARAMETER TesseractPath
-    Path to the Tesseract executable.
-
-.PARAMETER Arguments
-    Argument string for Tesseract.
-
-.OUTPUTS
-    PSCustomObject with ExitCode, StdOut, and StdErr.
-#>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string] $TesseractPath,
-        [Parameter(Mandatory)][string] $Arguments
-    )
-
-    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-    $startInfo.FileName = $TesseractPath
-    $startInfo.Arguments = $Arguments
-    $startInfo.UseShellExecute = $false
-    $startInfo.CreateNoWindow = $true
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-
-    $process = [System.Diagnostics.Process]::new()
-    $process.StartInfo = $startInfo
-    try {
-        if (-not $process.Start()) { throw (Get-LocalizedText 'Tesseract could not be started.') }
-        # Read asynchronously so large output cannot block the pipe.
-        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-        $stderrTask = $process.StandardError.ReadToEndAsync()
-        $process.WaitForExit()
-        [pscustomobject]@{
-            ExitCode = $process.ExitCode
-            StdOut   = $stdoutTask.GetAwaiter().GetResult()
-            StdErr   = $stderrTask.GetAwaiter().GetResult()
-        }
-    }
-    finally { $process.Dispose() }
-}
-
-function Get-TesseractLanguages {
-<#
-.SYNOPSIS
-    Gets installed Tesseract languages and the tessdata folder.
-
-.DESCRIPTION
-    Runs `tesseract --list-langs` and reads available language codes and the
-    tessdata path from its output.
-
-.PARAMETER TesseractPath
-    Path to the Tesseract executable.
-
-.OUTPUTS
-    PSCustomObject with Languages and TessdataPath.
-#>
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string] $TesseractPath)
-
-    $result = Invoke-Tesseract -TesseractPath $TesseractPath -Arguments '--list-langs'
-    if ($result.ExitCode -ne 0) {
-        throw (Get-LocalizedText -Text 'Tesseract --list-langs failed: {0}' -Arguments @($result.StdErr))
-    }
-
-    # The header names the tessdata folder in quotation marks, for example:
-    # List of available languages in "C:\Program Files\Tesseract-OCR\tessdata" (5):
-    $tessdataPath = $null
-    if ($result.StdOut -match 'List of available languages in "([^"]+)"') {
-        $tessdataPath = $Matches[1]
-    }
-    if (-not $tessdataPath) {
-        # Fallback: tessdata is typically located next to tesseract.exe.
-        $tessdataPath = Join-Path -Path (Split-Path -Parent $TesseractPath) -ChildPath 'tessdata'
-    }
-
-    # Discard the header and retain only language codes.
-    $languages = @($result.StdOut -split '\r?\n' | ForEach-Object { $_.Trim() } |
-        Where-Object { $_ -and $_ -notmatch '^List of available languages' })
-
-    [pscustomobject]@{ Languages = $languages; TessdataPath = $tessdataPath }
-}
-
-function Show-LanguageDownloadHint {
-<#
-.SYNOPSIS
-    Displays a notice about missing Tesseract language data.
-
-.DESCRIPTION
-    Lists missing required languages, the download source, and the local
-    tessdata folder where the language files must be placed.
-
-.PARAMETER MissingLanguages
-    Codes of the missing required languages.
-
-.PARAMETER TessdataPath
-    Local folder for Tesseract language files.
-
-.OUTPUTS
-    No pipeline output. Displays the notice with Write-Host.
-#>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string[]] $MissingLanguages,
-        [Parameter(Mandatory)][string] $TessdataPath
-    )
-
-    Write-Host ''
-    Write-Host (Get-LocalizedText -Text 'Missing required language data: {0}.' -Arguments @(($MissingLanguages -join ', ')))
-    Write-Host (Get-LocalizedText -Text 'Download the required .traineddata files from {0}' -Arguments @($script:TessdataUrl))
-    Write-Host (Get-LocalizedText -Text 'and place them in the local tessdata folder: {0}' -Arguments @($TessdataPath))
-}
-
-function Get-PdfInputFile {
-<#
-.SYNOPSIS
-    Gets input PDF files from a path.
-
-.DESCRIPTION
-    Accepts a single PDF or PDFs from a folder. Folders are searched
-    recursively, excluding _orig backups. If no path is provided, it is
-    requested interactively.
-
-.PARAMETER Path
-    Optional path to a PDF file or folder.
-
-.OUTPUTS
-    System.IO.FileInfo[]. The PDF files to process.
-#>
-    [CmdletBinding()]
-    param([string] $Path)
-
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        Write-Host ''
-        Write-Host (Get-LocalizedText 'Available parameters:') -ForegroundColor Cyan
-        Write-Host (Get-LocalizedText '  -InputPath <path>       PDF file or folder; prompts if omitted.')
-        Write-Host (Get-LocalizedText '  -Language <languages>  OCR languages, e.g. deu+eng (default: deu+eng+fra+ita+spa+equ).')
-        Write-Host (Get-LocalizedText '  -JpegQuality <1-100>   JPEG quality (default: 75).')
-        Write-Host (Get-LocalizedText '  -GhostscriptDpi <DPI>  Optional Ghostscript resolution (default: disabled).')
-        Write-Host (Get-LocalizedText '  -NoDeskew              Disable deskewing (enabled by default).')
-        Write-Host (Get-LocalizedText '  -NoRotationOfPages     Disable rotation correction (enabled by default).')
-        Write-Host (Get-LocalizedText '  -ProcessDigitallyBornPdfs Process PDFs classified as digitally born (default: skip).')
-        Write-Host (Get-LocalizedText '  -NoGhostscript         Disable Ghostscript compression (allowed by default).')
-        Write-Host (Get-LocalizedText '  -ReplaceOriginal       Replace original without an _orig backup.')
-        Write-Host (Get-LocalizedText '  -ForceReprocess        Explicitly reprocess eligible PDFs.')
-        Write-Host (Get-LocalizedText '  -EnglishOutput         Force English console output.')
-        Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.') -ForegroundColor Yellow
-        $Path = Read-Host -Prompt (Get-LocalizedText 'Path to a PDF file or a folder containing PDFs')
-    }
-    if ([string]::IsNullOrWhiteSpace($Path)) { throw (Get-LocalizedText 'No path was entered.') }
-    $Path = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"'))
-    if (-not (Test-Path -LiteralPath $Path)) {
-        throw (Get-LocalizedText -Text 'Path not found: {0}' -Arguments @($Path))
-    }
-    $item = Get-Item -LiteralPath $Path
-    $script:InputDirectoryPath = if ($item.PSIsContainer) {
-        $item.FullName
-    }
-    else {
-        $item.DirectoryName
-    }
-    if ($item.PSIsContainer) {
-        # Do not process _orig backups again during recursive discovery.
-        return @(Get-ChildItem -LiteralPath $item.FullName -File -Filter '*.pdf' -Recurse |
-            Where-Object { $_.BaseName -notmatch '_orig$' })
-    }
-    if ($item.Extension -ine '.pdf') { throw (Get-LocalizedText 'The selected file does not have a .pdf extension.') }
-    return @($item)
-}
-
-function Get-FileSha256 {
-<#
-.SYNOPSIS
-    Calculates a file's SHA-256 hash.
-
-.DESCRIPTION
-    Reads the file and returns its hash as a hexadecimal string.
-
-.PARAMETER Path
-    Path to the file to check.
-
-.OUTPUTS
-    System.String. SHA-256 hash in hexadecimal format.
-#>
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string] $Path)
-
-    $sha256 = [System.Security.Cryptography.SHA256]::Create()
-    try {
-        $stream = [System.IO.File]::OpenRead($Path)
-        try {
-            $hashBytes = $sha256.ComputeHash($stream)
-            return [System.BitConverter]::ToString($hashBytes).Replace('-', '')
-        }
-        finally { $stream.Dispose() }
-    }
-    finally { $sha256.Dispose() }
-}
-
-<#
-.SYNOPSIS
-    Optimizes a PDF file with Ghostscript.
-
-.DESCRIPTION
-    Downsamples images at the specified resolution and JPEG quality. Replaces
-    the input file only if the result is smaller.
-
-.PARAMETER GhostscriptPath
-    Path to the Ghostscript executable.
-
-.PARAMETER Pdf
-    PDF file to optimize.
-
-.PARAMETER Dpi
-    Target resolution for downsampling.
-
-.OUTPUTS
-    System.Boolean. $true if the file was successfully reduced in size.
-#>
-function Optimize-WithGhostscript {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string] $GhostscriptPath,
-        [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
-        [Parameter(Mandatory)][int] $Dpi
-    )
-
-    $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.gs.pdf.part' -f [guid]::NewGuid().ToString('N'))
-    try {
-        # Explicit downsampling parameters guarantee the target resolution for
-        # color, grayscale, and monochrome images, embedded as JPEG.
-        # -dCompatibilityLevel=1.5 sets the output PDF version to 1.5.
-        $gsArgList = @(
-            '-dBATCH', '-dNOPAUSE', '-dQUIET',
-            '-sDEVICE=pdfwrite',
-            '-dDownsampleColorImages=true',
-            '-dDownsampleGrayImages=true',
-            '-dDownsampleMonoImages=true',
-            "-dColorImageResolution=$Dpi",
-            "-dGrayImageResolution=$Dpi",
-            "-dMonoImageResolution=$Dpi",
-            '-dColorImageFilter=/DCTEncode',
-            '-dGrayImageFilter=/DCTEncode',
-            '-dAutoFilterColorImages=false',
-            '-dAutoFilterGrayImages=false',
-            '-dColorConversionStrategy=/sRGB',
-            '-dColorConversionStrategyForImages=/sRGB',
-            '-dJPEGQ=75',
-            '-dCompatibilityLevel=1.5',
-            ('-sOutputFile={0}' -f $tempPath),
-            $Pdf.FullName
-        )
-        $argsString = ($gsArgList | ForEach-Object { ConvertTo-QuotedArgument -Value $_ }) -join ' '
-        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-        $startInfo.FileName = $GhostscriptPath
-        $startInfo.Arguments = $argsString
-        $startInfo.UseShellExecute = $false
-        $startInfo.CreateNoWindow = $true
-        $startInfo.RedirectStandardOutput = $true
-        $startInfo.RedirectStandardError = $true
-        $process = [System.Diagnostics.Process]::new()
-        $process.StartInfo = $startInfo
-        try {
-            if (-not $process.Start()) { return $false }
-            # Read streams asynchronously to prevent pipe deadlocks.
-            $process.StandardOutput.ReadToEndAsync() | Out-Null
-            $process.StandardError.ReadToEndAsync() | Out-Null
-            $process.WaitForExit()
-            if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) { return $false }
-        }
-        finally { $process.Dispose() }
-        $originalSize = $Pdf.Length
-        $optimizedSize = (Get-Item -LiteralPath $tempPath).Length
-        if ($optimizedSize -ge $originalSize) { return $false }
-        Remove-Item -LiteralPath $Pdf.FullName -Force
-        Move-Item -LiteralPath $tempPath -Destination $Pdf.FullName -Force
-        return $true
-    }
-    catch { return $false }
-    finally {
-        if (Test-Path -LiteralPath $tempPath) {
-            Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
-        }
-    }
-}
-
-# --- Main processing ------------------------------------------------------
-
-function Invoke-PdfProcessing {
-<#
-.SYNOPSIS
-    Processes and optimizes a single PDF file.
-
-.DESCRIPTION
-    Checks signatures and the text layer, runs OCRmyPDF, and optionally applies
-    Ghostscript optimization. Digitally born PDFs are skipped by default;
-    scanned     PDFs with existing OCR are automatically reprocessed so deskew and rotation
-    can run. Encrypted and digitally signed PDFs are skipped.
-    The result replaces the input; by default, the original is first saved as
-    _orig.pdf. --optimize 1 avoids the optional jbig2 dependency.
-
-.PARAMETER Pdf
-    Input PDF to process.
-
-.PARAMETER PythonPath
-    Path to the Python installation.
-
-.PARAMETER Language
-    Tesseract language codes joined with '+'.
-
-.PARAMETER Quality
-    JPEG quality for OCRmyPDF.
-
-.PARAMETER GhostscriptDpi
-    Target resolution for optional Ghostscript optimization. 0 disables it.
-
-.PARAMETER NoDeskew
-    Disables deskewing.
-
-.PARAMETER NoRotationOfPages
-    Disables detection and correction of rotated pages.
-
-.PARAMETER ProcessDigitallyBornPdfs
-    Processes PDFs classified as digitally born.
-
-.PARAMETER NoGhostscript
-    Disables Ghostscript.
-
-.PARAMETER ReplaceOriginal
-    Replaces the input without creating an _orig backup.
-
-.PARAMETER ForceReprocess
-    Explicitly reprocesses eligible PDFs. Scanned PDFs with existing text are
-    already reprocessed by default.
-
-.PARAMETER GhostscriptPath
-    Path to Ghostscript, if available.
-
-.OUTPUTS
-    PSCustomObject with success and skip status, file path, failure reason,
-    warning, and size values.
-#>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
-        [Parameter(Mandatory)][string] $PythonPath,
-        [Parameter(Mandatory)][string] $Language,
-        [Parameter(Mandatory)][int] $Quality,
-        [Parameter(Mandatory)][int] $GhostscriptDpi,
-        [Parameter(Mandatory)][bool] $NoDeskew,
-        [Parameter(Mandatory)][bool] $NoRotationOfPages,
-        [Parameter(Mandatory)][bool] $ProcessDigitallyBornPdfs,
-        [Parameter(Mandatory)][bool] $NoGhostscript,
-        [Parameter(Mandatory)][bool] $ReplaceOriginal,
-        [Parameter(Mandatory)][bool] $ForceReprocess,
-        [string] $GhostscriptPath
-    )
-
-    # Keep temporary files beside the input so replacement stays on the same volume.
-    $tempStem = '.{0}' -f [guid]::NewGuid().ToString('N')
-    $tempPath = Join-Path $Pdf.DirectoryName ($tempStem + '.pdf.part')
-    $originalPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
-    $replaceBackupPath = Join-Path $Pdf.DirectoryName ($tempStem + '.bak.part')
-    $signatureCheckPath = Join-Path $Pdf.DirectoryName ($tempStem + '.sig.py.part')
-    $backupWarning = $null
-    $failureReason = $null
-    $failureDetails = $null
-    try {
-        Write-Host (Get-LocalizedText -Text 'Processing: {0}' -Arguments @($Pdf.Name))
-        $signatureCheck = @'
-import sys
-import pikepdf
-
-TEXT_OPERATORS = {"Tj", "TJ", "'", '"'}
-
-def has_signature_value(value):
-    return value is not None and "/ByteRange" in value and "/Contents" in value
-
-def field_is_signed(field, inherited_type=None):
-    field_type = field.get("/FT", inherited_type)
-    if str(field_type) == "/Sig" and has_signature_value(field.get("/V")):
-        return True
-    return any(field_is_signed(child, field_type) for child in field.get("/Kids", []))
-
-def object_key(obj):
-    try:
-        object_number, generation = obj.objgen
-        if object_number:
-            return (object_number, generation)
-    except (AttributeError, TypeError):
-        pass
-    return id(obj)
-
-def inherited_resources(page):
-    node = page
-    while node is not None:
-        resources = node.get("/Resources")
-        if resources is not None:
-            return resources
-        node = node.get("/Parent")
-    return pikepdf.Dictionary()
-
-def inspect_stream(stream, resources, visited, features, render_mode=0):
-    key = object_key(stream)
-    if key in visited:
-        return
-    visited.add(key)
-    xobjects = resources.get("/XObject", {})
-    for operands, operator in pikepdf.parse_content_stream(stream):
-        operator_name = str(operator)
-        if operator_name == "Tr" and operands:
-            try:
-                render_mode = int(operands[0])
-            except (TypeError, ValueError):
-                pass
-        if operator_name in TEXT_OPERATORS:
-            features["has_text"] = True
-            if render_mode == 3:
-                features["has_hidden_text"] = True
-            else:
-                features["has_visible_text"] = True
-        if operator_name in ("INLINE IMAGE", "BI"):
-            features["has_image"] = True
-        if operator_name == "Do" and operands:
-            child = xobjects.get(operands[0])
-            if child is None:
-                continue
-            subtype = str(child.get("/Subtype"))
-            if subtype == "/Image":
-                features["has_image"] = True
-            elif subtype == "/Form":
-                child_resources = child.get("/Resources", resources)
-                inspect_stream(child, child_resources, visited, features, render_mode)
-
-try:
-    pdf = pikepdf.open(sys.argv[1])
-except pikepdf.PasswordError:
-    print("ENCRYPTED")
-    sys.exit(0)
-
-with pdf:
-    acro_form = pdf.Root.get("/AcroForm")
-    fields = acro_form.get("/Fields", []) if acro_form is not None else []
-    permissions = pdf.Root.get("/Perms")
-    permission_signatures = (
-        [permissions.get("/DocMDP"), permissions.get("/UR3")]
-        if permissions is not None else []
-    )
-    signed = any(field_is_signed(field) for field in fields)
-    signed = signed or any(has_signature_value(value) for value in permission_signatures)
-    page_features = []
-    for page in pdf.pages:
-        features = {
-            "has_text": False,
-            "has_visible_text": False,
-            "has_hidden_text": False,
-            "has_image": False,
-        }
-        inspect_stream(page, inherited_resources(page.obj), set(), features)
-        page_features.append(features)
-    text_pages = sum(features["has_text"] for features in page_features)
-    visible_text_pages = sum(features["has_visible_text"] for features in page_features)
-    scanned_pages = sum(
-        features["has_image"] and (
-            features["has_hidden_text"] or not features["has_visible_text"]
-        )
-        for features in page_features
-    )
-    print(
-        f"{'SIGNED' if signed else 'UNSIGNED'}\t{len(pdf.pages)}\t"
-        f"{text_pages}\t{visible_text_pages}\t{scanned_pages}"
-    )
-'@
-        [System.IO.File]::WriteAllText($signatureCheckPath, $signatureCheck, [System.Text.UTF8Encoding]::new($false))
-
-        # Keep the signature preflight separate; OCRmyPDF is launched directly below
-        # so its native progress display remains visible in the terminal.
-        $previousErrorActionPreference = $ErrorActionPreference
-        try {
-            $ErrorActionPreference = 'Continue'
-            $signatureCheckOutput = @(& $PythonPath $signatureCheckPath $Pdf.FullName 2>&1)
-            $signatureCheckExitCode = $LASTEXITCODE
-        }
-        finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
-        if ($signatureCheckExitCode -ne 0) {
-            $checkDetails = ($signatureCheckOutput | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
-            throw (Get-LocalizedText -Text 'Signature and text-layer check failed (exit code {0}): {1}' -Arguments @($signatureCheckExitCode, $checkDetails))
-        }
-        $signatureStatus = ($signatureCheckOutput | ForEach-Object { $_.ToString() }) -join ''
-        if ($signatureStatus.Trim() -eq 'ENCRYPTED') {
-            $failureReason = Get-LocalizedText 'Encrypted (password required)'
-            Write-Warning (Get-LocalizedText -Text "Skipped: '{0}'`nThe PDF is encrypted and cannot be processed without a password." -Arguments @($Pdf.Name))
-            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
-        }
-        $signatureValues = $signatureStatus.Trim() -split "`t"
-        if (
-            $signatureValues.Count -ne 5 -or
-            $signatureValues[0] -notin @('SIGNED', 'UNSIGNED') -or
-            $signatureValues[1] -notmatch '^\d+$' -or
-            $signatureValues[2] -notmatch '^\d+$' -or
-            $signatureValues[3] -notmatch '^\d+$' -or
-            $signatureValues[4] -notmatch '^\d+$'
-        ) {
-            throw (Get-LocalizedText -Text "Signature and text-layer check returned an invalid result: '{0}'" -Arguments @($signatureStatus))
-        }
-        $signatureStatus = $signatureValues[0]
-        $pageCount = [int]$signatureValues[1]
-        $textPageCount = [int]$signatureValues[2]
-        $visibleTextPageCount = [int]$signatureValues[3]
-        $scannedPageCount = [int]$signatureValues[4]
-        if ($pageCount -eq 0) {
-            throw (Get-LocalizedText 'The PDF file contains no pages.')
-        }
-        $isDigitallyBorn = $visibleTextPageCount -gt 0 -and $scannedPageCount -eq 0
-        if ($signatureStatus -eq 'SIGNED') {
-            $failureReason = Get-LocalizedText 'Digitally signed PDF'
-            $failureDetails = Get-LocalizedText 'The input PDF has a digital signature. OCR would alter the document and invalidate the signature.'
-            Write-Warning (Get-LocalizedText -Text "Skipped: '{0}'`n{1}" -Arguments @($Pdf.Name, $failureDetails))
-            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
-        }
-
-        if ($isDigitallyBorn -and -not $ProcessDigitallyBornPdfs) {
-            $failureReason = Get-LocalizedText 'Digitally born PDF; skipped by default'
-            Write-Host (Get-LocalizedText 'This PDF appears digitally born; skipping it. Use -ProcessDigitallyBornPdfs to process it.') -ForegroundColor Green
-            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
-        }
-
-        if (-not $ReplaceOriginal -and (Test-Path -LiteralPath $originalPath)) {
-            $relativeOriginalPath = $originalPath.Substring($Pdf.DirectoryName.Length + 1)
-            $backupWarning = Get-LocalizedText 'Backup already exists'
-            Write-Warning (Get-LocalizedText -Text "Backup '{0}' already exists and will be preserved; replacing the PDF directly." -Arguments @($relativeOriginalPath))
-        }
-
-        $rebuildOcr = $textPageCount -gt 0 -and (-not $isDigitallyBorn -or $ForceReprocess)
-        if ($rebuildOcr) {
-            Write-Host (Get-LocalizedText 'Existing OCR text will be rebuilt so deskew and rotation correction can run; repeated runs may change the PDF again.') -ForegroundColor Yellow
-        }
-
-        $ocrArguments = @(
-            '-m', 'ocrmypdf',
-            '--output-type', 'pdf',
-            '--optimize', '1',
-            '--jpeg-quality', "$Quality",
-            '--language', $Language
-        )
-        if ($rebuildOcr) {
-            $ocrArguments += '--force-ocr'
-        }
-        else {
-            $ocrArguments += '--skip-text'
-        }
-        if (-not $NoDeskew) { $ocrArguments += '--deskew' }
-        if (-not $NoRotationOfPages) { $ocrArguments += @('--rotate-pages', '--rotate-pages-threshold', '5') }
-        $ocrArguments += @($Pdf.FullName, $tempPath)
-
-        # Do not redirect streams: preserve OCRmyPDF's native console output and progress display.
-        $previousErrorActionPreference = $ErrorActionPreference
-        try {
-            $ErrorActionPreference = 'Continue'
-            & $PythonPath @ocrArguments
-            $ocrExitCode = $LASTEXITCODE
-        }
-        finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
-        if ($ocrExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
-            $failureReason = Get-LocalizedText -Text 'OCRmyPDF error (exit code {0})' -Arguments @($ocrExitCode)
-            $failureDetails = Get-LocalizedText -Text '{0}. See the OCRmyPDF console output for details.' -Arguments @($failureReason)
-            throw $failureDetails
-        }
-
-        # Run Ghostscript only when a target resolution is specified and the
-        # executable is available. Accept its result only when it is smaller.
-        if (-not $NoGhostscript -and $GhostscriptDpi -gt 0 -and $GhostscriptPath) {
-            $gsResult = Get-Item -LiteralPath $tempPath
-            Optimize-WithGhostscript -GhostscriptPath $GhostscriptPath -Pdf $gsResult -Dpi $GhostscriptDpi | Out-Null
-        }
-
-        $originalSize = (Get-Item -LiteralPath $Pdf.FullName).Length
-        $resultSize = (Get-Item -LiteralPath $tempPath).Length
-
-        # An identical hash means no change occurred and the run failed.
-        # A larger but changed result is still a successful transformation.
-        $originalHash = Get-FileSha256 -Path $Pdf.FullName
-        $resultHash = Get-FileSha256 -Path $tempPath
-        if ($originalHash -eq $resultHash) {
-            Write-Host (Get-LocalizedText 'The result is identical to the original (no changes); discarding the output.') -ForegroundColor Yellow
-            return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = (Get-LocalizedText 'No changes'); Warning = $backupWarning; OriginalBytes = [long]$originalSize; ResultBytes = [long]0 }
-        }
-
-        # Replace the input only after successful processing and hash validation.
-        if (-not $ReplaceOriginal -and -not (Test-Path -LiteralPath $originalPath)) {
-            [System.IO.File]::Replace($tempPath, $Pdf.FullName, $originalPath)
-            Write-Host (Get-LocalizedText -Text 'Original backed up: {0}' -Arguments @($originalPath))
-        }
-        else {
-            [System.IO.File]::Replace($tempPath, $Pdf.FullName, $replaceBackupPath)
-        }
-        if ($resultSize -lt $originalSize) {
-            Write-Host (Get-LocalizedText -Text 'Optimized: {0:N1} MB -> {1:N1} MB' -Arguments @(($originalSize / 1MB), ($resultSize / 1MB))) -ForegroundColor Green
-        }
-        else {
-            Write-Host (Get-LocalizedText -Text 'Processed (larger than original): {0:N1} MB -> {1:N1} MB' -Arguments @(($originalSize / 1MB), ($resultSize / 1MB))) -ForegroundColor Cyan
-        }
-        Write-Host (Get-LocalizedText -Text 'Saved: {0}' -Arguments @($Pdf.FullName))
-        return [pscustomobject]@{ Success = $true; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $null; Warning = $backupWarning; OriginalBytes = [long]$originalSize; ResultBytes = [long]$resultSize }
-    }
-    catch {
-        if (-not $failureDetails) { $failureDetails = $_.Exception.Message }
-        Write-Warning (Get-LocalizedText -Text "Error processing '{0}':`n{1}" -Arguments @($Pdf.Name, $failureDetails))
-        if (-not $failureReason) {
-            $failureReason = $failureDetails -split '[\r\n]' | Select-Object -First 1
-        }
-        return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $backupWarning; OriginalBytes = [long]0; ResultBytes = [long]0 }
-    }
-    finally {
-        # Always remove temporary files, including after failures.
-        if (Test-Path -LiteralPath $tempPath) {
-            Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
-        }
-        if (Test-Path -LiteralPath $replaceBackupPath) {
-            Remove-Item -LiteralPath $replaceBackupPath -Force -ErrorAction SilentlyContinue
-        }
-        if (Test-Path -LiteralPath $signatureCheckPath) {
-            Remove-Item -LiteralPath $signatureCheckPath -Force -ErrorAction SilentlyContinue
-        }
-    }
-}
 
 # --- Main program ---------------------------------------------------------
 
@@ -1062,7 +254,11 @@ Write-Host ''
 
 # Check required programs and modules before processing so all installation
 # instructions can be shown together.
-$dependencyCheck = Get-MissingDependency -NoGhostscript $NoGhostscript.IsPresent
+$pythonRuntime = Get-PdfPythonRuntime
+$ghostscriptPath = if (-not $NoGhostscript.IsPresent) { Get-GhostscriptExecutablePath }
+$dependencyCheck = Get-MissingDependency -PythonRuntime $pythonRuntime `
+    -TesseractPath (Get-ExecutablePath -Name 'tesseract') -GhostscriptPath $ghostscriptPath `
+    -NoGhostscript $NoGhostscript.IsPresent -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
 if ($dependencyCheck.Missing.Count -gt 0) {
     Write-Host "`n$(Get-LocalizedText 'Missing dependencies:')" -ForegroundColor Yellow
     $dependencyCheck.Missing | ForEach-Object { Write-Host "  - $_" }
@@ -1080,7 +276,7 @@ if ($dependencyCheck.OptionalMissing.Count -gt 0) {
 # --- Get Tesseract languages and tessdata folder --------------------------
 $tesseractPath = Get-ExecutablePath -Name 'tesseract'
 try {
-    $tesseractInfo = Get-TesseractLanguages -TesseractPath $tesseractPath
+    $tesseractInfo = Get-TesseractLanguages -TesseractPath $tesseractPath -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
 }
 catch {
     Write-Error (Get-LocalizedText -Text 'Could not get Tesseract languages. Check "tesseract --list-langs": {0}' -Arguments @($_.Exception.Message))
@@ -1089,13 +285,36 @@ catch {
 $installedLanguages = @($tesseractInfo.Languages)
 
 # --- Discover input files --------------------------------------------------
-try { $pdfFiles = @(Get-PdfInputFile -Path $InputPath) }
+# Interactive help is shown only when no path was passed on the command line.
+try {
+    $selectedPath = $InputPath
+    if ([string]::IsNullOrWhiteSpace($selectedPath)) {
+        Write-Host ''
+        Write-Host (Get-LocalizedText 'Available parameters:') -ForegroundColor Cyan
+        Write-Host (Get-LocalizedText '  -InputPath <path>       PDF file or folder; prompts if omitted.')
+        Write-Host (Get-LocalizedText '  -Language <languages>  OCR languages, e.g. deu+eng (default: deu+eng+fra+ita+spa+equ).')
+        Write-Host (Get-LocalizedText '  -JpegQuality <1-100>   JPEG quality (default: 75).')
+        Write-Host (Get-LocalizedText '  -GhostscriptDpi <DPI>  Optional Ghostscript resolution (default: disabled).')
+        Write-Host (Get-LocalizedText '  -NoDeskew              Disable deskewing (enabled by default).')
+        Write-Host (Get-LocalizedText '  -NoRotationOfPages     Disable rotation correction (enabled by default).')
+        Write-Host (Get-LocalizedText '  -ProcessDigitallyBornPdfs Process PDFs classified as digitally born (default: skip).')
+        Write-Host (Get-LocalizedText '  -NoGhostscript         Disable Ghostscript compression (allowed by default).')
+        Write-Host (Get-LocalizedText '  -ReplaceOriginal       Replace original without an _orig backup.')
+        Write-Host (Get-LocalizedText '  -ForceReprocess        Explicitly reprocess eligible PDFs.')
+        Write-Host (Get-LocalizedText '  -EnglishOutput         Force English console output.')
+        Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.') -ForegroundColor Yellow
+        $selectedPath = Read-Host -Prompt (Get-LocalizedText 'Path to a PDF file or a folder containing PDFs')
+    }
+    $inputSelection = Get-PdfInputFile -Path $selectedPath -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
+}
 catch { Write-Error $_.Exception.Message; exit 1 }
+$pdfFiles = @($inputSelection.Files)
 if ($pdfFiles.Count -eq 0) { Write-Host (Get-LocalizedText 'No PDFs found.'); exit 0 }
-$summaryPathSegments = @($script:InputDirectoryPath.TrimEnd('\') -split '[\\/]' | Where-Object { $_ })
+$inputBasePath = $inputSelection.BasePath
+$summaryPathSegments = @($inputBasePath.TrimEnd('\') -split '[\\/]' | Where-Object { $_ })
 $summaryPathTail = @($summaryPathSegments | Select-Object -Last 3)
 $summaryPath = '.\' + ($summaryPathTail -join '\') + '\'
-$basePathPrefix = $script:InputDirectoryPath
+$basePathPrefix = $inputBasePath
 if (-not $basePathPrefix.EndsWith([string][System.IO.Path]::DirectorySeparatorChar)) {
     $basePathPrefix += [System.IO.Path]::DirectorySeparatorChar
 }
@@ -1117,7 +336,10 @@ $requestedLanguages = @($languageSelection -split '\+' | ForEach-Object { $_.Tri
 # Stop and show the download instructions if a required language is missing.
 $missingRequired = @($requestedLanguages | Where-Object { $script:RequiredLanguages -contains $_ -and $installedLanguages -notcontains $_ })
 if ($missingRequired.Count -gt 0) {
-    Show-LanguageDownloadHint -MissingLanguages $missingRequired -TessdataPath $tesseractInfo.TessdataPath
+    Write-Host ''
+    Get-LanguageDownloadHint -MissingLanguages $missingRequired -TessdataPath $tesseractInfo.TessdataPath `
+        -TessdataUrl $script:TessdataUrl -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages |
+        ForEach-Object { Write-Host $_ }
     exit 1
 }
 
@@ -1155,6 +377,14 @@ if ($ForceReprocess) {
 Write-Host (Get-LocalizedText 'Output format: standard PDF (version 1.5)')
 
 # --- Process PDFs ---------------------------------------------------------
+# Routes the processing messages to the console: warnings through Write-Warning,
+# everything else through Write-Host with the optional color.
+$reporter = {
+    param($Kind, $Color, $Text)
+    if ($Kind -eq 'Warning') { Write-Warning $Text; return }
+    if ($Color) { Write-Host $Text -ForegroundColor $Color }
+    else { Write-Host $Text }
+}
 $results = @()
 for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
     $pdf = $pdfFiles[$i]
@@ -1166,7 +396,8 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
         -ProcessDigitallyBornPdfs $ProcessDigitallyBornPdfs.IsPresent `
         -NoGhostscript $NoGhostscript.IsPresent -ReplaceOriginal $ReplaceOriginal.IsPresent `
         -ForceReprocess $ForceReprocess.IsPresent `
-        -GhostscriptPath $dependencyCheck.GhostscriptPath
+        -GhostscriptPath $dependencyCheck.GhostscriptPath `
+        -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages -Reporter $reporter
     if ($null -ne $r) { $results += $r }
 }
 

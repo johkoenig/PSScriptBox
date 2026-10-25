@@ -47,6 +47,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-EligibleOriginalPdf.ps1')
+
 $script:OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 ) { 'en' } else { 'de' }
@@ -54,39 +57,6 @@ $script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
     Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1')
 }
 else { @{} }
-
-<#
-.SYNOPSIS
-    Returns a localized console message.
-
-.DESCRIPTION
-    Uses the German message catalog when German output is selected; otherwise
-    returns the English source string. Formats the selected template when
-    formatting arguments are provided.
-
-.PARAMETER Text
-    English source message and lookup key.
-
-.PARAMETER Arguments
-    Optional values used to format placeholders in the message.
-
-.OUTPUTS
-    System.String. The localized and optionally formatted message.
-#>
-function Get-LocalizedText {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string] $Text,
-        [AllowEmptyCollection()][object[]] $Arguments = @()
-    )
-
-    $template = if ($script:OutputLanguage -eq 'de' -and $script:GermanMessages.ContainsKey($Text)) {
-        $script:GermanMessages[$Text]
-    }
-    else { $Text }
-    if ($Arguments.Count -gt 0) { return $template -f $Arguments }
-    return $template
-}
 
 $headerLines = @(
     '       .-------------------------------------------.'
@@ -127,18 +97,7 @@ if (-not $basePathPrefix.EndsWith([string][System.IO.Path]::DirectorySeparatorCh
 $pathSegments = @($directory.FullName.TrimEnd('\') -split '[\\/]' | Where-Object { $_ })
 $pathTail = @($pathSegments | Select-Object -Last 3)
 $summaryPath = if ($pathTail.Count -gt 0) { '.\' + ($pathTail -join '\') + '\' } else { '.\' }
-$originalFiles = @(Get-ChildItem -LiteralPath $directory.FullName -File -Recurse -Force |
-    Where-Object { $_.Extension -ieq '.pdf' -and $_.BaseName -match '_orig$' })
-
-$eligibleFiles = @(
-    foreach ($originalFile in $originalFiles) {
-        $processedBaseName = $originalFile.BaseName -replace '_orig$', ''
-        $processedPath = Join-Path -Path $originalFile.DirectoryName -ChildPath ($processedBaseName + $originalFile.Extension)
-        if (Test-Path -LiteralPath $processedPath -PathType Leaf) {
-            $originalFile
-        }
-    }
-)
+$eligibleFiles = @(Get-EligibleOriginalPdf -RootPath $directory.FullName)
 $eligibleCount = $eligibleFiles.Count
 $deletedCount = 0
 

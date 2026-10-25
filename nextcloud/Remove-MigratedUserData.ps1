@@ -70,249 +70,12 @@ $script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
     Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1')
 }
 else { @{} }
-$script:ExcludedNames = @(
-    '$RECYCLE.BIN',
-    'desktop.ini',
-    'Thumbs.db',
-    'System Volume Information'
-)
-
-<#
-.SYNOPSIS
-    Returns a localized console message.
-
-.DESCRIPTION
-    Selects German text when German output is active and otherwise uses the
-    English source message. Formats the selected text when arguments are given.
-
-.PARAMETER Text
-    English source message and localization key.
-
-.PARAMETER Arguments
-    Values for formatting placeholders in the message.
-
-.OUTPUTS
-    System.String. The localized and optionally formatted message.
-#>
-function Get-LocalizedText {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string] $Text,
-        [AllowEmptyCollection()][object[]] $Arguments = @()
-    )
-
-    $template = if ($script:OutputLanguage -eq 'de' -and $script:GermanMessages.ContainsKey($Text)) {
-        $script:GermanMessages[$Text]
-    }
-    else { $Text }
-    if ($Arguments.Count -gt 0) { return $template -f $Arguments }
-    return $template
-}
-
-<#
-.SYNOPSIS
-    Resolves selected Windows special user folders.
-
-.DESCRIPTION
-    Uses Windows-known folder locations so redirected folders and localized
-    profile layouts are discovered from the current user's operating system.
-
-.PARAMETER Names
-    Special user folder names requested for inspection.
-
-.OUTPUTS
-    PSCustomObject[] with source Name, SourcePath, and target TargetName.
-#>
-function Get-UserFolders {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string[]] $Names
-    )
-
-    $specialFolderNames = @{
-        Desktop   = 'DesktopDirectory'
-        Documents = 'MyDocuments'
-        Pictures  = 'MyPictures'
-        Music     = 'MyMusic'
-        Videos    = 'MyVideos'
-    }
-    foreach ($name in $Names) {
-        $specialFolder = [System.Enum]::Parse([System.Environment+SpecialFolder], $specialFolderNames[$name])
-        $sourcePath = [Environment]::GetFolderPath($specialFolder)
-        if ([string]::IsNullOrWhiteSpace($sourcePath) -or
-            -not (Test-Path -LiteralPath $sourcePath -PathType Container)) {
-            Write-Warning (Get-LocalizedText -Text 'The Windows folder could not be found and will be skipped: {0}' -Arguments @($name))
-            continue
-        }
-        [pscustomobject]@{
-            Name       = $name
-            SourcePath = [System.IO.Path]::GetFullPath($sourcePath)
-            TargetName = if ($name -eq 'Pictures') { 'Photos' } else { $name }
-        }
-    }
-}
-
-<#
-.SYNOPSIS
-    Inventories files beneath a folder.
-
-.DESCRIPTION
-    Produces a relative-path inventory while excluding configured system
-    artifacts and links (symbolic links, junctions). Nextcloud virtual files
-    and folders are reparse points without a link type; they are included, so
-    their content can be hashed. Enumeration errors terminate the inventory.
-
-.PARAMETER Path
-    Existing folder to inventory.
-
-.OUTPUTS
-    PSCustomObject with Files, Directories, ReparsePoints, and TotalBytes.
-#>
-function Get-FolderInventory {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string] $Path
-    )
-
-    $root = [System.IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
-    $prefix = $root + [System.IO.Path]::DirectorySeparatorChar
-    $files = [System.Collections.Generic.List[object]]::new()
-    $directories = [System.Collections.Generic.List[string]]::new()
-    $reparsePoints = [System.Collections.Generic.List[object]]::new()
-    $totalBytes = [long]0
-    $pendingDirectories = [System.Collections.Generic.Stack[string]]::new()
-    $pendingDirectories.Push($root)
-    while ($pendingDirectories.Count -gt 0) {
-        $currentDirectory = $pendingDirectories.Pop()
-        foreach ($item in Get-ChildItem -LiteralPath $currentDirectory -Force -ErrorAction Stop) {
-            if ($script:ExcludedNames -contains $item.Name) { continue }
-            $relativePath = $item.FullName.Substring($prefix.Length)
-            # Skip links to avoid leaving the tree or looping; placeholders have no LinkType.
-            if (-not [string]::IsNullOrEmpty([string]$item.LinkType)) {
-                $reparsePoints.Add([pscustomobject]@{
-                    RelativePath = $relativePath
-                    IsDirectory  = [bool]$item.PSIsContainer
-                })
-                continue
-            }
-            if ($item.PSIsContainer) {
-                $directories.Add($relativePath)
-                $pendingDirectories.Push($item.FullName)
-            }
-            else {
-                $files.Add([pscustomobject]@{
-                    RelativePath = $relativePath
-                    Length       = [long]$item.Length
-                })
-                $totalBytes += [long]$item.Length
-            }
-        }
-    }
-    [pscustomobject]@{
-        Files         = @($files.ToArray())
-        Directories   = @($directories.ToArray())
-        ReparsePoints = @($reparsePoints.ToArray())
-        TotalBytes    = $totalBytes
-    }
-}
-
-<#
-.SYNOPSIS
-    Computes the SHA-256 hash of a file.
-
-.DESCRIPTION
-    Reads the file through a .NET stream instead of Get-FileHash. Get-FileHash
-    returns no Hash property under -WhatIf in Windows PowerShell 5.1, so
-    previews could not compare contents. Hashing is read-only and runs in
-    previews as well.
-
-.PARAMETER Path
-    Existing file to hash.
-
-.OUTPUTS
-    System.String. The uppercase hexadecimal SHA-256 hash, matching Get-FileHash.
-#>
-function Get-FileSha256 {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string] $Path
-    )
-
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    $sha256 = [System.Security.Cryptography.SHA256]::Create()
-    $stream = [System.IO.File]::OpenRead($fullPath)
-    try {
-        return ([System.BitConverter]::ToString($sha256.ComputeHash($stream)) -replace '-', '')
-    }
-    finally {
-        $stream.Dispose()
-        $sha256.Dispose()
-    }
-}
-
-<#
-.SYNOPSIS
-    Removes empty local subfolders with an existing Nextcloud counterpart.
-
-.DESCRIPTION
-    Checks subfolders in descending path length so nested empty folders are
-    removed first. Links are not traversed, and non-empty folders are never
-    deleted recursively.
-
-.PARAMETER SourcePath
-    Local main folder.
-
-.PARAMETER DestinationPath
-    Corresponding Nextcloud main folder.
-
-.PARAMETER RelativeDirectories
-    Relative paths of subfolders found in both inventories.
-
-.OUTPUTS
-    PSCustomObject with the deleted-folder count and failed paths.
-#>
-function Remove-EmptyMatchingDirectories {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string] $SourcePath,
-        [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string] $DestinationPath,
-        [Parameter(Mandatory)][AllowEmptyCollection()][string[]] $RelativeDirectories
-    )
-
-    $deletedCount = 0
-    $failedDirectories = [System.Collections.Generic.List[string]]::new()
-    foreach ($relativeDirectory in ($RelativeDirectories | Sort-Object { $_.Length } -Descending)) {
-        $sourceDirectoryPath = Join-Path $SourcePath $relativeDirectory
-        $destinationDirectoryPath = Join-Path $DestinationPath $relativeDirectory
-        try {
-            if (-not (Test-Path -LiteralPath $sourceDirectoryPath -PathType Container) -or
-                -not (Test-Path -LiteralPath $destinationDirectoryPath -PathType Container)) {
-                continue
-            }
-            $sourceDirectory = Get-Item -LiteralPath $sourceDirectoryPath -Force -ErrorAction Stop
-            $destinationDirectory = Get-Item -LiteralPath $destinationDirectoryPath -Force -ErrorAction Stop
-            if (-not [string]::IsNullOrEmpty([string]$sourceDirectory.LinkType) -or
-                -not [string]::IsNullOrEmpty([string]$destinationDirectory.LinkType)) {
-                continue
-            }
-            $entries = [System.IO.Directory]::GetFileSystemEntries($sourceDirectoryPath)
-            if ($entries.Length -eq 0) {
-                Remove-Item -LiteralPath $sourceDirectoryPath -Force -ErrorAction Stop
-                $deletedCount++
-            }
-        }
-        catch {
-            $failedDirectories.Add($relativeDirectory)
-            Write-Warning (Get-LocalizedText -Text 'Could not delete local folder ''{0}'': {1}' -Arguments @(
-                $relativeDirectory, $_.Exception.Message
-            ))
-        }
-    }
-    [pscustomobject]@{
-        DeletedCount = $deletedCount
-        FailedDirectories = @($failedDirectories.ToArray())
-    }
-}
+. (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-UserSpecialFolderPaths.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-UserFolders.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-FolderInventory.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-FileSha256.ps1')
+. (Join-Path $PSScriptRoot 'internal\Remove-EmptyMatchingDirectories.ps1')
 
 # --- Banner ---------------------------------------------------------------
 $headerLines = @(
@@ -355,7 +118,7 @@ try {
         throw (Get-LocalizedText -Text 'Nextcloud destination does not exist: {0}' -Arguments @($nextcloudFullPath))
     }
 
-    $userFolders = @(Get-UserFolders -Names @($Folders | Select-Object -Unique))
+    $userFolders = @(Get-UserFolders -Names @($Folders | Select-Object -Unique) -FolderPaths (Get-UserSpecialFolderPaths))
     if ($userFolders.Count -eq 0) {
         Write-Warning (Get-LocalizedText 'No selected Windows user folders were found.')
         return
@@ -550,6 +313,11 @@ try {
             -RelativeDirectories $plan.MatchingDirectories
         $deletedDirectories = $directoryResult.DeletedCount
         $failedDirectories = $directoryResult.FailedDirectories
+        foreach ($failedDirectory in $failedDirectories) {
+            Write-Warning (Get-LocalizedText -Text 'Could not delete local folder ''{0}'': {1}' -Arguments @(
+                $failedDirectory.RelativePath, $failedDirectory.Message
+            ))
+        }
         $results.Add([pscustomobject]@{
             Name = $plan.Folder.Name
             Status = if ($failedFiles.Count -gt 0 -or $failedDirectories.Count -gt 0) { 'Failed' } else { 'Success' }

@@ -1,5 +1,7 @@
 # PDF PowerShell tools
 
+> Deutsche Version: [README.de.md](README.de.md)
+
 This folder contains PowerShell utilities for preparing and processing PDF files. Use Windows PowerShell 5.1 or PowerShell 7 from a regular user session unless a script explicitly requests elevation.
 
 ## Quick start
@@ -133,9 +135,3 @@ Scripts also support PowerShell common parameters where applicable, including `-
 - Do not use these tools on files that must remain byte-identical, such as digitally signed PDFs.
 - The project is licensed under the [MIT License](../LICENSE.md).
 - Contribution guidance is in [CONTRIBUTING.md](../CONTRIBUTING.md).
-
-## Related documentation
-
-- Repository overview (English): [../README.md](../README.md)
-- Repository overview (German): [../README.de.md](../README.de.md)
-- PDF tools (German): [README.de.md](README.de.md)

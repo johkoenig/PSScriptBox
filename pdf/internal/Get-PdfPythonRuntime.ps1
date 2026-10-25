@@ -106,7 +106,14 @@ function Invoke-PdfPythonProbe {
 #>
 function Get-PdfPythonRuntime {
     [CmdletBinding()]
-    param([string] $PreferredPath)
+    param(
+        [string] $PreferredPath,
+        [string[]] $UserRoots = @(
+            [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile),
+            [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData),
+            [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
+        )
+    )
 
     $candidates = [System.Collections.Generic.List[object]]::new()
     if ($PreferredPath) {
@@ -161,12 +168,7 @@ function Get-PdfPythonRuntime {
         if (-not $resolvedPath -or -not (Test-Path -LiteralPath $resolvedPath -PathType Leaf)) { continue }
 
         $scope = 'Machine'
-        $userRoots = @(
-            [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile),
-            [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData),
-            [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
-        ) | Where-Object { $_ }
-        foreach ($root in $userRoots) {
+        foreach ($root in @($UserRoots | Where-Object { $_ })) {
             $normalizedRoot = [System.IO.Path]::GetFullPath($root).TrimEnd('\') + '\'
             $normalizedPath = [System.IO.Path]::GetFullPath($resolvedPath)
             if ($normalizedPath.StartsWith($normalizedRoot, [System.StringComparison]::OrdinalIgnoreCase)) {

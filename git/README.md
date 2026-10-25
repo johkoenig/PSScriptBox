@@ -1,23 +1,34 @@
 # Git configuration tool
 
+> Deutsche Version: [README.de.md](README.de.md)
+
 `Initialize-GitConfiguration.ps1` initializes the Git author identity (and optionally common standard settings) in a repository's local `.git/config` or in the user's global configuration. It never stores a name or email in the script and does not overwrite existing values in the target scope.
 
-## Usage
+## Quick start
 
-Run it from inside a Git repository:
+1. Change into a directory inside the Git repository you want to configure.
+2. Run the script:
 
 ```powershell
 .\Initialize-GitConfiguration.ps1
 ```
 
-For each identity value, the script shows a numbered list of discovered choices plus a custom entry. An existing Git setting is listed first, so pressing Enter (default: choice 1) keeps it:
+3. For each identity value, the script shows a numbered list of discovered choices plus a custom entry. An existing Git setting is listed first, so pressing Enter (default: choice 1) keeps it:
 
 - **Name:** existing Git settings (local, global, system), the Active Directory or Windows display name, or a custom value.
 - **Email:** existing Git settings, the Active Directory `mail` attribute (domain-joined computers), the user principal name (Active Directory / Entra ID), the signed-in Microsoft account, or a custom value.
 
+## Dependency setup
+
 Git must be installed and available on `PATH`. No administrator privileges are needed. Directory lookups time out quickly and are skipped when no directory is reachable.
 
-| Parameter | Description |
+## Scripts and switches
+
+### `Initialize-GitConfiguration.ps1`
+
+The script runs interactively by default. The switches below skip the prompts or change the target scope.
+
+| Parameter / switch | Description |
 | --- | --- |
 | `-RepositoryPath <path>` | Directory inside the repository (Local scope). Defaults to the current directory. |
 | `-Scope <Local\|Global>` | Where to write the settings. Defaults to `Local`; `Global` applies to all repositories of the current user. |
@@ -34,7 +45,7 @@ Examples:
 .\Initialize-GitConfiguration.ps1 -EnglishOutput
 ```
 
-## Recommended settings
+#### Recommended settings
 
 | Setting | Value | Purpose |
 | --- | --- | --- |
@@ -49,6 +60,13 @@ Examples:
 
 Before each prompt the script prints a detailed explanation of the setting and shows the recommendation when your current value differs. The table above summarizes them. Existing values are never changed without your input: each setting is confirmed individually. Pressing Enter accepts the default (the value already set in the target scope, otherwise the recommendation), typing one of the listed values (shown one per line as `[value] explanation`) selects it, free-form settings (`init.defaultBranch`, `alias.cs`) also accept any other text, and `-` leaves the setting untouched. The operation is idempotent: pressing Enter throughout changes nothing on a repeated run.
 
-The script supports PowerShell common parameters, including `-Verbose`, `-Debug`, and `-ErrorAction`. Commit emails are visible in the history; choose a public or no-reply address for public repositories.
+## Shared PowerShell parameters
 
-See [Contributing](../CONTRIBUTING.md) and the [MIT License](../LICENSE.md).
+The script supports the common parameters `-Verbose`, `-Debug`, `-ErrorAction` and `-WarningAction`. It does not implement `-WhatIf` or `-Confirm`.
+
+## Safety and behavior
+
+- Commit emails are visible in the history; choose a public or no-reply address for public repositories.
+
+- The project is licensed under the [MIT License](../LICENSE.md).
+- Contribution notes are in [CONTRIBUTING.md](../CONTRIBUTING.md).

@@ -3,11 +3,15 @@
 Repository guidance, especially for PowerShell scripts.
 
 ## Language, comments, and help
-- Write all source-code comments and documentation in English. Keep technical terms and Tesseract language codes (for example, `deu` and `eng`) in English.
+- All code is English only: identifiers, variables, parameters, source-code comments, comment-based help, and code documentation. Keep technical terms and Tesseract language codes (for example, `deu` and `eng`) in English.
+- German text appears only in the German message catalog (`l10n/de-DE/Messages.psd1`) and in console output or input prompts the user sees. Never put German text into code, comments, or help.
 - Console messages must be localized: use German when the Windows UI culture is German and English otherwise. Every script must provide an `-EnglishOutput` switch to force English.
 - Keep translations out of executable logic. Use a message catalog under the relevant tool folder's `l10n/<culture>/Messages.psd1` and a small, documented lookup helper. English source strings are the fallback; add German translations to the German catalog.
 - Every script starts with comment-based help containing `.SYNOPSIS`, `.DESCRIPTION`, at least one `.EXAMPLE`, and `.NOTES` listing dependencies.
 - Keep user-facing documentation in both top-level `README.md` / `README.de.md` and each tool folder's `README.md` / `README.de.md`. Update all applicable README files whenever script content, behavior, parameters, or user workflows change; keep the English and German versions consistent.
+- Each README starts with one note line that links to the other language version (for example, `> Deutsche Version: [README.de.md](README.de.md)`). Do not add "Documentation" or "Related Documentation" sections at the end.
+- The top-level README links to a tool folder's README only in the chapter that describes that tool, and only to the version in the same language. Tool READMEs do not link back to the top-level README.
+- Every tool folder README follows the structure of `pdf\README.md`, which is the blueprint: language note, intro, `## Quick start`, `## Dependency setup` (if any), `## Scripts and switches` with one `### \`Script.ps1\`` section per public script (description, parameter and switch table, examples), `## Shared PowerShell parameters` (if any), and `## Safety and behavior`. Use this structure even when a folder has only one public script. The `Documentation` or `Related Documentation` sections are not used. The top-level README follows the same per-tool structure.
 - PowerShell script documentation (comment-based help, parameter descriptions, examples, and notes) must remain complete and current in English only. Update it whenever script behavior or interface changes.
 - User-facing English and German READMEs at the repository root and in each tool folder must remain synchronized with script behavior, parameters, and workflows.
 - Every PowerShell script or module file (`.ps1`, `.psm1`) has a filename in the approved `Verb-Noun` form, whether user-facing or internal. Check the verb with `Get-Verb`; use a specific noun that clearly describes the file's action or responsibility. Update every caller, example, and documentation reference when a file is renamed.
@@ -15,6 +19,17 @@ Repository guidance, especially for PowerShell scripts.
 - Every PowerShell function has a complete comment-based-help block immediately before its definition or at the start of its script block. Include `.SYNOPSIS`, `.DESCRIPTION`, `.PARAMETER` for every parameter, and `.OUTPUTS`. Add `.EXAMPLE` and `.NOTES` when they clarify usage or dependencies.
 - Every PowerShell function and user-defined method follows the `ApprovedVerb-Noun` pattern. Check every prefix against `Get-Verb`; do not assume a familiar English verb is approved. Use a specific noun, and update callers and tests whenever a function or method is renamed.
 - Comment on non-obvious decisions and explain why. Do not add comments that merely restate obvious code; use short section headings to structure the main script.
+
+## Code structure and testability
+- Every tool folder has a top-level script for the user-facing flow. The script contains only parameter handling, the console flow, and calls to functions. Load helpers by dot-sourcing them with paths relative to `$PSScriptRoot`.
+- Every other function lives in its own file in the tool folder's `internal` subfolder, or in `common\internal` when shared (see below). The file contains exactly one function and is named after it (`Verb-Noun.ps1`). Do not define functions inside top-level scripts.
+- Internal functions used by more than one tool folder live in `common\internal\` (one function per file, same `Verb-Noun.ps1` rule). Their mirror tests live in `tests\common\internal\`. Internal functions used by only one tool folder stay in that folder's `internal\`.
+- Internal functions are written for testability:
+  - All inputs are parameters, and all results are returned as objects. Do not read `$script:` variables, environment variables, or user profile folders inside a function; pass those values in explicitly. Callers may gather them.
+  - Do not write to the console or prompt the user inside an internal function (no `Write-Host` and no `Read-Host`). Console output and prompts belong to the top-level script, which reports the returned results.
+  - Keep side effects (file system, processes, registry, network) in narrow functions. Logic that only transforms data must not touch the file system or processes, so tests need little or no mocking.
+- Every internal file has exactly one mirror test file at `tests\<tool>\internal\<Verb-Noun>.Tests.ps1`. New internal code aims for near 100% coverage; existing code is covered step by step.
+- Top-level scripts keep a skipped placeholder test in `tests\<tool>\` until their flow is covered by tests.
 
 ## PowerShell style
 - Set `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'` near the start of every script.
@@ -36,7 +51,7 @@ Repository guidance, especially for PowerShell scripts.
 ## Dependencies and installation
 - Scripts that only process or inspect user files must not install software and should not require administrator rights.
 - Dependency-installation scripts must inspect the current dependency state first and elevate only when required. Before any UAC prompt, show the exact planned operations and require explicit confirmation. Install packages into the selected runtime; do not use user-scoped package options that can target a different interpreter.
-- Reuse shared internal helpers for runtime discovery and other behavior used by multiple scripts. Resolve helper paths relative to `$PSScriptRoot`, prefer a working interpreter in the current user's profile, and invoke the resolved executable directly. Use a launcher only to discover a concrete runtime path when direct discovery fails.
+- Reuse shared internal helpers from `common\internal\` for runtime discovery and other behavior used by multiple scripts. Resolve helper paths relative to `$PSScriptRoot`, prefer a working interpreter in the current user's profile, and invoke the resolved executable directly. Use a launcher only to discover a concrete runtime path when direct discovery fails.
 - Check all required dependencies together and report missing dependencies with installation instructions.
 - Optional tools must not block a run when unavailable. Report their absence and continue with the supported reduced behavior.
 
@@ -51,3 +66,13 @@ Repository guidance, especially for PowerShell scripts.
 - Test relevant code paths with representative, non-confidential fixtures when possible. Do not commit personal documents, local test data, temporary files, or generated binary artifacts.
 - Review `git diff` before committing and verify documentation and code changes are consistent.
 - Keep commit messages short and factual. Automatically generated commit messages must include exactly one `Signed-off-by` trailer for the user and exactly one `Co-authored-by` trailer for the AI engine used. Use the user's confirmed name and email for the sign-off and the active AI engine's configured name and email for co-authorship; do not invent or assume either identity. Place both trailers at the end of the commit message.
+
+## Testing
+- The structure below `tests` mirrors the code structure. Example: `nextcloud\internal\Get-UserFolders.ps1` is tested in `tests\nextcloud\internal\Get-UserFolders.Tests.ps1`.
+- Every production `.ps1` file has exactly one mirror test file. `tests\Static.Tests.ps1` enforces this.
+- Global tests, such as repository-wide code analysis, stay directly in `tests`, but only if they apply to all files.
+- Shared test helpers (for example `tests\TestHelpers.ps1`) stay in `tests`.
+- Functions in `internal` must be testable: pass all inputs and outputs explicitly (parameters and return values) so that little or no mocking is needed. Avoid reading `$script:` state or user folders inside helpers.
+- New code aims for near 100% coverage. Existing code is covered step by step. Legacy scripts with top-level flow have a skipped placeholder test until they are refactored into functions.
+- Run `tests\Invoke-Tests.ps1` (add `-Coverage` for coverage of `internal` files). The tests must pass on Windows PowerShell 5.1 and PowerShell 7.
+- Every `.ps1` file, including tests, is saved with a UTF-8 BOM.

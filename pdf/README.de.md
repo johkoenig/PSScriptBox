@@ -1,5 +1,7 @@
 # PDF-PowerShell-Werkzeuge
 
+> Englische Version: [README.md](README.md)
+
 Dieser Ordner enthält PowerShell-Werkzeuge zum Einrichten und Verarbeiten von PDF-Dateien. Verwende Windows PowerShell 5.1 oder PowerShell 7 und starte die Skripte in einer normalen Benutzersitzung, sofern ein Skript nicht ausdrücklich Administratorrechte anfordert.
 
 ## Schnellstart
@@ -133,9 +135,3 @@ Skripte unterstützen, soweit anwendbar, außerdem PowerShell-Standardparameter 
 - Verwende diese Werkzeuge nicht für Dateien, die byte-identisch bleiben müssen, etwa digital signierte PDFs.
 - Das Projekt steht unter der [MIT-Lizenz](../LICENSE.md).
 - Hinweise zum Mitwirken stehen in [CONTRIBUTING.md](../CONTRIBUTING.md).
-
-## Weitere Dokumentation
-
-- Repository-Übersicht (Englisch): [../README.md](../README.md)
-- Repository-Übersicht (Deutsch): [../README.de.md](../README.de.md)
-- PDF-Werkzeuge (Englisch): [README.md](README.md)

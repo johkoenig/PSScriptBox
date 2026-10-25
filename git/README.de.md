@@ -1,23 +1,34 @@
 # Git-Konfigurationswerkzeug
 
+> Englische Version: [README.md](README.md)
+
 `Initialize-GitConfiguration.ps1` richtet die Git-Autor-Identität (und optional gängige Standardeinstellungen) in der lokalen `.git/config` eines Repositorys oder in der globalen Benutzerkonfiguration ein. Name und E-Mail werden nicht im Skript hinterlegt; bereits im Zielbereich gesetzte Werte werden nicht überschrieben.
 
-## Verwendung
+## Schnellstart
 
-Starte das Skript innerhalb eines Git-Repositorys:
+1. Wechsle in ein Verzeichnis innerhalb des Git-Repositorys, das konfiguriert werden soll.
+2. Starte das Skript:
 
 ```powershell
 .\Initialize-GitConfiguration.ps1
 ```
 
-Für jeden Identitätswert zeigt das Skript eine nummerierte Liste gefundener Möglichkeiten plus eigener Eingabe. Eine vorhandene Git-Einstellung steht an erster Stelle, die Eingabetaste (Standard: Auswahl 1) behält sie bei:
+3. Für jeden Identitätswert zeigt das Skript eine nummerierte Liste gefundener Möglichkeiten plus eigener Eingabe. Eine vorhandene Git-Einstellung steht an erster Stelle, die Eingabetaste (Standard: Auswahl 1) behält sie bei:
 
 - **Name:** vorhandene Git-Einstellungen (lokal, global, System), Anzeigename aus Active Directory bzw. Windows oder ein eigener Wert.
 - **E-Mail:** vorhandene Git-Einstellungen, das Active-Directory-Attribut `mail` (domänenverbundene Rechner), der Benutzerprinzipalname (Active Directory / Entra ID), das angemeldete Microsoft-Konto oder ein eigener Wert.
 
+## Abhängigkeiten einrichten
+
 Git muss installiert und über `PATH` erreichbar sein. Administratorrechte sind nicht erforderlich. Verzeichnisabfragen haben ein kurzes Zeitlimit und werden übersprungen, wenn kein Verzeichnis erreichbar ist.
 
-| Parameter | Beschreibung |
+## Skripte und Schalter
+
+### `Initialize-GitConfiguration.ps1`
+
+Das Skript läuft standardmäßig interaktiv. Die folgenden Schalter überspringen die Abfragen oder ändern den Zielbereich.
+
+| Parameter / Schalter | Beschreibung |
 | --- | --- |
 | `-RepositoryPath <Pfad>` | Verzeichnis innerhalb des Repositorys (Bereich Local). Standard ist das aktuelle Verzeichnis. |
 | `-Scope <Local\|Global>` | Zielbereich der Einstellungen. Standard `Local`; `Global` gilt für alle Repositorys des aktuellen Benutzers. |
@@ -34,7 +45,7 @@ Beispiele:
 .\Initialize-GitConfiguration.ps1 -EnglishOutput
 ```
 
-## Empfohlene Einstellungen
+#### Empfohlene Einstellungen
 
 | Einstellung | Wert | Zweck |
 | --- | --- | --- |
@@ -49,6 +60,13 @@ Beispiele:
 
 Vor jeder Abfrage gibt das Skript eine ausführliche Erklärung der Einstellung aus und zeigt die Empfehlung, falls dein aktueller Wert abweicht. Die Tabelle oben fasst sie zusammen. Vorhandene Werte ändern sich nie ohne deine Eingabe: Jede empfohlene Einstellung wird einzeln bestätigt. Die Eingabetaste übernimmt den Standard (den im Zielbereich bereits gesetzten Wert, sonst die Empfehlung), die Eingabe eines der aufgelisteten Werte (je Zeile als `[Wert] Erklärung`) wählt ihn, freie Einstellungen (`init.defaultBranch`, `alias.cs`) akzeptieren auch jeden anderen Text, `-` lässt die Einstellung unverändert. Das Skript ist idempotent: Wer durchgehend die Eingabetaste drückt, ändert bei einem erneuten Lauf nichts.
 
-Das Skript unterstützt PowerShell-Standardparameter wie `-Verbose`, `-Debug` und `-ErrorAction`. Commit-E-Mail-Adressen sind in der Historie sichtbar; verwende bei öffentlichen Repositorys eine öffentliche oder No-Reply-Adresse.
+## Gemeinsame PowerShell-Parameter
 
-Siehe [Mitwirken](../CONTRIBUTING.md) und die [MIT-Lizenz](../LICENSE.md).
+Das Skript unterstützt die üblichen Parameter `-Verbose`, `-Debug`, `-ErrorAction` und `-WarningAction`. Es implementiert kein `-WhatIf` und kein `-Confirm`.
+
+## Sicherheit und Verhalten
+
+- Commit-E-Mail-Adressen sind in der Historie sichtbar; verwende bei öffentlichen Repositorys eine öffentliche oder No-Reply-Adresse.
+
+- Das Projekt steht unter der [MIT-Lizenz](../LICENSE.md).
+- Hinweise zum Mitwirken stehen in [CONTRIBUTING.md](../CONTRIBUTING.md).
