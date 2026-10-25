@@ -7,6 +7,8 @@ Repository guidance, especially for PowerShell scripts.
 - Console messages must be localized: use German when the Windows UI culture is German and English otherwise. Every script must provide an `-EnglishOutput` switch to force English.
 - Keep translations out of executable logic. Use shared message catalogs under `pdf/l10n/<culture>/Messages.psd1` and a small, documented lookup helper. English source strings are the fallback; add German translations to the German catalog.
 - Every script starts with comment-based help containing `.SYNOPSIS`, `.DESCRIPTION`, at least one `.EXAMPLE`, and `.NOTES` listing dependencies.
+- Every PowerShell script intended to be invoked directly has a filename in the approved `Verb-Noun` form. Check the verb with `Get-Verb`; use a specific noun that describes the script's action.
+- PowerShell helper scripts or modules that are not intended to be run directly belong in an `internal` or other clearly named subfolder, not beside user-facing scripts. Their filenames must also follow the approved `Verb-Noun` form, and callers must resolve them with paths relative to `$PSScriptRoot`.
 - Every PowerShell function has a complete comment-based-help block immediately before its definition or at the start of its script block. Include `.SYNOPSIS`, `.DESCRIPTION`, `.PARAMETER` for every parameter, and `.OUTPUTS`. Add `.EXAMPLE` and `.NOTES` when they clarify usage or dependencies.
 - Every PowerShell function follows the `ApprovedVerb-Noun` pattern. Check verbs with `Get-Verb`; update callers and tests when renaming functions.
 - Comment on non-obvious decisions and explain why. Do not add comments that merely restate obvious code; use short section headings to structure the main script.
@@ -20,7 +22,9 @@ Repository guidance, especially for PowerShell scripts.
 - Save PowerShell scripts with a UTF-8 BOM (U+FEFF). Windows PowerShell 5.1 otherwise interprets non-ASCII text as ANSI.
 
 ## Dependencies and installation
-- Scripts do not install software and should not require administrator rights to run.
+- Processing and inspection scripts do not install software and should not require administrator rights to run. `pdf/Setup-PdfProcessor.ps1` is the exception: it checks dependency state first and elevates only when installation is required. Chocolatey is a prerequisite and is never installed by the script.
+- All PDF scripts dot-source `pdf/internal/Get-PdfPythonRuntime.ps1` to choose a working `python.exe` consistently. Prefer a Python interpreter in the current user's profile; use `py.exe` only to discover a concrete interpreter path when direct `python.exe` discovery fails. Invoke the resolved `python.exe` directly for checks and processing.
+- The setup script validates Chocolatey, Python, OCRmyPDF, pikepdf, Tesseract, and Ghostscript individually. Chocolatey installs missing system dependencies machine-wide. Before any UAC prompt, show the exact planned operations and wait for Enter (any non-empty response cancels). Install Python packages into the selected interpreter: user-scoped Python is installed without elevation; machine-wide Python is installed from the elevated child process. Do not use `pip --user`, which can install into a different site than the selected interpreter. It checks Tesseract language data but never downloads `.traineddata` files; it instructs the user to download any missing languages.
 - Check all required dependencies together and report missing dependencies with installation instructions.
 - Optional tools such as Ghostscript must not block a run when unavailable. Do not use `jbig2`.
 

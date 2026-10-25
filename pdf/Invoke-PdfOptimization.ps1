@@ -116,9 +116,7 @@
       - Tesseract
       - Ghostscript (required only with -GhostscriptDpi > 0)
 
-    Example installation from an elevated PowerShell:
-      choco install python tesseract ghostscript -y
-      py -m pip install --user ocrmypdf
+    Use .\Setup-PdfProcessor.ps1 to check and install the required software.
 
     Tesseract language data (.traineddata) is not installed automatically. If
     required data is missing, the script points to
@@ -173,6 +171,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'internal\Get-PdfPythonRuntime.ps1')
 
 $script:OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
@@ -330,8 +329,9 @@ function Get-MissingDependency {
     Checks required and optional dependencies.
 
 .DESCRIPTION
-    Gets executable paths and missing modules. Missing Ghostscript is reported
-    as an optional dependency and does not block processing.
+    Gets the selected Python interpreter, checks each required Python module,
+    and resolves other executables. Missing Ghostscript is reported as an
+    optional dependency and does not block processing.
 
 .PARAMETER NoGhostscript
     Skips the Ghostscript lookup.
@@ -344,9 +344,9 @@ function Get-MissingDependency {
 
     $missing = [System.Collections.Generic.List[string]]::new()
     $optionalMissing = [System.Collections.Generic.List[string]]::new()
-    $pythonPath = Get-ExecutablePath -Name 'py'
-    if (-not $pythonPath) { $pythonPath = Get-ExecutablePath -Name 'python' }
-    if (-not $pythonPath) { $missing.Add((Get-LocalizedText 'Python (py.exe or python.exe)')) }
+    $pythonRuntime = Get-PdfPythonRuntime
+    $pythonPath = if ($pythonRuntime) { $pythonRuntime.Path } else { $null }
+    if (-not $pythonPath) { $missing.Add((Get-LocalizedText 'Python interpreter')) }
     if (-not (Get-ExecutablePath -Name 'tesseract')) { $missing.Add('Tesseract') }
 
     # Ghostscript is the optional optimization stage after OCRmyPDF.
@@ -363,9 +363,13 @@ function Get-MissingDependency {
     if ($pythonPath -and -not (Test-PythonModule -PythonPath $pythonPath -ModuleName 'ocrmypdf')) {
         $missing.Add((Get-LocalizedText 'OCRmyPDF (Python module)'))
     }
+    if ($pythonPath -and -not (Test-PythonModule -PythonPath $pythonPath -ModuleName 'pikepdf')) {
+        $missing.Add((Get-LocalizedText 'pikepdf (Python module)'))
+    }
 
     [pscustomobject]@{
         PythonPath      = $pythonPath
+        PythonScope     = if ($pythonRuntime) { $pythonRuntime.Scope } else { $null }
         GhostscriptPath = $ghostscriptPath
         Missing         = $missing
         OptionalMissing = $optionalMissing
@@ -994,10 +998,7 @@ $dependencyCheck = Get-MissingDependency -NoGhostscript $NoGhostscript.IsPresent
 if ($dependencyCheck.Missing.Count -gt 0) {
     Write-Host "`n$(Get-LocalizedText 'Missing dependencies:')" -ForegroundColor Yellow
     $dependencyCheck.Missing | ForEach-Object { Write-Host "  - $_" }
-    Write-Host "`n$(Get-LocalizedText 'Open a new elevated PowerShell session and install:')"
-    Write-Host '  choco install python tesseract -y'
-    Write-Host '  py -m pip install --user ocrmypdf'
-    Write-Host "`n$(Get-LocalizedText 'Then restart this script in a regular PowerShell session.')"
+    Write-Host "`n$(Get-LocalizedText 'Run Setup-PdfProcessor.ps1 to install the missing dependencies.')"
     exit 1
 }
 if ($dependencyCheck.OptionalMissing.Count -gt 0) {

@@ -26,8 +26,8 @@
 
 .NOTES
     Dependencies: PowerShell 5.1 or later, Python, and the pikepdf Python module.
-    Install the module with: py -m pip install --user pikepdf
-    (or: python -m pip install --user pikepdf)
+    Use .\Setup-PdfProcessor.ps1 to install missing dependencies into the
+    selected Python interpreter.
     No files are modified, and administrator rights are not required.
 #>
 
@@ -40,6 +40,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'internal\Get-PdfPythonRuntime.ps1')
 
 $script:OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
@@ -311,28 +312,18 @@ if ([string]::IsNullOrWhiteSpace($InputPath)) {
     throw (Get-LocalizedText 'No path was specified.')
 }
 
-$pythonCommand = Get-Command -Name 'py' -ErrorAction SilentlyContinue |
-    Select-Object -First 1
-if ($null -eq $pythonCommand) {
-    $pythonCommand = Get-Command -Name 'python' -ErrorAction SilentlyContinue |
-        Select-Object -First 1
-}
-if ($null -eq $pythonCommand) {
-    Write-Host (Get-LocalizedText 'Missing dependency: Python (py.exe or python.exe).') -ForegroundColor Yellow
-    Write-Host (Get-LocalizedText 'Installation: https://www.python.org/downloads/')
+$pythonRuntime = Get-PdfPythonRuntime
+if (-not $pythonRuntime) {
+    Write-Host (Get-LocalizedText 'Missing dependency: Python.') -ForegroundColor Yellow
+    Write-Host (Get-LocalizedText 'Run Setup-PdfProcessor.ps1 to install the missing dependencies.')
     exit 1
 }
-$pythonPath = $pythonCommand.Source
+$pythonPath = $pythonRuntime.Path
 
 $moduleCheck = Invoke-PythonCommand -PythonPath $pythonPath -Arguments @('-c', 'import pikepdf')
 if ($moduleCheck.ExitCode -ne 0) {
     Write-Host (Get-LocalizedText 'Missing dependency: Python module pikepdf.') -ForegroundColor Yellow
-    if ([System.IO.Path]::GetFileNameWithoutExtension($pythonPath) -ieq 'py') {
-        Write-Host (Get-LocalizedText 'Installation: py -m pip install --user pikepdf')
-    }
-    else {
-        Write-Host (Get-LocalizedText 'Installation: python -m pip install --user pikepdf')
-    }
+    Write-Host (Get-LocalizedText 'Run Setup-PdfProcessor.ps1 to install the missing dependencies.')
     exit 1
 }
 
