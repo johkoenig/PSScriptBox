@@ -39,6 +39,7 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - **Zweistufige Optimierung:** Nach OCRmyPDF folgt eine optionale **Ghostscript**-Stufe (explizite Downsampling-Parameter, 200 DPI, JPEG q75, sRGB; standardmäßig erlaubt, durch `-NoGhostscript` deaktivierbar). Ghostscript ist über Chocolatey installierbar (`choco install ghostscript`) und wird bei Fehlen gemeldet, ohne den Lauf zu blockieren. **qpdf wird nicht verwendet.**
 - `-RotatePages` aktiviert OCRmyPDFs Drehkorrektur mit dem Konfidenzschwellwert 5.
 - `Clean-Originals.ps1` entfernt `_orig`-Sicherungen nur, wenn die bearbeitete Datei ohne `_orig`-Zusatz daneben existiert; `-WhatIf` zeigt die Löschungen vorab an.
+- `Find-PdfsWithoutTextLayer.ps1` sucht rekursiv nach PDFs ohne Textoperatoren und weist PDFs mit teilweise fehlender Textebene separat aus. Benötigt Python und `pikepdf`; verändert keine Dateien.
 - Die rohe OCRmyPDF-Ausgabe (Fortschrittsbalken, interne Modulnamen wie `_pipeline.py`) erscheint unverändert auf der Konsole (Live-Ausgabe, keine Filterung).
 
 ## Qualitätssicherung vor dem Commit
