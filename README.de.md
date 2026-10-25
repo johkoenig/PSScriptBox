@@ -2,6 +2,9 @@
 
 > Englische Version: [README.md](README.md)
 
+> [!CAUTION]
+> 🔴 **ALPHA: Dieses Projekt befindet sich im Alpha-Stadium. Die Skripte NICHT auf produktiven Daten ausführen.** Nur mit Kopien der Dateien testen und Sicherungen anlegen.
+
 Kleine PowerShell-Werkzeuge für alltägliche Aufgaben, darunter PDF-Verarbeitung, Git-Konfiguration sowie das Kopieren und Bereinigen lokaler Nextcloud-Daten.
 
 ## PDF-Werkzeuge
@@ -46,6 +49,10 @@ Der Ablauf verwendet zwei Skripte: `nextcloud/Copy-UserDataToNextcloud.ps1` kopi
 | `Remove-MigratedUserData.ps1` | `-NextcloudPath <Pfad>`, `-Folders <Namen>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. Löscht lokale Dateien mit übereinstimmendem SHA-256-Hash und leere Unterordner, wenn der entsprechende Nextcloud-Ordner existiert. |
 
 Details und Beispiele stehen in der [Nextcloud-Anleitung](nextcloud/README.de.md).
+
+## Offene Punkte
+
+Geplante Arbeiten stehen in [open-issues.md](open-issues.md) (englisch).
 
 ## Lizenz
 
