@@ -26,7 +26,7 @@
 
 .NOTES
     Dependencies: PowerShell 5.1 or later, Python, and the pikepdf Python module.
-    Use .\Setup-PdfProcessor.ps1 to install missing dependencies into the
+    Use .\Initialize-PdfProcessor.ps1 to install missing dependencies into the
     selected Python interpreter.
     No files are modified, and administrator rights are not required.
 #>
@@ -318,7 +318,7 @@ if ([string]::IsNullOrWhiteSpace($InputPath)) {
 $pythonRuntime = Get-PdfPythonRuntime
 if (-not $pythonRuntime) {
     Write-Host (Get-LocalizedText 'Missing dependency: Python.') -ForegroundColor Yellow
-    Write-Host (Get-LocalizedText 'Run Setup-PdfProcessor.ps1 to install the missing dependencies.')
+    Write-Host (Get-LocalizedText 'Run Initialize-PdfProcessor.ps1 to install the missing dependencies.')
     exit 1
 }
 $pythonPath = $pythonRuntime.Path
@@ -326,7 +326,7 @@ $pythonPath = $pythonRuntime.Path
 $moduleCheck = Invoke-PythonCommand -PythonPath $pythonPath -Arguments @('-c', 'import pikepdf')
 if ($moduleCheck.ExitCode -ne 0) {
     Write-Host (Get-LocalizedText 'Missing dependency: Python module pikepdf.') -ForegroundColor Yellow
-    Write-Host (Get-LocalizedText 'Run Setup-PdfProcessor.ps1 to install the missing dependencies.')
+    Write-Host (Get-LocalizedText 'Run Initialize-PdfProcessor.ps1 to install the missing dependencies.')
     exit 1
 }
 

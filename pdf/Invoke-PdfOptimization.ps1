@@ -124,7 +124,7 @@
       - Tesseract
       - Ghostscript (required only with -GhostscriptDpi > 0)
 
-    Use .\Setup-PdfProcessor.ps1 to check and install the required software.
+    Use .\Initialize-PdfProcessor.ps1 to check and install the required software.
 
     Tesseract language data (.traineddata) is not installed automatically. If
     required data is missing, the script points to
@@ -1060,7 +1060,7 @@ $dependencyCheck = Get-MissingDependency -NoGhostscript $NoGhostscript.IsPresent
 if ($dependencyCheck.Missing.Count -gt 0) {
     Write-Host "`n$(Get-LocalizedText 'Missing dependencies:')" -ForegroundColor Yellow
     $dependencyCheck.Missing | ForEach-Object { Write-Host "  - $_" }
-    Write-Host "`n$(Get-LocalizedText 'Run Setup-PdfProcessor.ps1 to install the missing dependencies.')"
+    Write-Host "`n$(Get-LocalizedText 'Run Initialize-PdfProcessor.ps1 to install the missing dependencies.')"
     exit 1
 }
 if ($dependencyCheck.OptionalMissing.Count -gt 0) {

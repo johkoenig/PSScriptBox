@@ -8,7 +8,7 @@ This folder contains PowerShell utilities for preparing and processing PDF files
 2. Run the dependency setup:
 
    ```powershell
-   .\Setup-PdfProcessor.ps1
+   .\Initialize-PdfProcessor.ps1
    ```
 
 3. Follow any instructions for missing Tesseract language data. The setup script does not download `.traineddata` files.
@@ -22,7 +22,7 @@ PowerShell execution policy may require a policy-approved way to run local scrip
 
 ## Dependency setup
 
-`Setup-PdfProcessor.ps1` requires Chocolatey to be installed separately. It checks Chocolatey, Python, OCRmyPDF, pikepdf, Tesseract, and Ghostscript individually.
+`Initialize-PdfProcessor.ps1` requires Chocolatey to be installed separately. It checks Chocolatey, Python, OCRmyPDF, pikepdf, Tesseract, and Ghostscript individually.
 
 - Missing machine-wide programs are installed through Chocolatey.
 - The setup prefers a working Python interpreter in the current user's profile; otherwise it selects a working machine-wide interpreter.
@@ -33,7 +33,7 @@ PowerShell execution policy may require a policy-approved way to run local scrip
 
 ## Scripts and switches
 
-### `Setup-PdfProcessor.ps1`
+### `Initialize-PdfProcessor.ps1`
 
 Checks dependencies, installs missing software, and reports missing Tesseract language data.
 
@@ -46,8 +46,8 @@ The hidden `-ElevatedChild` and `-RuntimePythonPath` parameters are internal imp
 Examples:
 
 ```powershell
-.\Setup-PdfProcessor.ps1
-.\Setup-PdfProcessor.ps1 -EnglishOutput
+.\Initialize-PdfProcessor.ps1
+.\Initialize-PdfProcessor.ps1 -EnglishOutput
 ```
 
 ### `Invoke-PdfOptimization.ps1`
@@ -96,7 +96,7 @@ Examples:
 .\Find-PdfsWithoutTextLayer.ps1 -InputPath 'C:\PDFs\Scan.pdf' -EnglishOutput
 ```
 
-### `Clean-OriginalPdfs.ps1`
+### `Clear-OriginalPdfBackups.ps1`
 
 Finds `_orig.pdf` backups for which the corresponding processed PDF exists in the same folder. Each deletion is subject to PowerShell's confirmation behavior.
 
@@ -110,14 +110,14 @@ Finds `_orig.pdf` backups for which the corresponding processed PDF exists in th
 Examples:
 
 ```powershell
-.\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs' -WhatIf
-.\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs' -Confirm:$false
-.\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs' -EnglishOutput
+.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
+.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm:$false
+.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -EnglishOutput
 ```
 
 ## Shared PowerShell parameters
 
-Scripts also support PowerShell common parameters where applicable, including `-Verbose`, `-Debug`, `-ErrorAction`, and `-WarningAction`. `-WhatIf` and `-Confirm` are supported by `Clean-OriginalPdfs.ps1` through `SupportsShouldProcess`.
+Scripts also support PowerShell common parameters where applicable, including `-Verbose`, `-Debug`, `-ErrorAction`, and `-WarningAction`. `-WhatIf` and `-Confirm` are supported by `Clear-OriginalPdfBackups.ps1` through `SupportsShouldProcess`.
 
 ## Safety and behavior
 
@@ -126,7 +126,7 @@ Scripts also support PowerShell common parameters where applicable, including `-
 - Complete text layers are used as a stateless indication that OCR has already been applied; such PDFs are skipped unless `-ForceReprocess` or `-RedoOcr` is used. This is best-effort idempotency: it cannot tell whether a digitally born PDF needs image optimization.
 - A PDF is considered successfully changed only when processing succeeds and the result hash differs from the original. Larger results can still be valid.
 - Existing `_orig` backups are preserved.
-- `Clean-OriginalPdfs.ps1` deletes only backups whose corresponding processed PDF exists.
+- `Clear-OriginalPdfBackups.ps1` deletes only backups whose corresponding processed PDF exists.
 - Do not use these tools on files that must remain byte-identical, such as digitally signed PDFs.
 - The project is licensed under the [MIT License](../LICENSE.md).
 

@@ -8,7 +8,7 @@ Dieser Ordner enthält PowerShell-Werkzeuge zum Einrichten und Verarbeiten von P
 2. Starte die Einrichtung der Abhängigkeiten:
 
    ```powershell
-   .\Setup-PdfProcessor.ps1
+   .\Initialize-PdfProcessor.ps1
    ```
 
 3. Beachte Hinweise zu fehlenden Tesseract-Sprachdaten. Das Setup lädt keine `.traineddata`-Dateien herunter.
@@ -22,7 +22,7 @@ Die PowerShell-Ausführungsrichtlinie kann eine genehmigte Vorgehensweise zum Au
 
 ## Abhängigkeiten einrichten
 
-`Setup-PdfProcessor.ps1` setzt eine separat installierte Chocolatey-Installation voraus. Es prüft Chocolatey, Python, OCRmyPDF, pikepdf, Tesseract und Ghostscript einzeln.
+`Initialize-PdfProcessor.ps1` setzt eine separat installierte Chocolatey-Installation voraus. Es prüft Chocolatey, Python, OCRmyPDF, pikepdf, Tesseract und Ghostscript einzeln.
 
 - Fehlende systemweite Programme werden über Chocolatey installiert.
 - Das Setup bevorzugt einen funktionierenden Python-Interpreter im Profil des aktuellen Benutzers; andernfalls wählt es einen funktionierenden systemweiten Interpreter.
@@ -33,7 +33,7 @@ Die PowerShell-Ausführungsrichtlinie kann eine genehmigte Vorgehensweise zum Au
 
 ## Skripte und Schalter
 
-### `Setup-PdfProcessor.ps1`
+### `Initialize-PdfProcessor.ps1`
 
 Prüft Abhängigkeiten, installiert fehlende Software und meldet fehlende Tesseract-Sprachdaten.
 
@@ -46,8 +46,8 @@ Die ausgeblendeten Parameter `-ElevatedChild` und `-RuntimePythonPath` sind inte
 Beispiele:
 
 ```powershell
-.\Setup-PdfProcessor.ps1
-.\Setup-PdfProcessor.ps1 -EnglishOutput
+.\Initialize-PdfProcessor.ps1
+.\Initialize-PdfProcessor.ps1 -EnglishOutput
 ```
 
 ### `Invoke-PdfOptimization.ps1`
@@ -96,7 +96,7 @@ Beispiele:
 .\Find-PdfsWithoutTextLayer.ps1 -InputPath 'C:\PDFs\Scan.pdf' -EnglishOutput
 ```
 
-### `Clean-OriginalPdfs.ps1`
+### `Clear-OriginalPdfBackups.ps1`
 
 Findet `_orig.pdf`-Sicherungen, zu denen die bearbeitete PDF im selben Ordner vorhanden ist. Jede Löschung unterliegt dem Bestätigungsverhalten von PowerShell.
 
@@ -110,14 +110,14 @@ Findet `_orig.pdf`-Sicherungen, zu denen die bearbeitete PDF im selben Ordner vo
 Beispiele:
 
 ```powershell
-.\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs' -WhatIf
-.\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs' -Confirm:$false
-.\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs' -EnglishOutput
+.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
+.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm:$false
+.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -EnglishOutput
 ```
 
 ## Gemeinsame PowerShell-Parameter
 
-Skripte unterstützen, soweit anwendbar, außerdem PowerShell-Standardparameter wie `-Verbose`, `-Debug`, `-ErrorAction` und `-WarningAction`. `Clean-OriginalPdfs.ps1` unterstützt über `SupportsShouldProcess` auch `-WhatIf` und `-Confirm`.
+Skripte unterstützen, soweit anwendbar, außerdem PowerShell-Standardparameter wie `-Verbose`, `-Debug`, `-ErrorAction` und `-WarningAction`. `Clear-OriginalPdfBackups.ps1` unterstützt über `SupportsShouldProcess` auch `-WhatIf` und `-Confirm`.
 
 ## Sicherheit und Verhalten
 
@@ -126,7 +126,7 @@ Skripte unterstützen, soweit anwendbar, außerdem PowerShell-Standardparameter 
 - Eine vollständige Textebene dient als zustandsloses Indiz dafür, dass OCR bereits angewendet wurde; solche PDFs werden übersprungen, außer `-ForceReprocess` oder `-RedoOcr` wird verwendet. Das ist eine bestmögliche Idempotenz: Bei einer digital erzeugten PDF lässt sich damit nicht erkennen, ob eine Bildoptimierung gewünscht ist.
 - Eine PDF gilt nur dann als erfolgreich verändert, wenn die Verarbeitung erfolgreich war und sich der Ergebnis-Hash von der Originaldatei unterscheidet. Auch größere Ergebnisse können gültig sein.
 - Vorhandene `_orig`-Sicherungen bleiben erhalten.
-- `Clean-OriginalPdfs.ps1` löscht nur Sicherungen, zu denen die bearbeitete PDF vorhanden ist.
+- `Clear-OriginalPdfBackups.ps1` löscht nur Sicherungen, zu denen die bearbeitete PDF vorhanden ist.
 - Verwende diese Werkzeuge nicht für Dateien, die byte-identisch bleiben müssen, etwa digital signierte PDFs.
 - Das Projekt steht unter der [MIT-Lizenz](../LICENSE.md).
 

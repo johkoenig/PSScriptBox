@@ -171,7 +171,7 @@
     'Installing missing Python packages into the selected user Python interpreter (no elevation required).' = 'Fehlende Python-Pakete werden im ausgewählten Benutzer-Python-Interpreter installiert (keine Rechteerhöhung erforderlich).'
     'Machine-wide Python packages still need administrator privileges. Run this script as administrator.' = 'Für systemweite Python-Pakete sind weiterhin Administratorrechte erforderlich. Starte dieses Skript als Administrator.'
     'Missing dependency: Python.' = 'Fehlende Abhängigkeit: Python.'
-    'Run Setup-PdfProcessor.ps1 to install the missing dependencies.' = 'Führe Setup-PdfProcessor.ps1 aus, um fehlende Abhängigkeiten zu installieren.'
+    'Run Initialize-PdfProcessor.ps1 to install the missing dependencies.' = 'Führe Initialize-PdfProcessor.ps1 aus, um fehlende Abhängigkeiten zu installieren.'
     'An elevated PowerShell window will now open to install these Chocolatey packages.' = 'Zum Installieren dieser Chocolatey-Pakete wird jetzt ein PowerShell-Fenster mit Administratorrechten geöffnet.'
     'OCRmyPDF and pikepdf will be installed separately for the current user after elevation.' = 'OCRmyPDF und pikepdf werden nach der Rechteerhöhung separat für den aktuellen Benutzer installiert.'
     'Elevated installation failed (exit code {0}).' = 'Die Installation mit Administratorrechten ist fehlgeschlagen (Exitcode {0}).'

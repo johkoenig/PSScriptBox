@@ -22,12 +22,12 @@
     Internal path used to preserve the selected interpreter during elevation.
 
 .EXAMPLE
-    .\Setup-PdfProcessor.ps1
+    .\Initialize-PdfProcessor.ps1
     Checks dependencies, installs missing software if needed, and reports
     missing Tesseract language data.
 
 .EXAMPLE
-    .\Setup-PdfProcessor.ps1 -EnglishOutput
+    .\Initialize-PdfProcessor.ps1 -EnglishOutput
     Runs the setup with English console output.
 
 .NOTES

@@ -10,10 +10,10 @@ Repository guidance, especially for PowerShell scripts.
 - Keep user-facing documentation in both top-level `README.md` / `README.de.md` and each tool folder's `README.md` / `README.de.md`. Update all applicable README files whenever script content, behavior, parameters, or user workflows change; keep the English and German versions consistent.
 - PowerShell script documentation (comment-based help, parameter descriptions, examples, and notes) must remain complete and current in English only. Update it whenever script behavior or interface changes.
 - User-facing English and German READMEs at the repository root and in each tool folder must remain synchronized with script behavior, parameters, and workflows.
-- Every PowerShell script intended to be invoked directly has a filename in the approved `Verb-Noun` form. Check the verb with `Get-Verb`; use a specific noun that describes the script's action.
+- Every PowerShell script or module file (`.ps1`, `.psm1`) has a filename in the approved `Verb-Noun` form, whether user-facing or internal. Check the verb with `Get-Verb`; use a specific noun that clearly describes the file's action or responsibility. Update every caller, example, and documentation reference when a file is renamed.
 - PowerShell helper scripts or modules that are not intended to be run directly belong in an `internal` or other clearly named subfolder, not beside user-facing scripts. Their filenames must also follow the approved `Verb-Noun` form, and callers must resolve them with paths relative to `$PSScriptRoot`.
 - Every PowerShell function has a complete comment-based-help block immediately before its definition or at the start of its script block. Include `.SYNOPSIS`, `.DESCRIPTION`, `.PARAMETER` for every parameter, and `.OUTPUTS`. Add `.EXAMPLE` and `.NOTES` when they clarify usage or dependencies.
-- Every PowerShell function follows the `ApprovedVerb-Noun` pattern. Check verbs with `Get-Verb`; update callers and tests when renaming functions.
+- Every PowerShell function and user-defined method follows the `ApprovedVerb-Noun` pattern. Check every prefix against `Get-Verb`; do not assume a familiar English verb is approved. Use a specific noun, and update callers and tests whenever a function or method is renamed.
 - Comment on non-obvious decisions and explain why. Do not add comments that merely restate obvious code; use short section headings to structure the main script.
 
 ## PowerShell style
@@ -26,7 +26,7 @@ Repository guidance, especially for PowerShell scripts.
 - License the project and its files under the MIT License. Keep the standard license text in the root `LICENSE.md` and add an SPDX-License-Identifier: MIT header and the project copyright notice to every PowerShell script and PowerShell data file. Place headers after the required script help block.
 
 ## Dependencies and installation
-- Processing and inspection scripts do not install software and should not require administrator rights to run. `pdf/Setup-PdfProcessor.ps1` is the exception: it checks dependency state first and elevates only when installation is required. Chocolatey is a prerequisite and is never installed by the script.
+- Processing and inspection scripts do not install software and should not require administrator rights to run. `pdf/Initialize-PdfProcessor.ps1` is the exception: it checks dependency state first and elevates only when installation is required. Chocolatey is a prerequisite and is never installed by the script.
 - All PDF scripts dot-source `pdf/internal/Get-PdfPythonRuntime.ps1` to choose a working `python.exe` consistently. Prefer a Python interpreter in the current user's profile; use `py.exe` only to discover a concrete interpreter path when direct `python.exe` discovery fails. Invoke the resolved `python.exe` directly for checks and processing.
 - The setup script validates Chocolatey, Python, OCRmyPDF, pikepdf, Tesseract, and Ghostscript individually. Chocolatey installs missing system dependencies machine-wide. Before any UAC prompt, show the exact planned operations and wait for Enter (any non-empty response cancels). Install Python packages into the selected interpreter: user-scoped Python is installed without elevation; machine-wide Python is installed from the elevated child process. Do not use `pip --user`, which can install into a different site than the selected interpreter. It checks Tesseract language data but never downloads `.traineddata` files; it instructs the user to download any missing languages.
 - Check all required dependencies together and report missing dependencies with installation instructions.
@@ -50,11 +50,11 @@ Repository guidance, especially for PowerShell scripts.
 - Use `--optimize 1` rather than `--optimize 3`; level 3 can warn about the intentionally unavailable `jbig2` encoder.
 - Ghostscript is an optional second optimization stage. It uses explicit downsampling parameters, JPEG quality 75, and sRGB conversion, and runs only when `-GhostscriptDpi` is greater than zero and Ghostscript is available. `-NoGhostscript` disables it. Do not use qpdf.
 - PDFs with a complete text layer are skipped entirely by default to avoid repeat rewriting without a persistent marker. `-ForceReprocess` overrides this safeguard; `-RedoOcr` selects `--redo-ocr` to rebuild existing OCR text without rasterizing all visible text and vector graphics. Repeated use of either explicit override may modify a PDF again. Digitally signed and password-protected PDFs that cannot be opened without a password are skipped.
-- `pdf/Clean-OriginalPdfs.ps1` removes `_orig` PDF backups only when the corresponding processed PDF exists beside them. `-WhatIf` previews deletion.
+- `pdf/Clear-OriginalPdfBackups.ps1` removes `_orig` PDF backups only when the corresponding processed PDF exists beside them. `-WhatIf` previews deletion.
 - `pdf/Find-PdfsWithoutTextLayer.ps1` recursively finds PDFs without text operators and lists partially missing text layers separately. It requires Python and `pikepdf` and does not modify files.
 - OCRmyPDF's raw output, including progress bars and internal module names such as `_pipeline.py`, is shown unchanged in the console.
 
 ## Quality assurance before committing
 - When possible, test script changes with a sample PDF in both parameter and interactive modes.
 - Review `git diff` before committing. Do not commit local test PDFs, temporary files, or binary artifacts.
-- Keep commit messages short and factual.
+- Keep commit messages short and factual. Automatically generated commit messages must include exactly one `Signed-off-by` trailer for the user and exactly one `Co-authored-by` trailer for the AI engine used. Use the user's confirmed name and email for the sign-off and the active AI engine's configured name and email for co-authorship; do not invent or assume either identity. Place both trailers at the end of the commit message.

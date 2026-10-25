@@ -16,15 +16,15 @@
     Forces English console output regardless of the Windows display language.
 
 .EXAMPLE
-    .\Clean-OriginalPdfs.ps1
+    .\Clear-OriginalPdfBackups.ps1
     Prompts for a folder.
 
 .EXAMPLE
-    .\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs' -WhatIf
+    .\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
     Previews which _orig files would be deleted.
 
 .EXAMPLE
-    .\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs'
+    .\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs'
     Prompts for confirmation before deleting each matching _orig file.
 
 .NOTES
