@@ -65,7 +65,7 @@
     '  -RotatePages           Automatically correct rotated pages (default: off).' = '  -RotatePages           Verdrehte Seiten automatisch korrigieren (Standard: aus).'
     '  -NoGhostscript         Disable Ghostscript compression (allowed by default).' = '  -NoGhostscript         Ghostscript-Komprimierung deaktivieren (Standard: erlaubt).'
     '  -ReplaceOriginal       Replace original without an _orig backup.' = '  -ReplaceOriginal       Original ohne _orig-Sicherung überschreiben.'
-    '  -ForceOcrRescan        Force OCR even with a full text layer.' = '  -ForceOcrRescan        OCR auch bei vollständiger Textebene erzwingen.'
+    '  -RedoOcr               Reprocess existing OCR text without rasterizing the whole page.' = '  -RedoOcr               Vorhandene OCR-Textebene erneuern, ohne die ganze Seite zu rastern.'
     '  -EnglishOutput         Force English console output.' = '  -EnglishOutput         Englische Konsolenausgabe erzwingen.'
     'Press Ctrl+C to cancel input.' = 'Mit Strg+C kannst du die Eingabe abbrechen.'
     'Path to a PDF file or a folder containing PDFs' = 'Pfad zu einer PDF-Datei oder einem Ordner mit PDFs'

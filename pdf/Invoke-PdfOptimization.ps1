@@ -15,7 +15,8 @@
     PDFs with text operators on every page are processed with OCRmyPDF's
     skip-text mode by default: OCR is skipped, but PDF optimization and the
     optional Ghostscript stage still run. OCRmyPDF does not apply deskew/rotation
-    preprocessing to skipped pages. -ForceOcrRescan forces OCR on all pages.
+    preprocessing to skipped pages. -RedoOcr reprocesses existing OCR text
+    with OCRmyPDF's `--redo-ocr` mode while preserving visible text and vectors.
 
     TWO-STAGE PROCESSING:
       1. OCRmyPDF adds an OCR text layer and deskews scans. Output is a standard
@@ -79,10 +80,11 @@
     <Name>_orig.pdf after successful processing. An existing backup is preserved
     and the PDF is replaced directly.
 
-.PARAMETER ForceOcrRescan
-    Forces OCR on all pages even when every page already has text. OCRmyPDF
-    rasterizes text and vector graphics before rescanning. OCRmyPDF optimization
-    and optional Ghostscript processing remain enabled.
+.PARAMETER RedoOcr
+    Reprocesses existing OCR text and OCRs text in images using OCRmyPDF's
+    `--redo-ocr` mode. It preserves visible text and vector graphics instead of
+    rasterizing the entire page. OCRmyPDF optimization and optional Ghostscript
+    processing remain enabled.
 
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
@@ -103,8 +105,8 @@
     Processes all PDFs in C:\PDFs and replaces the originals without backups.
 
 .EXAMPLE
-    .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -ForceOcrRescan
-    Forces OCR rescanning, including PDFs that already have a full text layer.
+    .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -RedoOcr
+    Reprocesses existing OCR text and scans image content for text.
 
 .NOTES
     Dependencies:
@@ -162,8 +164,8 @@ param(
     # Replace input without a backup (an _orig backup is created by default).
     [switch] $ReplaceOriginal,
 
-    # Force OCR even when a text layer is already present.
-    [switch] $ForceOcrRescan,
+    # Reprocess existing OCR text without rasterizing visible page content.
+    [switch] $RedoOcr,
 
     # Force English console output regardless of the Windows display language.
     [switch] $EnglishOutput
@@ -520,7 +522,7 @@ function Get-PdfInputFile {
         Write-Host (Get-LocalizedText '  -RotatePages           Automatically correct rotated pages (default: off).')
         Write-Host (Get-LocalizedText '  -NoGhostscript         Disable Ghostscript compression (allowed by default).')
         Write-Host (Get-LocalizedText '  -ReplaceOriginal       Replace original without an _orig backup.')
-        Write-Host (Get-LocalizedText '  -ForceOcrRescan        Force OCR even with a full text layer.')
+        Write-Host (Get-LocalizedText '  -RedoOcr               Reprocess existing OCR text without rasterizing the whole page.')
         Write-Host (Get-LocalizedText '  -EnglishOutput         Force English console output.')
         Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.') -ForegroundColor Yellow
         $Path = Read-Host -Prompt (Get-LocalizedText 'Path to a PDF file or a folder containing PDFs')
@@ -704,8 +706,8 @@ function Invoke-PdfProcessing {
 .PARAMETER ReplaceOriginal
     Replaces the input without creating an _orig backup.
 
-.PARAMETER ForceOcrRescan
-    Forces OCR even when a full text layer is present.
+.PARAMETER RedoOcr
+    Reprocesses existing OCR text with OCRmyPDF's `--redo-ocr` mode.
 
 .PARAMETER GhostscriptPath
     Path to Ghostscript, if available.
@@ -725,7 +727,7 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][bool] $RotatePages,
         [Parameter(Mandatory)][bool] $NoGhostscript,
         [Parameter(Mandatory)][bool] $ReplaceOriginal,
-        [Parameter(Mandatory)][bool] $ForceOcrRescan,
+        [Parameter(Mandatory)][bool] $RedoOcr,
         [string] $GhostscriptPath
     )
 
@@ -864,7 +866,7 @@ with pdf:
             Write-Warning (Get-LocalizedText -Text "Backup '{0}' already exists and will be preserved; replacing the PDF directly." -Arguments @($relativeOriginalPath))
         }
 
-        if ($hasFullTextLayer -and -not $ForceOcrRescan) {
+        if ($hasFullTextLayer -and -not $RedoOcr) {
             Write-Host (Get-LocalizedText -Text 'A full text layer was found on all {0} pages; OCRmyPDF will skip OCR and continue with PDF optimization.' -Arguments @($pageCount)) -ForegroundColor Green
         }
 
@@ -875,8 +877,8 @@ with pdf:
             '--jpeg-quality', "$Quality",
             '--language', $Language
         )
-        if ($ForceOcrRescan) {
-            $ocrArguments += '--force-ocr'
+        if ($RedoOcr) {
+            $ocrArguments += '--redo-ocr'
         }
         else {
             $ocrArguments += '--skip-text'
@@ -1087,7 +1089,7 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
         -Language $languageSelection -Quality $JpegQuality -GhostscriptDpi $GhostscriptDpi `
         -NoDeskew $NoDeskew.IsPresent -RotatePages $RotatePages.IsPresent `
         -NoGhostscript $NoGhostscript.IsPresent -ReplaceOriginal $ReplaceOriginal.IsPresent `
-        -ForceOcrRescan $ForceOcrRescan.IsPresent `
+        -RedoOcr $RedoOcr.IsPresent `
         -GhostscriptPath $dependencyCheck.GhostscriptPath
     if ($null -ne $r) { $results += $r }
 }

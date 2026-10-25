@@ -39,7 +39,7 @@ Repository guidance, especially for PowerShell scripts.
 - Do not pass `--image-dpi`: OCRmyPDF ignores it for PDF inputs. Image resolution is controlled by the optional Ghostscript stage when `-GhostscriptDpi` is specified.
 - Use `--optimize 1` rather than `--optimize 3`; level 3 can warn about the intentionally unavailable `jbig2` encoder.
 - Ghostscript is an optional second optimization stage. It uses explicit downsampling parameters, JPEG quality 75, and sRGB conversion, and runs only when `-GhostscriptDpi` is greater than zero and Ghostscript is available. `-NoGhostscript` disables it. Do not use qpdf.
-- PDFs with a complete text layer use OCRmyPDF's `--skip-text` mode by default; optimization still runs. `-ForceOcrRescan` selects `--force-ocr`. Digitally signed and password-protected PDFs that cannot be opened without a password are skipped.
+- PDFs with a complete text layer use OCRmyPDF's `--skip-text` mode by default; optimization still runs. `-RedoOcr` selects `--redo-ocr` to rebuild existing OCR text without rasterizing all visible text and vector graphics. Digitally signed and password-protected PDFs that cannot be opened without a password are skipped.
 - `pdf/Clean-OriginalPdfs.ps1` removes `_orig` PDF backups only when the corresponding processed PDF exists beside them. `-WhatIf` previews deletion.
 - `pdf/Find-PdfsWithoutTextLayer.ps1` recursively finds PDFs without text operators and lists partially missing text layers separately. It requires Python and `pikepdf` and does not modify files.
 - OCRmyPDF's raw output, including progress bars and internal module names such as `_pipeline.py`, is shown unchanged in the console.
