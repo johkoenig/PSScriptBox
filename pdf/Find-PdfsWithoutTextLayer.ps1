@@ -31,6 +31,9 @@
     No files are modified, and administrator rights are not required.
 #>
 
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 scriptbox contributors
+
 [CmdletBinding()]
 param(
     [string] $InputPath,

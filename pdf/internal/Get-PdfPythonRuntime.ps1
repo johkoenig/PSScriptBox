@@ -17,6 +17,9 @@
     Dependencies: Windows PowerShell 5.1 or PowerShell 7 and Python 3.
 #>
 
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 scriptbox contributors
+
 [CmdletBinding()]
 param()
 

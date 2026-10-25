@@ -20,11 +20,15 @@ Führe die Skripte in PowerShell aus. Bei deutscher Windows-Anzeigesprache ersch
 | Skript | Parameter und Schalter |
 | --- | --- |
 | `Setup-PdfProcessor.ps1` | `-EnglishOutput`. Interne ausgeblendete Parameter: `-ElevatedChild`, `-RuntimePythonPath`. |
-| `Invoke-PdfOptimization.ps1` | `-InputPath <Pfad>`, `-Language <Codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-RotatePages`, `-NoGhostscript`, `-ReplaceOriginal`, `-RedoOcr`, `-EnglishOutput`. |
+| `Invoke-PdfOptimization.ps1` | `-InputPath <Pfad>`, `-Language <Codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-RotatePages`, `-NoGhostscript`, `-ReplaceOriginal`, `-RedoOcr`, `-ForceReprocess`, `-EnglishOutput`. |
 | `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <Pfad>`, `-EnglishOutput`. |
 | `Clean-OriginalPdfs.ps1` | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm` (mit `-Confirm:$false` werden Rückfragen unterdrückt), `-EnglishOutput`. |
 
 Die [PDF-Anleitung](pdf/README.de.md) beschreibt das Verhalten der Parameter, Beispiele, Einrichtung, Abhängigkeiten und Sicherheitsaspekte.
+
+Die PDF-Optimierung verwendet eine bestmögliche Idempotenz ohne Statusdateien: PDFs mit vollständiger Textebene werden standardmäßig übersprungen; neben der PDF wird kein dauerhafter Marker abgelegt. `-ForceReprocess` und `-RedoOcr` umgehen diesen Schutz ausdrücklich und können die PDF bei wiederholten Läufen erneut verändern.
+
+Das Projekt steht unter der [MIT-Lizenz](LICENSE.md).
 
 ## Dokumentation
 

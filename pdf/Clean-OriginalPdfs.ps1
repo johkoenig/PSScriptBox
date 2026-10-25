@@ -32,6 +32,9 @@
     are required.
 #>
 
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 scriptbox contributors
+
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
 param(
     [string] $InputPath,

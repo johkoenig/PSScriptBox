@@ -9,6 +9,7 @@ Repository guidance, especially for PowerShell scripts.
 - Every script starts with comment-based help containing `.SYNOPSIS`, `.DESCRIPTION`, at least one `.EXAMPLE`, and `.NOTES` listing dependencies.
 - Keep user-facing documentation in both top-level `README.md` / `README.de.md` and each tool folder's `README.md` / `README.de.md`. Update all applicable README files whenever script content, behavior, parameters, or user workflows change; keep the English and German versions consistent.
 - PowerShell script documentation (comment-based help, parameter descriptions, examples, and notes) must remain complete and current in English only. Update it whenever script behavior or interface changes.
+- User-facing English and German READMEs at the repository root and in each tool folder must remain synchronized with script behavior, parameters, and workflows.
 - Every PowerShell script intended to be invoked directly has a filename in the approved `Verb-Noun` form. Check the verb with `Get-Verb`; use a specific noun that describes the script's action.
 - PowerShell helper scripts or modules that are not intended to be run directly belong in an `internal` or other clearly named subfolder, not beside user-facing scripts. Their filenames must also follow the approved `Verb-Noun` form, and callers must resolve them with paths relative to `$PSScriptRoot`.
 - Every PowerShell function has a complete comment-based-help block immediately before its definition or at the start of its script block. Include `.SYNOPSIS`, `.DESCRIPTION`, `.PARAMETER` for every parameter, and `.OUTPUTS`. Add `.EXAMPLE` and `.NOTES` when they clarify usage or dependencies.
@@ -22,6 +23,7 @@ Repository guidance, especially for PowerShell scripts.
 - Use `-LiteralPath` and `Join-Path` consistently. Normalize user input with `Trim()` and `ExpandEnvironmentVariables()` before use.
 - Start external console programs with redirected streams and read asynchronously so errors are not mistaken for PowerShell terminating errors and large output cannot block a pipe. Exception: run OCRmyPDF without stream redirection so its progress bar is displayed live.
 - Save PowerShell scripts with a UTF-8 BOM (U+FEFF). Windows PowerShell 5.1 otherwise interprets non-ASCII text as ANSI.
+- License the project and its files under the MIT License. Keep the standard license text in the root `LICENSE.md` and add an SPDX-License-Identifier: MIT header and the project copyright notice to every PowerShell script and PowerShell data file. Place headers after the required script help block.
 
 ## Dependencies and installation
 - Processing and inspection scripts do not install software and should not require administrator rights to run. `pdf/Setup-PdfProcessor.ps1` is the exception: it checks dependency state first and elevates only when installation is required. Chocolatey is a prerequisite and is never installed by the script.
@@ -31,6 +33,8 @@ Repository guidance, especially for PowerShell scripts.
 - Optional tools such as Ghostscript must not block a run when unavailable. Do not use `jbig2`.
 
 ## Files and data
+- Scripts should be idempotent where practical. Prefer stateless detection over persistent state files, and never add persistent files beside user data unless the user approves them. Document limits to idempotency and any explicit force/bypass options; users may knowingly bypass idempotency with such options.
+- Never hardcode or store personal data in source files (except author tags). Discover user profile paths, account names, email addresses, and other environment-specific values dynamically. Scripts must work on Windows with local, Active Directory, and Microsoft online accounts.
 - By default, save the input PDF after successful processing as `<Name>_orig.pdf`. `-ReplaceOriginal` replaces the input without a backup.
 - Treat processing as failed only when OCRmyPDF fails or the final result has the same SHA-256 hash as the original. A larger but changed result is successful.
 - A downstream optimization stage may replace its intermediate result only when it makes the file smaller.
@@ -45,7 +49,7 @@ Repository guidance, especially for PowerShell scripts.
 - Do not pass `--image-dpi`: OCRmyPDF ignores it for PDF inputs. Image resolution is controlled by the optional Ghostscript stage when `-GhostscriptDpi` is specified.
 - Use `--optimize 1` rather than `--optimize 3`; level 3 can warn about the intentionally unavailable `jbig2` encoder.
 - Ghostscript is an optional second optimization stage. It uses explicit downsampling parameters, JPEG quality 75, and sRGB conversion, and runs only when `-GhostscriptDpi` is greater than zero and Ghostscript is available. `-NoGhostscript` disables it. Do not use qpdf.
-- PDFs with a complete text layer use OCRmyPDF's `--skip-text` mode by default; optimization still runs. `-RedoOcr` selects `--redo-ocr` to rebuild existing OCR text without rasterizing all visible text and vector graphics. Digitally signed and password-protected PDFs that cannot be opened without a password are skipped.
+- PDFs with a complete text layer are skipped entirely by default to avoid repeat rewriting without a persistent marker. `-ForceReprocess` overrides this safeguard; `-RedoOcr` selects `--redo-ocr` to rebuild existing OCR text without rasterizing all visible text and vector graphics. Repeated use of either explicit override may modify a PDF again. Digitally signed and password-protected PDFs that cannot be opened without a password are skipped.
 - `pdf/Clean-OriginalPdfs.ps1` removes `_orig` PDF backups only when the corresponding processed PDF exists beside them. `-WhatIf` previews deletion.
 - `pdf/Find-PdfsWithoutTextLayer.ps1` recursively finds PDFs without text operators and lists partially missing text layers separately. It requires Python and `pikepdf` and does not modify files.
 - OCRmyPDF's raw output, including progress bars and internal module names such as `_pipeline.py`, is shown unchanged in the console.

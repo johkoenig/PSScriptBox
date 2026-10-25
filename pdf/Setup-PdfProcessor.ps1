@@ -37,6 +37,9 @@
     interpreter. No OCR language data is downloaded by this script.
 #>
 
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 scriptbox contributors
+
 [CmdletBinding()]
 param(
     [switch] $EnglishOutput,

@@ -1,4 +1,7 @@
-﻿@{
+﻿# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 scriptbox contributors
+
+@{
     'InputPath' = 'Eingabepfad'
     'Enter the folder containing original PDF backups.' = 'Gib den Ordner mit den Original-PDF-Sicherungen ein.'
     'No folder was specified.' = 'Es wurde kein Ordner angegeben.'
@@ -68,6 +71,7 @@
     '  -NoGhostscript         Disable Ghostscript compression (allowed by default).' = '  -NoGhostscript         Ghostscript-Komprimierung deaktivieren (Standard: erlaubt).'
     '  -ReplaceOriginal       Replace original without an _orig backup.' = '  -ReplaceOriginal       Original ohne _orig-Sicherung überschreiben.'
     '  -RedoOcr               Reprocess existing OCR text without rasterizing the whole page.' = '  -RedoOcr               Vorhandene OCR-Textebene erneuern, ohne die ganze Seite zu rastern.'
+    '  -ForceReprocess        Process PDFs with a full text layer instead of skipping them.' = '  -ForceReprocess        PDFs mit vollständiger Textebene verarbeiten, statt sie zu überspringen.'
     '  -EnglishOutput         Force English console output.' = '  -EnglishOutput         Englische Konsolenausgabe erzwingen.'
     'Press Ctrl+C to cancel input.' = 'Mit Strg+C kannst du die Eingabe abbrechen.'
     'Path to a PDF file or a folder containing PDFs' = 'Pfad zu einer PDF-Datei oder einem Ordner mit PDFs'
@@ -81,9 +85,12 @@
     'Digitally signed PDF' = 'PDF digital signiert'
     'The input PDF has a digital signature. OCR would alter the document and invalidate the signature.' = 'Die Eingabe-PDF ist digital signiert. OCR würde das Dokument verändern und die Signatur ungültig machen.'
     "Skipped: '{0}'`n{1}" = "Übersprungen: '{0}'`n{1}"
+    'Force reprocessing: enabled' = 'Erneute Verarbeitung erzwingen: aktiv'
     'Backup already exists' = 'Sicherung vorhanden'
     "Backup '{0}' already exists and will be preserved; replacing the PDF directly." = "Sicherung '{0}' existiert bereits und bleibt erhalten; das PDF wird direkt ersetzt."
-    'A full text layer was found on all {0} pages; OCRmyPDF will skip OCR and continue with PDF optimization.' = 'Auf allen {0} Seiten wurde eine vollständige Textebene gefunden; OCRmyPDF überspringt OCR und fährt mit der PDF-Optimierung fort.'
+    'A full text layer was found on all {0} pages; skipping without rewriting the PDF. Use -ForceReprocess to override this safeguard.' = 'Auf allen {0} Seiten wurde eine vollständige Textebene gefunden; die PDF wird ohne erneutes Schreiben übersprungen. Mit -ForceReprocess lässt sich dieser Schutz umgehen.'
+    'Complete text layer found; skipped to avoid repeated processing' = 'Vollständige Textebene gefunden; zur Vermeidung wiederholter Verarbeitung übersprungen'
+    'A full text layer was found; forced processing will continue, but repeated runs may change the PDF again.' = 'Eine vollständige Textebene wurde gefunden; die erzwungene Verarbeitung wird fortgesetzt, wiederholte Läufe können die PDF erneut verändern.'
     'OCRmyPDF error (exit code {0})' = 'OCRmyPDF-Fehler (Exitcode {0})'
     '{0}. See the OCRmyPDF console output for details.' = '{0}. Die genaue Ursache steht in der OCRmyPDF-Konsolenausgabe.'
     'The result is identical to the original (no changes); discarding the output.' = 'Das Ergebnis ist mit dem Original identisch (keine Änderung); Ausgabe wird verworfen.'

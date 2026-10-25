@@ -65,6 +65,7 @@ Verarbeitet eine PDF-Datei oder alle PDFs eines Ordnerbaums. OCRmyPDF ergänzt b
 | `-NoGhostscript` | Deaktiviert den optionalen Ghostscript-Schritt. |
 | `-ReplaceOriginal` | Ersetzt die Eingabe, ohne eine neue `_orig`-Sicherung anzulegen. |
 | `-RedoOcr` | Verarbeitet vorhandene OCR-Textebene mit OCRmyPDF `--redo-ocr` erneut; die gesamte Seite wird dabei nicht gerastert. |
+| `-ForceReprocess` | Umgeht das standardmäßige Überspringen von PDFs mit vollständiger Textebene. Wiederholte erzwungene Läufe können die PDF erneut verändern. |
 | `-EnglishOutput` | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
 
 Beispiele:
@@ -73,10 +74,11 @@ Beispiele:
 .\Invoke-PdfOptimization.ps1
 .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -RotatePages -GhostscriptDpi 150
 .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs\Scan.pdf' -RedoOcr -ReplaceOriginal
+.\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -ForceReprocess
 .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -EnglishOutput
 ```
 
-PDFs mit vollständiger Textebene werden standardmäßig mit dem OCRmyPDF-Verhalten zum Überspringen vorhandener Texte verarbeitet; die PDF-Optimierung läuft trotzdem. Signierte PDFs und verschlüsselte PDFs, die sich nicht ohne Passwort öffnen lassen, werden übersprungen. Das Ergebnis ist eine normale PDF und kein PDF/A. Ghostscript läuft nur, wenn `-GhostscriptDpi` angegeben wurde.
+PDFs mit vollständiger Textebene werden standardmäßig übersprungen, ohne sie erneut zu schreiben. So werden wiederholte Verarbeitungsläufe vermieden, ohne eine dauerhafte Zusatzdatei zu speichern. Mit `-ForceReprocess` wird die Optimierung trotzdem ausgeführt; `-RedoOcr` erneuert die vorhandene OCR-Textebene. Diese ausdrücklichen Optionen können die PDF bei wiederholten Läufen erneut verändern; Idempotenz ist dann nicht garantiert. Signierte PDFs und verschlüsselte PDFs, die sich nicht ohne Passwort öffnen lassen, werden übersprungen. Das Ergebnis ist eine normale PDF und kein PDF/A. Ghostscript läuft nur, wenn `-GhostscriptDpi` angegeben wurde.
 
 ### `Find-PdfsWithoutTextLayer.ps1`
 
@@ -120,10 +122,13 @@ Skripte unterstützen, soweit anwendbar, außerdem PowerShell-Standardparameter 
 ## Sicherheit und Verhalten
 
 - `Invoke-PdfOptimization.ps1` legt temporäre Dateien neben der Eingabe an und entfernt sie nach der Verarbeitung.
+- Neben der PDF werden keine dauerhaften Status- oder Markierungsdateien angelegt. Temporäre Verarbeitungsdateien werden nach dem Lauf entfernt.
+- Eine vollständige Textebene dient als zustandsloses Indiz dafür, dass OCR bereits angewendet wurde; solche PDFs werden übersprungen, außer `-ForceReprocess` oder `-RedoOcr` wird verwendet. Das ist eine bestmögliche Idempotenz: Bei einer digital erzeugten PDF lässt sich damit nicht erkennen, ob eine Bildoptimierung gewünscht ist.
 - Eine PDF gilt nur dann als erfolgreich verändert, wenn die Verarbeitung erfolgreich war und sich der Ergebnis-Hash von der Originaldatei unterscheidet. Auch größere Ergebnisse können gültig sein.
 - Vorhandene `_orig`-Sicherungen bleiben erhalten.
 - `Clean-OriginalPdfs.ps1` löscht nur Sicherungen, zu denen die bearbeitete PDF vorhanden ist.
 - Verwende diese Werkzeuge nicht für Dateien, die byte-identisch bleiben müssen, etwa digital signierte PDFs.
+- Das Projekt steht unter der [MIT-Lizenz](../LICENSE.md).
 
 ## Weitere Dokumentation
 

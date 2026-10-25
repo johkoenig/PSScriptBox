@@ -65,6 +65,7 @@ Processes one PDF or all PDFs in a folder tree. OCRmyPDF adds a text layer when 
 | `-NoGhostscript` | Disables the optional Ghostscript stage. |
 | `-ReplaceOriginal` | Replaces the input without creating a new `_orig` backup. |
 | `-RedoOcr` | Reprocesses existing OCR text with OCRmyPDF `--redo-ocr`; it does not rasterize the entire page. |
+| `-ForceReprocess` | Overrides the default skip for PDFs that already have a complete text layer. Repeated forced runs can change the PDF again. |
 | `-EnglishOutput` | Forces English console output regardless of Windows UI language. |
 
 Examples:
@@ -73,10 +74,11 @@ Examples:
 .\Invoke-PdfOptimization.ps1
 .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -RotatePages -GhostscriptDpi 150
 .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs\Scan.pdf' -RedoOcr -ReplaceOriginal
+.\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -ForceReprocess
 .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -EnglishOutput
 ```
 
-PDFs with a complete text layer are processed using OCRmyPDF's skip-text behavior by default; PDF optimization still runs. Signed PDFs and encrypted PDFs that cannot be opened without a password are skipped. The result is a standard PDF, not PDF/A. Ghostscript runs only when `-GhostscriptDpi` is specified.
+PDFs with a complete text layer are skipped by default, without rewriting them. This avoids repeat processing without storing a persistent sidecar file. Use `-ForceReprocess` to run optimization anyway, or `-RedoOcr` to rebuild existing OCR text. Those explicit options can modify the PDF on repeated runs and are not guaranteed to be idempotent. Signed PDFs and encrypted PDFs that cannot be opened without a password are skipped. The result is a standard PDF, not PDF/A. Ghostscript runs only when `-GhostscriptDpi` is specified.
 
 ### `Find-PdfsWithoutTextLayer.ps1`
 
@@ -120,10 +122,13 @@ Scripts also support PowerShell common parameters where applicable, including `-
 ## Safety and behavior
 
 - `Invoke-PdfOptimization.ps1` uses temporary files beside the input and cleans them up after processing.
+- No persistent state or marker file is created beside a PDF. Temporary processing files are removed after the run.
+- Complete text layers are used as a stateless indication that OCR has already been applied; such PDFs are skipped unless `-ForceReprocess` or `-RedoOcr` is used. This is best-effort idempotency: it cannot tell whether a digitally born PDF needs image optimization.
 - A PDF is considered successfully changed only when processing succeeds and the result hash differs from the original. Larger results can still be valid.
 - Existing `_orig` backups are preserved.
 - `Clean-OriginalPdfs.ps1` deletes only backups whose corresponding processed PDF exists.
 - Do not use these tools on files that must remain byte-identical, such as digitally signed PDFs.
+- The project is licensed under the [MIT License](../LICENSE.md).
 
 ## Related documentation
 

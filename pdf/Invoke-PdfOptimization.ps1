@@ -12,11 +12,11 @@
     backup. Digitally signed PDFs and encrypted PDFs that cannot be opened
     without a password are skipped before OCR.
 
-    PDFs with text operators on every page are processed with OCRmyPDF's
-    skip-text mode by default: OCR is skipped, but PDF optimization and the
-    optional Ghostscript stage still run. OCRmyPDF does not apply deskew/rotation
-    preprocessing to skipped pages. -RedoOcr reprocesses existing OCR text
-    with OCRmyPDF's `--redo-ocr` mode while preserving visible text and vectors.
+    To avoid repeat processing without creating persistent state files, PDFs
+    with text operators on every page are skipped by default. -ForceReprocess
+    explicitly bypasses this safeguard. -RedoOcr also explicitly reprocesses
+    existing OCR text with OCRmyPDF's `--redo-ocr` mode. Repeated use of either
+    option can modify a PDF again and is not guaranteed to be idempotent.
 
     TWO-STAGE PROCESSING:
       1. OCRmyPDF adds an OCR text layer and deskews scans. Output is a standard
@@ -89,6 +89,10 @@
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
+.PARAMETER ForceReprocess
+    Processes PDFs with a complete text layer instead of skipping them. This
+    can change a PDF again on repeated runs; idempotency is not guaranteed.
+
 .EXAMPLE
     .\Invoke-PdfOptimization.ps1
     Starts interactively with the default language sequence, JPEG quality 75,
@@ -107,6 +111,10 @@
 .EXAMPLE
     .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -RedoOcr
     Reprocesses existing OCR text and scans image content for text.
+
+.EXAMPLE
+    .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -ForceReprocess
+    Processes PDFs with a complete text layer instead of skipping them.
 
 .NOTES
     Dependencies:
@@ -133,6 +141,9 @@
       - The file is saved as UTF-8 with BOM for correct Windows PowerShell 5.1
         character decoding.
 #>
+
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 scriptbox contributors
 
 [CmdletBinding()]
 param(
@@ -164,6 +175,9 @@ param(
 
     # Reprocess existing OCR text without rasterizing visible page content.
     [switch] $RedoOcr,
+
+    # Reprocess files even when the same settings have already been applied.
+    [switch] $ForceReprocess,
 
     # Force English console output regardless of the Windows display language.
     [switch] $EnglishOutput
@@ -527,6 +541,7 @@ function Get-PdfInputFile {
         Write-Host (Get-LocalizedText '  -NoGhostscript         Disable Ghostscript compression (allowed by default).')
         Write-Host (Get-LocalizedText '  -ReplaceOriginal       Replace original without an _orig backup.')
         Write-Host (Get-LocalizedText '  -RedoOcr               Reprocess existing OCR text without rasterizing the whole page.')
+        Write-Host (Get-LocalizedText '  -ForceReprocess        Process PDFs with a full text layer instead of skipping them.')
         Write-Host (Get-LocalizedText '  -EnglishOutput         Force English console output.')
         Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.') -ForegroundColor Yellow
         $Path = Read-Host -Prompt (Get-LocalizedText 'Path to a PDF file or a folder containing PDFs')
@@ -581,6 +596,41 @@ function Get-FileSha256 {
     finally { $sha256.Dispose() }
 }
 
+<#
+.SYNOPSIS
+    Creates a stable fingerprint for PDF processing options.
+
+.DESCRIPTION
+    Hashes only processing settings that affect the generated output. The
+    fingerprint contains no file paths or user-specific information.
+
+.PARAMETER Language
+    Selected Tesseract language sequence.
+
+.PARAMETER Quality
+    JPEG quality passed to OCRmyPDF.
+
+.PARAMETER GhostscriptDpi
+    Ghostscript target resolution.
+
+.PARAMETER UseGhostscript
+    Indicates whether the Ghostscript stage will run.
+
+.PARAMETER NoDeskew
+    Indicates whether deskewing is disabled.
+
+.PARAMETER RotatePages
+    Indicates whether page rotation correction is enabled.
+
+.PARAMETER ReplaceOriginal
+    Indicates whether the original is replaced without an _orig backup.
+
+.PARAMETER RedoOcr
+    Indicates whether existing OCR text is reprocessed.
+
+.OUTPUTS
+    System.String. SHA-256 fingerprint of the processing settings.
+#>
 <#
 .SYNOPSIS
     Optimizes a PDF file with Ghostscript.
@@ -679,9 +729,11 @@ function Invoke-PdfProcessing {
     Checks signatures and the text layer, runs OCRmyPDF, and optionally applies
     Ghostscript optimization. Encrypted and digitally signed PDFs are skipped.
     The result replaces the input; by default, the original is first saved as
-    _orig.pdf. OCR is skipped for PDFs with a full text layer, but PDF
-    optimization remains active. --optimize 1 avoids the optional jbig2
-    dependency.
+    _orig.pdf. PDFs with a full text layer are skipped by default to avoid
+    repeated rewriting without a persistent state file. -ForceReprocess
+    bypasses this skip; -RedoOcr explicitly rebuilds existing OCR. Either may
+    cause further changes when repeated. --optimize 1 avoids the optional
+    jbig2 dependency.
 
 .PARAMETER Pdf
     Input PDF to process.
@@ -713,6 +765,10 @@ function Invoke-PdfProcessing {
 .PARAMETER RedoOcr
     Reprocesses existing OCR text with OCRmyPDF's `--redo-ocr` mode.
 
+.PARAMETER ForceReprocess
+    Processes PDFs with a complete text layer instead of skipping them.
+    Repeated use can modify a PDF again; idempotency is not guaranteed.
+
 .PARAMETER GhostscriptPath
     Path to Ghostscript, if available.
 
@@ -732,6 +788,7 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][bool] $NoGhostscript,
         [Parameter(Mandatory)][bool] $ReplaceOriginal,
         [Parameter(Mandatory)][bool] $RedoOcr,
+        [Parameter(Mandatory)][bool] $ForceReprocess,
         [string] $GhostscriptPath
     )
 
@@ -870,8 +927,13 @@ with pdf:
             Write-Warning (Get-LocalizedText -Text "Backup '{0}' already exists and will be preserved; replacing the PDF directly." -Arguments @($relativeOriginalPath))
         }
 
-        if ($hasFullTextLayer -and -not $RedoOcr) {
-            Write-Host (Get-LocalizedText -Text 'A full text layer was found on all {0} pages; OCRmyPDF will skip OCR and continue with PDF optimization.' -Arguments @($pageCount)) -ForegroundColor Green
+        if ($hasFullTextLayer -and -not $RedoOcr -and -not $ForceReprocess) {
+            $failureReason = Get-LocalizedText 'Complete text layer found; skipped to avoid repeated processing'
+            Write-Host (Get-LocalizedText -Text 'A full text layer was found on all {0} pages; skipping without rewriting the PDF. Use -ForceReprocess to override this safeguard.' -Arguments @($pageCount)) -ForegroundColor Green
+            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
+        }
+        if ($hasFullTextLayer -and $ForceReprocess -and -not $RedoOcr) {
+            Write-Host (Get-LocalizedText 'A full text layer was found; forced processing will continue, but repeated runs may change the PDF again.') -ForegroundColor Yellow
         }
 
         $ocrArguments = @(
@@ -1078,6 +1140,9 @@ else {
     Write-Host (Get-LocalizedText 'Ghostscript DPI: disabled (compression requires -GhostscriptDpi)')
 }
 Write-Host (Get-LocalizedText -Text 'Deskew: {0}' -Arguments @(-not $NoDeskew))
+if ($ForceReprocess) {
+    Write-Host (Get-LocalizedText 'Force reprocessing: enabled')
+}
 Write-Host (Get-LocalizedText 'Output format: standard PDF (version 1.5)')
 
 # --- Process PDFs ---------------------------------------------------------
@@ -1090,7 +1155,7 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
         -Language $languageSelection -Quality $JpegQuality -GhostscriptDpi $GhostscriptDpi `
         -NoDeskew $NoDeskew.IsPresent -RotatePages $RotatePages.IsPresent `
         -NoGhostscript $NoGhostscript.IsPresent -ReplaceOriginal $ReplaceOriginal.IsPresent `
-        -RedoOcr $RedoOcr.IsPresent `
+        -RedoOcr $RedoOcr.IsPresent -ForceReprocess $ForceReprocess.IsPresent `
         -GhostscriptPath $dependencyCheck.GhostscriptPath
     if ($null -ne $r) { $results += $r }
 }
