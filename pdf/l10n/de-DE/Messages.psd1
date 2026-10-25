@@ -1,5 +1,7 @@
 ﻿# SPDX-License-Identifier: MIT
 # Copyright (c) 2026 scriptbox contributors
+# Contributors:
+# - Johannes Koenig <dev@jokoenig.de>
 
 @{
     'InputPath' = 'Eingabepfad'
@@ -63,15 +65,16 @@
     'and place them in the local tessdata folder: {0}' = 'und lege sie im lokalen tessdata-Ordner ab: {0}'
     'Available parameters:' = 'Verfügbare Parameter:'
     '  -InputPath <path>       PDF file or folder; prompts if omitted.' = '  -InputPath <Pfad>       PDF-Datei oder Ordner; ohne Angabe erscheint diese Abfrage.'
-    '  -Language <languages>  OCR languages, e.g. deu+eng (default: deu+eng+fra+ita+spa).' = '  -Language <Sprachen>    OCR-Sprachen, z. B. deu+eng (Standard: deu+eng+fra+ita+spa).'
+    '  -Language <languages>  OCR languages, e.g. deu+eng (default: deu+eng+fra+ita+spa+equ).' = '  -Language <Sprachen>    OCR-Sprachen, z. B. deu+eng (Standard: deu+eng+fra+ita+spa+equ).'
     '  -JpegQuality <1-100>   JPEG quality (default: 75).' = '  -JpegQuality <1-100>   JPEG-Qualität (Standard: 75).'
     '  -GhostscriptDpi <DPI>  Optional Ghostscript resolution (default: disabled).' = '  -GhostscriptDpi <DPI>  Optionale Ghostscript-Auflösung (Standard: deaktiviert).'
     '  -NoDeskew              Disable deskewing (enabled by default).' = '  -NoDeskew              Schräglagenkorrektur deaktivieren (Standard: aktiv).'
-    '  -RotatePages           Automatically correct rotated pages (default: off).' = '  -RotatePages           Verdrehte Seiten automatisch korrigieren (Standard: aus).'
+    '  -NoRotationOfPages     Disable rotation correction (enabled by default).' = '  -NoRotationOfPages     Rotationskorrektur deaktivieren (Standard: aktiv).'
+    '  -ProcessDigitallyBornPdfs Process PDFs classified as digitally born (default: skip).' = '  -ProcessDigitallyBornPdfs Digital erzeugte PDFs verarbeiten (Standard: überspringen).'
     '  -NoGhostscript         Disable Ghostscript compression (allowed by default).' = '  -NoGhostscript         Ghostscript-Komprimierung deaktivieren (Standard: erlaubt).'
     '  -ReplaceOriginal       Replace original without an _orig backup.' = '  -ReplaceOriginal       Original ohne _orig-Sicherung überschreiben.'
-    '  -RedoOcr               Reprocess existing OCR text without rasterizing the whole page.' = '  -RedoOcr               Vorhandene OCR-Textebene erneuern, ohne die ganze Seite zu rastern.'
-    '  -ForceReprocess        Process PDFs with a full text layer instead of skipping them.' = '  -ForceReprocess        PDFs mit vollständiger Textebene verarbeiten, statt sie zu überspringen.'
+    '  -RedoOcr               Rebuild existing OCR text so page correction can run.' = '  -RedoOcr               Vorhandene OCR-Textebene erneuern, damit Seitenkorrekturen ausgeführt werden.'
+    '  -ForceReprocess        Reprocess scanned PDFs with a full text layer.' = '  -ForceReprocess        Gescannte PDFs mit vollständiger Textebene erneut verarbeiten.'
     '  -EnglishOutput         Force English console output.' = '  -EnglishOutput         Englische Konsolenausgabe erzwingen.'
     'Press Ctrl+C to cancel input.' = 'Mit Strg+C kannst du die Eingabe abbrechen.'
     'Path to a PDF file or a folder containing PDFs' = 'Pfad zu einer PDF-Datei oder einem Ordner mit PDFs'
@@ -86,11 +89,13 @@
     'The input PDF has a digital signature. OCR would alter the document and invalidate the signature.' = 'Die Eingabe-PDF ist digital signiert. OCR würde das Dokument verändern und die Signatur ungültig machen.'
     "Skipped: '{0}'`n{1}" = "Übersprungen: '{0}'`n{1}"
     'Force reprocessing: enabled' = 'Erneute Verarbeitung erzwingen: aktiv'
+    'Digitally born PDF; skipped by default' = 'Digital erzeugte PDF; standardmäßig übersprungen'
+    'This PDF appears digitally born; skipping it. Use -ProcessDigitallyBornPdfs to process it.' = 'Diese PDF scheint digital erzeugt zu sein und wird übersprungen. Mit -ProcessDigitallyBornPdfs lässt sie sich verarbeiten.'
     'Backup already exists' = 'Sicherung vorhanden'
     "Backup '{0}' already exists and will be preserved; replacing the PDF directly." = "Sicherung '{0}' existiert bereits und bleibt erhalten; das PDF wird direkt ersetzt."
-    'A full text layer was found on all {0} pages; skipping without rewriting the PDF. Use -ForceReprocess to override this safeguard.' = 'Auf allen {0} Seiten wurde eine vollständige Textebene gefunden; die PDF wird ohne erneutes Schreiben übersprungen. Mit -ForceReprocess lässt sich dieser Schutz umgehen.'
-    'Complete text layer found; skipped to avoid repeated processing' = 'Vollständige Textebene gefunden; zur Vermeidung wiederholter Verarbeitung übersprungen'
-    'A full text layer was found; forced processing will continue, but repeated runs may change the PDF again.' = 'Eine vollständige Textebene wurde gefunden; die erzwungene Verarbeitung wird fortgesetzt, wiederholte Läufe können die PDF erneut verändern.'
+    'Existing OCR text was found on all {0} pages; skipping without rewriting the PDF. Use -RedoOcr to rebuild OCR and apply page correction.' = 'Auf allen {0} Seiten wurde vorhandene OCR erkannt; die PDF wird ohne erneutes Schreiben übersprungen. Mit -RedoOcr wird OCR erneuert und die Seitenkorrektur angewendet.'
+    'Existing OCR found; skipped to preserve text and avoid repeated processing' = 'Vorhandene OCR gefunden; zum Erhalt der Textebene und zur Vermeidung wiederholter Verarbeitung übersprungen'
+    'Existing OCR text will be rebuilt; repeated runs may change the PDF again.' = 'Die vorhandene OCR-Textebene wird erneuert; wiederholte Läufe können die PDF erneut verändern.'
     'OCRmyPDF error (exit code {0})' = 'OCRmyPDF-Fehler (Exitcode {0})'
     '{0}. See the OCRmyPDF console output for details.' = '{0}. Die genaue Ursache steht in der OCRmyPDF-Konsolenausgabe.'
     'The result is identical to the original (no changes); discarding the output.' = 'Das Ergebnis ist mit dem Original identisch (keine Änderung); Ausgabe wird verworfen.'
@@ -120,6 +125,8 @@
     'Ghostscript DPI: {0}' = 'Ghostscript-DPI: {0}'
     'Ghostscript DPI: disabled (compression requires -GhostscriptDpi)' = 'Ghostscript-DPI: deaktiviert (Komprimierung nur mit -GhostscriptDpi)'
     'Deskew: {0}' = 'Deskew: {0}'
+    'Rotation correction: {0}' = 'Rotationskorrektur: {0}'
+    'Process digitally born PDFs: {0}' = 'Digital erzeugte PDFs verarbeiten: {0}'
     'Output format: standard PDF (version 1.5)' = 'Ausgabeformat: normales PDF (Version 1.5)'
     '--- File {0}/{1}: {2} ---' = '--- Datei {0}/{1}: {2} ---'
     'Succeeded: {0}, skipped: {1}, failed: {2}' = 'Erfolgreich: {0}, übersprungen: {1}, fehlgeschlagen: {2}'

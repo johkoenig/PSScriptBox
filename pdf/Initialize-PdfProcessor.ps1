@@ -39,6 +39,8 @@
 
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 scriptbox contributors
+# Contributors:
+# - Johannes Koenig <dev@jokoenig.de>
 
 [CmdletBinding()]
 param(
@@ -702,7 +704,7 @@ if (-not $state.TrainingStatus -or -not $state.TrainingStatus.CheckSucceeded) {
 }
 
 $requiredLanguages = @('deu', 'eng')
-$recommendedLanguages = @('fra', 'ita', 'spa')
+$recommendedLanguages = @('fra', 'ita', 'spa', 'equ')
 $missingRequiredLanguages = @($requiredLanguages | Where-Object { $state.TrainingStatus.Languages -notcontains $_ })
 $missingRecommendedLanguages = @($recommendedLanguages | Where-Object { $state.TrainingStatus.Languages -notcontains $_ })
 $missingLanguages = @($missingRequiredLanguages + $missingRecommendedLanguages)

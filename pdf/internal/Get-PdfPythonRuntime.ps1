@@ -19,6 +19,8 @@
 
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 scriptbox contributors
+# Contributors:
+# - Johannes Koenig <dev@jokoenig.de>
 
 [CmdletBinding()]
 param()

@@ -1,22 +1,24 @@
 ﻿<#
 .SYNOPSIS
-    Optimizes PDFs with OCR, scan deskewing, and optional compression.
+    Processes scanned PDFs with OCR, page correction, and optional compression.
 
 .DESCRIPTION
     Processes one PDF file or all PDF files in a specified folder and its
-    subfolders. OCRmyPDF adds a text layer when needed and deskews scans;
-    Ghostscript can optionally compress images further. On success, the input
-    file is replaced. By default, the original is saved as <Name>_orig.pdf. If
-    that backup already exists, it is preserved and the input is replaced
-    directly with a warning. -ReplaceOriginal replaces the input without a
-    backup. Digitally signed PDFs and encrypted PDFs that cannot be opened
-    without a password are skipped before OCR.
+    subfolders. Digitally born PDFs are skipped by default; use
+    -ProcessDigitallyBornPdfs to process them. Classification is heuristic:
+    visible text without evidence of scanned image pages is treated as digitally
+    born, while image pages with hidden OCR text are treated as scanned.
+    OCRmyPDF skips pages with existing text by default, preserving their OCR
+    text. Consequently, page rotation and deskew are not applied to those
+    skipped pages. -RedoOcr or -ForceReprocess explicitly rebuilds existing OCR
+    text so page correction can be applied; repeat runs can change output.
+    Digitally signed PDFs and encrypted PDFs that cannot be opened without a
+    password are skipped.
 
-    To avoid repeat processing without creating persistent state files, PDFs
-    with text operators on every page are skipped by default. -ForceReprocess
-    explicitly bypasses this safeguard. -RedoOcr also explicitly reprocesses
-    existing OCR text with OCRmyPDF's `--redo-ocr` mode. Repeated use of either
-    option can modify a PDF again and is not guaranteed to be idempotent.
+    On success, the input file is replaced. By default, the original is saved
+    as <Name>_orig.pdf. If that backup already exists, it is preserved and the
+    input is replaced directly with a warning. -ReplaceOriginal replaces the
+    input without a backup.
 
     TWO-STAGE PROCESSING:
       1. OCRmyPDF adds an OCR text layer and deskews scans. Output is a standard
@@ -26,15 +28,16 @@
          example, -GhostscriptDpi 150). The intermediate result is replaced
          only if Ghostscript makes it smaller.
 
-    DESKEWING:
+    PAGE CORRECTION:
       - Skewed scans are automatically deskewed (`--deskew`, enabled by default).
-      - Rotated pages (90°, 180°, 270°) are not corrected by default. -RotatePages
-        enables detection with an OCRmyPDF confidence threshold of 5.
+      - Rotated pages (90°, 180°, 270°) are automatically detected and corrected
+        by default with an OCRmyPDF confidence threshold of 5.
 
     LANGUAGES:
-      The default sequence is 'deu+eng+fra+ita+spa'. German (deu) and English
-      (eng) are required. Other languages are optional and are removed if
-      unavailable. No interactive language prompt is used.
+      The default sequence is 'deu+eng+fra+ita+spa+equ'. German (deu) and English
+      (eng) are required. French, Italian, Spanish, and the Tesseract equation
+      model (equ) are optional and removed if unavailable. No interactive
+      language prompt is used.
 
     RESULT VALIDATION:
       A run fails only if OCRmyPDF fails or the result is byte-identical to the
@@ -49,8 +52,8 @@
 
 .PARAMETER Language
     OCR languages as '+'-separated Tesseract codes, for example 'deu+eng'.
-    Default: 'deu+eng+fra+ita+spa'. deu and eng are required; unavailable
-    optional languages are removed.
+    Default: 'deu+eng+fra+ita+spa+equ'. deu and eng are required; unavailable
+    optional languages, including the equation model equ, are removed.
 
 .PARAMETER InputPath
     Optional path to a PDF file or folder containing PDFs. If omitted, the path
@@ -67,9 +70,13 @@
 .PARAMETER NoDeskew
     Disables the default deskewing of skewed scan pages.
 
-.PARAMETER RotatePages
-    Enables automatic correction of rotated pages (90°, 180°, 270°). Default:
-    $false. A confidence threshold of 5 is used when enabled.
+.PARAMETER NoRotationOfPages
+    Disables automatic correction of pages rotated by 90°, 180°, or 270°.
+    Rotation correction is enabled by default with a confidence threshold of 5.
+
+.PARAMETER ProcessDigitallyBornPdfs
+    Processes PDFs classified as digitally born. By default, these are skipped.
+    Classification is heuristic and may not identify every mixed or unusual PDF.
 
 .PARAMETER NoGhostscript
     Disables Ghostscript as a post-processing optimization stage. Ghostscript is
@@ -82,39 +89,39 @@
 
 .PARAMETER RedoOcr
     Reprocesses existing OCR text and OCRs text in images using OCRmyPDF's
-    `--redo-ocr` mode. It preserves visible text and vector graphics instead of
-    rasterizing the entire page. OCRmyPDF optimization and optional Ghostscript
-    processing remain enabled.
+    `--redo-ocr` mode. This allows page correction to run on pages with existing
+    OCR. It preserves visible text and vector graphics instead of rasterizing
+    the entire page.
 
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
 .PARAMETER ForceReprocess
-    Processes PDFs with a complete text layer instead of skipping them. This
-    can change a PDF again on repeated runs; idempotency is not guaranteed.
+    Processes scanned PDFs with a complete text layer instead of skipping them.
+    Existing OCR is rebuilt to allow page correction. Repeated runs can change
+    the PDF again; idempotency is not guaranteed.
 
 .EXAMPLE
-    .\Invoke-PdfOptimization.ps1
+    .\Optimize-ScannedPdfs.ps1
     Starts interactively with the default language sequence, JPEG quality 75,
     and automatic deskewing. The original is saved as an _orig file on success.
 
 .EXAMPLE
-    .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -RotatePages -GhostscriptDpi 150
-    Processes all PDFs in C:\PDFs; Ghostscript downsamples images to 150 DPI and
-    compresses them as JPEG. Originals are preserved as _orig files and rotated
-    page correction is enabled.
+    .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -GhostscriptDpi 150
+    Processes scanned PDFs in C:\PDFs; Ghostscript downsamples images to 150 DPI
+    and compresses them as JPEG. Rotated-page correction is enabled by default.
 
 .EXAMPLE
-    .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -ReplaceOriginal
+    .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -ReplaceOriginal
     Processes all PDFs in C:\PDFs and replaces the originals without backups.
 
 .EXAMPLE
-    .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -RedoOcr
-    Reprocesses existing OCR text and scans image content for text.
+    .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -RedoOcr
+    Rebuilds existing OCR text so rotation and deskew can run on those pages.
 
 .EXAMPLE
-    .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -ForceReprocess
-    Processes PDFs with a complete text layer instead of skipping them.
+    .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -ProcessDigitallyBornPdfs
+    Processes PDFs classified as digitally born instead of skipping them.
 
 .NOTES
     Dependencies:
@@ -144,6 +151,8 @@
 
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 scriptbox contributors
+# Contributors:
+# - Johannes Koenig <dev@jokoenig.de>
 
 [CmdletBinding()]
 param(
@@ -164,8 +173,11 @@ param(
     # Disable deskewing of skewed scan pages (enabled by default).
     [switch] $NoDeskew,
 
-    # Automatically correct pages rotated by 90°, 180°, or 270° (disabled by default).
-    [switch] $RotatePages,
+    # Disable automatic correction of pages rotated by 90°, 180°, or 270°.
+    [switch] $NoRotationOfPages,
+
+    # Process PDFs classified as digitally born (skipped by default).
+    [switch] $ProcessDigitallyBornPdfs,
 
     # Disable the optional Ghostscript post-processing stage (disabled by default).
     [switch] $NoGhostscript,
@@ -173,7 +185,7 @@ param(
     # Replace input without a backup (an _orig backup is created by default).
     [switch] $ReplaceOriginal,
 
-    # Reprocess existing OCR text without rasterizing visible page content.
+    # Reprocess existing OCR text to allow page correction on those pages.
     [switch] $RedoOcr,
 
     # Reprocess files even when the same settings have already been applied.
@@ -228,8 +240,9 @@ function Get-LocalizedText {
     return $template
 }
 
-# Default OCR language sequence: German, English, French, Italian, and Spanish.
-$script:DefaultLanguage = 'deu+eng+fra+ita+spa'
+# Default OCR language sequence: German, English, French, Italian, Spanish, and
+# Tesseract's optional equation recognition model.
+$script:DefaultLanguage = 'deu+eng+fra+ita+spa+equ'
 
 # Required languages: processing stops with a notice if deu or eng is missing.
 $script:RequiredLanguages = @('deu', 'eng')
@@ -533,15 +546,16 @@ function Get-PdfInputFile {
         Write-Host ''
         Write-Host (Get-LocalizedText 'Available parameters:') -ForegroundColor Cyan
         Write-Host (Get-LocalizedText '  -InputPath <path>       PDF file or folder; prompts if omitted.')
-        Write-Host (Get-LocalizedText '  -Language <languages>  OCR languages, e.g. deu+eng (default: deu+eng+fra+ita+spa).')
+        Write-Host (Get-LocalizedText '  -Language <languages>  OCR languages, e.g. deu+eng (default: deu+eng+fra+ita+spa+equ).')
         Write-Host (Get-LocalizedText '  -JpegQuality <1-100>   JPEG quality (default: 75).')
         Write-Host (Get-LocalizedText '  -GhostscriptDpi <DPI>  Optional Ghostscript resolution (default: disabled).')
         Write-Host (Get-LocalizedText '  -NoDeskew              Disable deskewing (enabled by default).')
-        Write-Host (Get-LocalizedText '  -RotatePages           Automatically correct rotated pages (default: off).')
+        Write-Host (Get-LocalizedText '  -NoRotationOfPages     Disable rotation correction (enabled by default).')
+        Write-Host (Get-LocalizedText '  -ProcessDigitallyBornPdfs Process PDFs classified as digitally born (default: skip).')
         Write-Host (Get-LocalizedText '  -NoGhostscript         Disable Ghostscript compression (allowed by default).')
         Write-Host (Get-LocalizedText '  -ReplaceOriginal       Replace original without an _orig backup.')
-        Write-Host (Get-LocalizedText '  -RedoOcr               Reprocess existing OCR text without rasterizing the whole page.')
-        Write-Host (Get-LocalizedText '  -ForceReprocess        Process PDFs with a full text layer instead of skipping them.')
+        Write-Host (Get-LocalizedText '  -RedoOcr               Rebuild existing OCR text so page correction can run.')
+        Write-Host (Get-LocalizedText '  -ForceReprocess        Reprocess scanned PDFs with a full text layer.')
         Write-Host (Get-LocalizedText '  -EnglishOutput         Force English console output.')
         Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.') -ForegroundColor Yellow
         $Path = Read-Host -Prompt (Get-LocalizedText 'Path to a PDF file or a folder containing PDFs')
@@ -596,41 +610,6 @@ function Get-FileSha256 {
     finally { $sha256.Dispose() }
 }
 
-<#
-.SYNOPSIS
-    Creates a stable fingerprint for PDF processing options.
-
-.DESCRIPTION
-    Hashes only processing settings that affect the generated output. The
-    fingerprint contains no file paths or user-specific information.
-
-.PARAMETER Language
-    Selected Tesseract language sequence.
-
-.PARAMETER Quality
-    JPEG quality passed to OCRmyPDF.
-
-.PARAMETER GhostscriptDpi
-    Ghostscript target resolution.
-
-.PARAMETER UseGhostscript
-    Indicates whether the Ghostscript stage will run.
-
-.PARAMETER NoDeskew
-    Indicates whether deskewing is disabled.
-
-.PARAMETER RotatePages
-    Indicates whether page rotation correction is enabled.
-
-.PARAMETER ReplaceOriginal
-    Indicates whether the original is replaced without an _orig backup.
-
-.PARAMETER RedoOcr
-    Indicates whether existing OCR text is reprocessed.
-
-.OUTPUTS
-    System.String. SHA-256 fingerprint of the processing settings.
-#>
 <#
 .SYNOPSIS
     Optimizes a PDF file with Ghostscript.
@@ -727,13 +706,11 @@ function Invoke-PdfProcessing {
 
 .DESCRIPTION
     Checks signatures and the text layer, runs OCRmyPDF, and optionally applies
-    Ghostscript optimization. Encrypted and digitally signed PDFs are skipped.
+    Ghostscript optimization. Digitally born PDFs are skipped by default;
+    scanned PDFs with complete OCR are also skipped unless reprocessing is
+    explicitly requested. Encrypted and digitally signed PDFs are skipped.
     The result replaces the input; by default, the original is first saved as
-    _orig.pdf. PDFs with a full text layer are skipped by default to avoid
-    repeated rewriting without a persistent state file. -ForceReprocess
-    bypasses this skip; -RedoOcr explicitly rebuilds existing OCR. Either may
-    cause further changes when repeated. --optimize 1 avoids the optional
-    jbig2 dependency.
+    _orig.pdf. --optimize 1 avoids the optional jbig2 dependency.
 
 .PARAMETER Pdf
     Input PDF to process.
@@ -753,8 +730,11 @@ function Invoke-PdfProcessing {
 .PARAMETER NoDeskew
     Disables deskewing.
 
-.PARAMETER RotatePages
-    Enables detection and correction of rotated pages.
+.PARAMETER NoRotationOfPages
+    Disables detection and correction of rotated pages.
+
+.PARAMETER ProcessDigitallyBornPdfs
+    Processes PDFs classified as digitally born.
 
 .PARAMETER NoGhostscript
     Disables Ghostscript.
@@ -766,8 +746,8 @@ function Invoke-PdfProcessing {
     Reprocesses existing OCR text with OCRmyPDF's `--redo-ocr` mode.
 
 .PARAMETER ForceReprocess
-    Processes PDFs with a complete text layer instead of skipping them.
-    Repeated use can modify a PDF again; idempotency is not guaranteed.
+    Processes scanned PDFs with a complete text layer instead of skipping them.
+    Existing OCR is rebuilt. Repeated use can modify a PDF again.
 
 .PARAMETER GhostscriptPath
     Path to Ghostscript, if available.
@@ -784,7 +764,8 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][int] $Quality,
         [Parameter(Mandatory)][int] $GhostscriptDpi,
         [Parameter(Mandatory)][bool] $NoDeskew,
-        [Parameter(Mandatory)][bool] $RotatePages,
+        [Parameter(Mandatory)][bool] $NoRotationOfPages,
+        [Parameter(Mandatory)][bool] $ProcessDigitallyBornPdfs,
         [Parameter(Mandatory)][bool] $NoGhostscript,
         [Parameter(Mandatory)][bool] $ReplaceOriginal,
         [Parameter(Mandatory)][bool] $RedoOcr,
@@ -836,22 +817,37 @@ def inherited_resources(page):
         node = node.get("/Parent")
     return pikepdf.Dictionary()
 
-def stream_has_text(stream, resources, visited):
+def inspect_stream(stream, resources, visited, features, render_mode=0):
     key = object_key(stream)
     if key in visited:
-        return False
+        return
     visited.add(key)
     xobjects = resources.get("/XObject", {})
     for operands, operator in pikepdf.parse_content_stream(stream):
-        if str(operator) in TEXT_OPERATORS:
-            return True
-        if str(operator) == "Do" and operands:
+        operator_name = str(operator)
+        if operator_name == "Tr" and operands:
+            try:
+                render_mode = int(operands[0])
+            except (TypeError, ValueError):
+                pass
+        if operator_name in TEXT_OPERATORS:
+            features["has_text"] = True
+            if render_mode == 3:
+                features["has_hidden_text"] = True
+            else:
+                features["has_visible_text"] = True
+        if operator_name in ("INLINE IMAGE", "BI"):
+            features["has_image"] = True
+        if operator_name == "Do" and operands:
             child = xobjects.get(operands[0])
-            if child is not None and str(child.get("/Subtype")) == "/Form":
+            if child is None:
+                continue
+            subtype = str(child.get("/Subtype"))
+            if subtype == "/Image":
+                features["has_image"] = True
+            elif subtype == "/Form":
                 child_resources = child.get("/Resources", resources)
-                if stream_has_text(child, child_resources, visited):
-                    return True
-    return False
+                inspect_stream(child, child_resources, visited, features, render_mode)
 
 try:
     pdf = pikepdf.open(sys.argv[1])
@@ -869,11 +865,28 @@ with pdf:
     )
     signed = any(field_is_signed(field) for field in fields)
     signed = signed or any(has_signature_value(value) for value in permission_signatures)
-    text_pages = sum(
-        stream_has_text(page, inherited_resources(page.obj), set())
-        for page in pdf.pages
+    page_features = []
+    for page in pdf.pages:
+        features = {
+            "has_text": False,
+            "has_visible_text": False,
+            "has_hidden_text": False,
+            "has_image": False,
+        }
+        inspect_stream(page, inherited_resources(page.obj), set(), features)
+        page_features.append(features)
+    text_pages = sum(features["has_text"] for features in page_features)
+    visible_text_pages = sum(features["has_visible_text"] for features in page_features)
+    scanned_pages = sum(
+        features["has_image"] and (
+            features["has_hidden_text"] or not features["has_visible_text"]
+        )
+        for features in page_features
     )
-    print(f"{'SIGNED' if signed else 'UNSIGNED'}\t{len(pdf.pages)}\t{text_pages}")
+    print(
+        f"{'SIGNED' if signed else 'UNSIGNED'}\t{len(pdf.pages)}\t"
+        f"{text_pages}\t{visible_text_pages}\t{scanned_pages}"
+    )
 '@
         [System.IO.File]::WriteAllText($signatureCheckPath, $signatureCheck, [System.Text.UTF8Encoding]::new($false))
 
@@ -900,24 +913,35 @@ with pdf:
         }
         $signatureValues = $signatureStatus.Trim() -split "`t"
         if (
-            $signatureValues.Count -ne 3 -or
+            $signatureValues.Count -ne 5 -or
             $signatureValues[0] -notin @('SIGNED', 'UNSIGNED') -or
             $signatureValues[1] -notmatch '^\d+$' -or
-            $signatureValues[2] -notmatch '^\d+$'
+            $signatureValues[2] -notmatch '^\d+$' -or
+            $signatureValues[3] -notmatch '^\d+$' -or
+            $signatureValues[4] -notmatch '^\d+$'
         ) {
             throw (Get-LocalizedText -Text "Signature and text-layer check returned an invalid result: '{0}'" -Arguments @($signatureStatus))
         }
         $signatureStatus = $signatureValues[0]
         $pageCount = [int]$signatureValues[1]
         $textPageCount = [int]$signatureValues[2]
+        $visibleTextPageCount = [int]$signatureValues[3]
+        $scannedPageCount = [int]$signatureValues[4]
         if ($pageCount -eq 0) {
             throw (Get-LocalizedText 'The PDF file contains no pages.')
         }
         $hasFullTextLayer = $textPageCount -eq $pageCount
+        $isDigitallyBorn = $visibleTextPageCount -gt 0 -and $scannedPageCount -eq 0
         if ($signatureStatus -eq 'SIGNED') {
             $failureReason = Get-LocalizedText 'Digitally signed PDF'
             $failureDetails = Get-LocalizedText 'The input PDF has a digital signature. OCR would alter the document and invalidate the signature.'
             Write-Warning (Get-LocalizedText -Text "Skipped: '{0}'`n{1}" -Arguments @($Pdf.Name, $failureDetails))
+            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
+        }
+
+        if ($isDigitallyBorn -and -not $ProcessDigitallyBornPdfs) {
+            $failureReason = Get-LocalizedText 'Digitally born PDF; skipped by default'
+            Write-Host (Get-LocalizedText 'This PDF appears digitally born; skipping it. Use -ProcessDigitallyBornPdfs to process it.') -ForegroundColor Green
             return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
 
@@ -927,13 +951,13 @@ with pdf:
             Write-Warning (Get-LocalizedText -Text "Backup '{0}' already exists and will be preserved; replacing the PDF directly." -Arguments @($relativeOriginalPath))
         }
 
-        if ($hasFullTextLayer -and -not $RedoOcr -and -not $ForceReprocess) {
-            $failureReason = Get-LocalizedText 'Complete text layer found; skipped to avoid repeated processing'
-            Write-Host (Get-LocalizedText -Text 'A full text layer was found on all {0} pages; skipping without rewriting the PDF. Use -ForceReprocess to override this safeguard.' -Arguments @($pageCount)) -ForegroundColor Green
+        if ($hasFullTextLayer -and -not $RedoOcr -and -not $ForceReprocess -and -not $isDigitallyBorn) {
+            $failureReason = Get-LocalizedText 'Existing OCR found; skipped to preserve text and avoid repeated processing'
+            Write-Host (Get-LocalizedText -Text 'Existing OCR text was found on all {0} pages; skipping without rewriting the PDF. Use -RedoOcr to rebuild OCR and apply page correction.' -Arguments @($pageCount)) -ForegroundColor Green
             return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
-        if ($hasFullTextLayer -and $ForceReprocess -and -not $RedoOcr) {
-            Write-Host (Get-LocalizedText 'A full text layer was found; forced processing will continue, but repeated runs may change the PDF again.') -ForegroundColor Yellow
+        if ($hasFullTextLayer -and ($ForceReprocess -or $RedoOcr) -and -not $isDigitallyBorn) {
+            Write-Host (Get-LocalizedText 'Existing OCR text will be rebuilt; repeated runs may change the PDF again.') -ForegroundColor Yellow
         }
 
         $ocrArguments = @(
@@ -943,14 +967,14 @@ with pdf:
             '--jpeg-quality', "$Quality",
             '--language', $Language
         )
-        if ($RedoOcr) {
+        if ($RedoOcr -or ($ForceReprocess -and $hasFullTextLayer -and -not $isDigitallyBorn)) {
             $ocrArguments += '--redo-ocr'
         }
         else {
             $ocrArguments += '--skip-text'
         }
         if (-not $NoDeskew) { $ocrArguments += '--deskew' }
-        if ($RotatePages) { $ocrArguments += @('--rotate-pages', '--rotate-pages-threshold', '5') }
+        if (-not $NoRotationOfPages) { $ocrArguments += @('--rotate-pages', '--rotate-pages-threshold', '5') }
         $ocrArguments += @($Pdf.FullName, $tempPath)
 
         # Do not redirect streams: preserve OCRmyPDF's native console output and progress display.
@@ -1095,7 +1119,7 @@ if (-not $basePathPrefix.EndsWith([string][System.IO.Path]::DirectorySeparatorCh
 }
 
 # --- Configure language sequence ------------------------------------------
-# The default sequence is deu+eng+fra+ita+spa. -Language can override it.
+# The default sequence is deu+eng+fra+ita+spa+equ. -Language can override it.
 # There is no interactive language prompt. deu and eng are required; missing
 # optional languages are removed from the sequence.
 if (-not [string]::IsNullOrWhiteSpace($Language)) {
@@ -1140,6 +1164,8 @@ else {
     Write-Host (Get-LocalizedText 'Ghostscript DPI: disabled (compression requires -GhostscriptDpi)')
 }
 Write-Host (Get-LocalizedText -Text 'Deskew: {0}' -Arguments @(-not $NoDeskew))
+Write-Host (Get-LocalizedText -Text 'Rotation correction: {0}' -Arguments @(-not $NoRotationOfPages))
+Write-Host (Get-LocalizedText -Text 'Process digitally born PDFs: {0}' -Arguments @($ProcessDigitallyBornPdfs.IsPresent))
 if ($ForceReprocess) {
     Write-Host (Get-LocalizedText 'Force reprocessing: enabled')
 }
@@ -1153,7 +1179,8 @@ for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
     Write-Host (Get-LocalizedText -Text '--- File {0}/{1}: {2} ---' -Arguments @(($i + 1), $pdfFiles.Count, $pdf.Name)) -ForegroundColor Cyan
     $r = Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath `
         -Language $languageSelection -Quality $JpegQuality -GhostscriptDpi $GhostscriptDpi `
-        -NoDeskew $NoDeskew.IsPresent -RotatePages $RotatePages.IsPresent `
+        -NoDeskew $NoDeskew.IsPresent -NoRotationOfPages $NoRotationOfPages.IsPresent `
+        -ProcessDigitallyBornPdfs $ProcessDigitallyBornPdfs.IsPresent `
         -NoGhostscript $NoGhostscript.IsPresent -ReplaceOriginal $ReplaceOriginal.IsPresent `
         -RedoOcr $RedoOcr.IsPresent -ForceReprocess $ForceReprocess.IsPresent `
         -GhostscriptPath $dependencyCheck.GhostscriptPath
