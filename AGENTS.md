@@ -24,37 +24,23 @@ Repository guidance, especially for PowerShell scripts.
 - Start external console programs with redirected streams and read asynchronously so errors are not mistaken for PowerShell terminating errors and large output cannot block a pipe. Exception: run OCRmyPDF without stream redirection so its progress bar is displayed live.
 - Save PowerShell scripts with a UTF-8 BOM (U+FEFF). Windows PowerShell 5.1 otherwise interprets non-ASCII text as ANSI.
 - License the project and its files under the MIT License. Keep the standard license text in the root `LICENSE.md` and add an SPDX-License-Identifier: MIT header and the project copyright notice to every PowerShell script and PowerShell data file. Place headers after the required script help block.
+- Include a `Contributors` section in every code file, listing the contributors and contact details explicitly approved for attribution.
 
 ## Dependencies and installation
-- Processing and inspection scripts do not install software and should not require administrator rights to run. `pdf/Initialize-PdfProcessor.ps1` is the exception: it checks dependency state first and elevates only when installation is required. Chocolatey is a prerequisite and is never installed by the script.
-- All PDF scripts dot-source `pdf/internal/Get-PdfPythonRuntime.ps1` to choose a working `python.exe` consistently. Prefer a Python interpreter in the current user's profile; use `py.exe` only to discover a concrete interpreter path when direct `python.exe` discovery fails. Invoke the resolved `python.exe` directly for checks and processing.
-- The setup script validates Chocolatey, Python, OCRmyPDF, pikepdf, Tesseract, and Ghostscript individually. Chocolatey installs missing system dependencies machine-wide. Before any UAC prompt, show the exact planned operations and wait for Enter (any non-empty response cancels). Install Python packages into the selected interpreter: user-scoped Python is installed without elevation; machine-wide Python is installed from the elevated child process. Do not use `pip --user`, which can install into a different site than the selected interpreter. It checks Tesseract language data but never downloads `.traineddata` files; it instructs the user to download any missing languages.
+- Scripts that only process or inspect user files must not install software and should not require administrator rights.
+- Dependency-installation scripts must inspect the current dependency state first and elevate only when required. Before any UAC prompt, show the exact planned operations and require explicit confirmation. Install packages into the selected runtime; do not use user-scoped package options that can target a different interpreter.
+- Reuse shared internal helpers for runtime discovery and other behavior used by multiple scripts. Resolve helper paths relative to `$PSScriptRoot`, prefer a working interpreter in the current user's profile, and invoke the resolved executable directly. Use a launcher only to discover a concrete runtime path when direct discovery fails.
 - Check all required dependencies together and report missing dependencies with installation instructions.
-- Optional tools such as Ghostscript must not block a run when unavailable. Do not use `jbig2`.
+- Optional tools must not block a run when unavailable. Report their absence and continue with the supported reduced behavior.
 
 ## Files and data
 - Scripts should be idempotent where practical. Prefer stateless detection over persistent state files, and never add persistent files beside user data unless the user approves them. Document limits to idempotency and any explicit force/bypass options; users may knowingly bypass idempotency with such options.
 - Never hardcode or store personal data in source files (except author tags). Discover user profile paths, account names, email addresses, and other environment-specific values dynamically. Scripts must work on Windows with local, Active Directory, and Microsoft online accounts.
-- By default, save the input PDF after successful processing as `<Name>_orig.pdf`. `-ReplaceOriginal` replaces the input without a backup.
-- Treat processing as failed only when OCRmyPDF fails or the final result has the same SHA-256 hash as the original. A larger but changed result is successful.
-- A downstream optimization stage may replace its intermediate result only when it makes the file smaller.
-- Place temporary files beside the input and reliably remove them in a `finally` block.
+- Preserve user inputs unless the documented operation explicitly modifies or deletes them. For multi-stage document processing, do not replace an intermediate result with a downstream optimization unless the result improves according to the operation's stated acceptance criteria.
+- Keep temporary files on the same volume as their inputs when atomic replacement requires it, and reliably remove them in a `finally` block.
 - Do not add secrets, tokens, API keys, or personal data to the repository.
 
-## `pdf/Invoke-PdfOptimization.ps1`
-- The default OCR language sequence is `deu+eng+fra+ita+spa` in that order. `-Language` can override it; do not prompt interactively for languages.
-- `deu` and `eng` are required. If either is missing, stop and provide the tessdata download instructions. Other missing languages are removed from the selected sequence and reported without stopping.
-- Deskew is enabled by default with `--deskew` and can be disabled with `-NoDeskew`. Page rotation is disabled by default; `-RotatePages` enables correction with an OCRmyPDF confidence threshold of 5.
-- OCRmyPDF outputs a standard PDF using `--output-type pdf`; do not switch to PDF/A.
-- Do not pass `--image-dpi`: OCRmyPDF ignores it for PDF inputs. Image resolution is controlled by the optional Ghostscript stage when `-GhostscriptDpi` is specified.
-- Use `--optimize 1` rather than `--optimize 3`; level 3 can warn about the intentionally unavailable `jbig2` encoder.
-- Ghostscript is an optional second optimization stage. It uses explicit downsampling parameters, JPEG quality 75, and sRGB conversion, and runs only when `-GhostscriptDpi` is greater than zero and Ghostscript is available. `-NoGhostscript` disables it. Do not use qpdf.
-- PDFs with a complete text layer are skipped entirely by default to avoid repeat rewriting without a persistent marker. `-ForceReprocess` overrides this safeguard; `-RedoOcr` selects `--redo-ocr` to rebuild existing OCR text without rasterizing all visible text and vector graphics. Repeated use of either explicit override may modify a PDF again. Digitally signed and password-protected PDFs that cannot be opened without a password are skipped.
-- `pdf/Clear-OriginalPdfBackups.ps1` removes `_orig` PDF backups only when the corresponding processed PDF exists beside them. `-WhatIf` previews deletion.
-- `pdf/Find-PdfsWithoutTextLayer.ps1` recursively finds PDFs without text operators and lists partially missing text layers separately. It requires Python and `pikepdf` and does not modify files.
-- OCRmyPDF's raw output, including progress bars and internal module names such as `_pipeline.py`, is shown unchanged in the console.
-
 ## Quality assurance before committing
-- When possible, test script changes with a sample PDF in both parameter and interactive modes.
-- Review `git diff` before committing. Do not commit local test PDFs, temporary files, or binary artifacts.
+- Test relevant code paths with representative, non-confidential fixtures when possible. Do not commit personal documents, local test data, temporary files, or generated binary artifacts.
+- Review `git diff` before committing and verify documentation and code changes are consistent.
 - Keep commit messages short and factual. Automatically generated commit messages must include exactly one `Signed-off-by` trailer for the user and exactly one `Co-authored-by` trailer for the AI engine used. Use the user's confirmed name and email for the sign-off and the active AI engine's configured name and email for co-authorship; do not invent or assume either identity. Place both trailers at the end of the commit message.

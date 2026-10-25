@@ -9,7 +9,7 @@ See the [PDF tools guide](pdf/README.md) for setup instructions, examples, depen
 Available tools:
 
 - `Initialize-PdfProcessor.ps1` — checks and installs PDF-processing dependencies.
-- `Invoke-PdfOptimization.ps1` — adds or refreshes OCR text, deskews pages, and optionally compresses PDFs.
+- `Optimize-ScannedPdfs.ps1` — processes scanned PDFs, adds OCR where needed, corrects page orientation, and optionally compresses PDFs.
 - `Find-PdfsWithoutTextLayer.ps1` — reports PDFs with missing or partially missing text layers.
 - `Clear-OriginalPdfBackups.ps1` — removes `_orig` backups only when the corresponding processed PDF exists.
 
@@ -20,15 +20,16 @@ Run scripts from PowerShell. The scripts select German console messages on a Ger
 | Script | Parameters and switches |
 | --- | --- |
 | `Initialize-PdfProcessor.ps1` | `-EnglishOutput`. Internal hidden parameters: `-ElevatedChild`, `-RuntimePythonPath`. |
-| `Invoke-PdfOptimization.ps1` | `-InputPath <path>`, `-Language <codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-RotatePages`, `-NoGhostscript`, `-ReplaceOriginal`, `-RedoOcr`, `-ForceReprocess`, `-EnglishOutput`. |
+| `Optimize-ScannedPdfs.ps1` | `-InputPath <path>`, `-Language <codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-NoRotationOfPages`, `-ProcessDigitallyBornPdfs`, `-NoGhostscript`, `-ReplaceOriginal`, `-RedoOcr`, `-ForceReprocess`, `-EnglishOutput`. |
 | `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <path>`, `-EnglishOutput`. |
 | `Clear-OriginalPdfBackups.ps1` | `-InputPath <folder>`, `-WhatIf`, `-Confirm` (use `-Confirm:$false` to suppress confirmation), `-EnglishOutput`. |
 
 See the [PDF tools guide](pdf/README.md) for parameter behavior, examples, setup, dependencies, and safety notes.
 
-PDF optimization uses best-effort, stateless idempotency: PDFs with complete text layers are skipped by default, and no persistent marker is written beside them. `-ForceReprocess` and `-RedoOcr` explicitly bypass this safeguard and may alter a PDF again on repeated runs.
+Scanned-PDF processing uses best-effort, stateless classification: digitally born PDFs are skipped by default, and no persistent marker is written beside them. Pages with existing OCR are preserved/skipped by default; use `-RedoOcr` to reprocess them and allow rotation/deskew to run. `-ProcessDigitallyBornPdfs` opts into processing digitally born PDFs. Classification is heuristic and may not identify mixed or unusual PDFs correctly.
 
 The project is licensed under the [MIT License](LICENSE.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
 
 ## Documentation
 

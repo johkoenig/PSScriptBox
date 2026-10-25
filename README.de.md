@@ -9,7 +9,7 @@ Die [Anleitung für PDF-Werkzeuge](pdf/README.de.md) enthält Einrichtung, Beisp
 Verfügbare Werkzeuge:
 
 - `Initialize-PdfProcessor.ps1` — prüft und installiert Abhängigkeiten für die PDF-Verarbeitung.
-- `Invoke-PdfOptimization.ps1` — fügt OCR-Textebenen hinzu oder erneuert sie, begradigt Seiten und komprimiert PDFs optional.
+- `Optimize-ScannedPdfs.ps1` — verarbeitet gescannte PDFs, ergänzt bei Bedarf OCR, korrigiert die Seitenausrichtung und komprimiert PDFs optional.
 - `Find-PdfsWithoutTextLayer.ps1` — findet PDFs mit fehlenden oder teilweise fehlenden Textebenen.
 - `Clear-OriginalPdfBackups.ps1` — entfernt `_orig`-Sicherungen nur, wenn die zugehörige bearbeitete PDF vorhanden ist.
 
@@ -20,15 +20,16 @@ Führe die Skripte in PowerShell aus. Bei deutscher Windows-Anzeigesprache ersch
 | Skript | Parameter und Schalter |
 | --- | --- |
 | `Initialize-PdfProcessor.ps1` | `-EnglishOutput`. Interne ausgeblendete Parameter: `-ElevatedChild`, `-RuntimePythonPath`. |
-| `Invoke-PdfOptimization.ps1` | `-InputPath <Pfad>`, `-Language <Codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-RotatePages`, `-NoGhostscript`, `-ReplaceOriginal`, `-RedoOcr`, `-ForceReprocess`, `-EnglishOutput`. |
+| `Optimize-ScannedPdfs.ps1` | `-InputPath <Pfad>`, `-Language <Codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-NoRotationOfPages`, `-ProcessDigitallyBornPdfs`, `-NoGhostscript`, `-ReplaceOriginal`, `-RedoOcr`, `-ForceReprocess`, `-EnglishOutput`. |
 | `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <Pfad>`, `-EnglishOutput`. |
 | `Clear-OriginalPdfBackups.ps1` | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm` (mit `-Confirm:$false` werden Rückfragen unterdrückt), `-EnglishOutput`. |
 
 Die [PDF-Anleitung](pdf/README.de.md) beschreibt das Verhalten der Parameter, Beispiele, Einrichtung, Abhängigkeiten und Sicherheitsaspekte.
 
-Die PDF-Optimierung verwendet eine bestmögliche Idempotenz ohne Statusdateien: PDFs mit vollständiger Textebene werden standardmäßig übersprungen; neben der PDF wird kein dauerhafter Marker abgelegt. `-ForceReprocess` und `-RedoOcr` umgehen diesen Schutz ausdrücklich und können die PDF bei wiederholten Läufen erneut verändern.
+Die Verarbeitung gescannter PDFs verwendet eine bestmögliche zustandslose Klassifizierung: digital erzeugte PDFs werden standardmäßig übersprungen; neben der PDF wird kein dauerhafter Marker abgelegt. Seiten mit vorhandener OCR werden standardmäßig erhalten und übersprungen. Mit `-RedoOcr` kann OCR erneut ausgeführt werden, damit Rotation und Begradigung angewendet werden. `-ProcessDigitallyBornPdfs` verarbeitet digital erzeugte PDFs ausdrücklich. Die Klassifizierung ist eine Heuristik und kann gemischte oder ungewöhnliche PDFs falsch einordnen.
 
 Das Projekt steht unter der [MIT-Lizenz](LICENSE.md).
+Hinweise zum Mitwirken stehen in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Dokumentation
 
