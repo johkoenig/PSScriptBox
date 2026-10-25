@@ -1,6 +1,6 @@
 # scriptbox
 
-Small PowerShell utilities for everyday tasks, including PDF processing and Git configuration.
+Small PowerShell utilities for everyday tasks, including PDF processing, Git configuration, and copying and cleaning up local Nextcloud data.
 
 ## PDF tools
 
@@ -19,6 +19,10 @@ Run scripts from PowerShell. The scripts select German console messages on a Ger
 
 `git/Initialize-GitConfiguration.ps1` sets the Git author identity (local or global) by offering discovered names and emails (existing Git settings, Active Directory / Windows account data, Microsoft account) or a custom value, and confirms recommended standard settings one by one. Existing values are the defaults and nothing is stored in the script. See the [Git tool guide](git/README.md) for parameters and examples.
 
+## Nextcloud file copy and local cleanup
+
+The workflow uses two scripts: `nextcloud/Copy-UserDataToNextcloud.ps1` copies selected Windows user folders into existing Nextcloud destination folders and never deletes source data. After synchronization to the server is complete, `nextcloud/Remove-MigratedUserData.ps1` can delete local files whose SHA-256 hash matches a file in the corresponding Nextcloud destination folder, as well as empty local subfolders when the corresponding Nextcloud folder exists. Before deletion, the user confirms that synchronization is complete and approves cleanup separately for each main folder. See the [Nextcloud tool guide](nextcloud/README.md) for details and examples.
+
 ## PDF script parameters and switches
 
 | Script | Parameters and switches |
@@ -35,6 +39,8 @@ See the [PDF tools guide](pdf/README.md) for parameter behavior, examples, setup
 | Script | Parameters and switches |
 | --- | --- |
 | `Initialize-GitConfiguration.ps1` | `-RepositoryPath <path>`, `-Scope <Local\|Global>`, `-Name <name>`, `-Email <address>`, `-EnglishOutput`. |
+| `Copy-UserDataToNextcloud.ps1` | `-NextcloudPath <path>`, `-Folders <names>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. Copies only; source files are never deleted. |
+| `Remove-MigratedUserData.ps1` | `-NextcloudPath <path>`, `-Folders <names>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. Deletes local files with matching SHA-256 hashes and empty subfolders when the corresponding Nextcloud folder exists. |
 
 Scanned-PDF processing uses best-effort, stateless classification: digitally born PDFs are skipped by default, and no persistent marker is written beside them. Scanned PDFs with existing OCR are reprocessed automatically so deskew and rotation correction can run; OCR is regenerated and page content is rasterized. `-ProcessDigitallyBornPdfs` opts into processing digitally born PDFs. Classification is heuristic and may not identify mixed or unusual PDFs correctly.
 
@@ -49,3 +55,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
 - PDF-Werkzeuge (Deutsch): [pdf/README.de.md](pdf/README.de.md)
 - Git tool (English): [git/README.md](git/README.md)
 - Git-Werkzeug (Deutsch): [git/README.de.md](git/README.de.md)
+- Nextcloud tool (English): [nextcloud/README.md](nextcloud/README.md)
+- Nextcloud-Werkzeug (Deutsch): [nextcloud/README.de.md](nextcloud/README.de.md)

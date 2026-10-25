@@ -20,6 +20,13 @@ Repository guidance, especially for PowerShell scripts.
 - Set `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'` near the start of every script.
 - Use `[CmdletBinding()]` on scripts and functions; mark required parameters with `[Parameter(Mandatory)]`.
 - Report user-facing status and errors through `Write-Host`, `Write-Warning`, or `Write-Error`, not `Write-Output`.
+- Follow one console layout in every user-facing script (all texts localized):
+  - Start with the shared document-style ASCII banner (cyan; two upper-case lines inside the box for the title and the key actions), followed by one or two indented cyan tagline lines and a blank line.
+  - Open the run with a cyan `=== <Tool>: processing started ===` header, followed by plain lines for the effective settings and the number of items.
+  - Mark each processed item with a cyan `--- <Item> n/N: <name> ---` line after a blank line. Show success in green, notices in dark yellow, and problems through `Write-Warning`. A failure of one item is recorded and does not stop the remaining items.
+  - End with a cyan `=== Summary ===` block: `Path:` line, `Succeeded: x, skipped: y, failed: z`, totals where meaningful, then `Failed ...:` and `Skipped ...:` lists (`  None.` when empty, otherwise `  - <name> (<reason>)` in yellow). Preview runs (`-WhatIf`) still print the summary.
+  - Report fatal errors as one concise message without a stack trace and end with exit code 1; do not let raw exceptions reach the console.
+  - Sections that do not apply (for example item lines or the summary in interactive configuration tools) may be omitted; the banner and the error handling are always required.
 - Use `-LiteralPath` and `Join-Path` consistently. Normalize user input with `Trim()` and `ExpandEnvironmentVariables()` before use.
 - Start external console programs with redirected streams and read asynchronously so errors are not mistaken for PowerShell terminating errors and large output cannot block a pipe. Exception: run OCRmyPDF without stream redirection so its progress bar is displayed live.
 - Save PowerShell scripts with a UTF-8 BOM (U+FEFF). Windows PowerShell 5.1 otherwise interprets non-ASCII text as ANSI.
