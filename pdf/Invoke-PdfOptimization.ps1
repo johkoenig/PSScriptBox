@@ -192,11 +192,21 @@ $script:TessdataUrl = 'https://github.com/tesseract-ocr/tessdata_best'
 
 # --- Hilfsfunktionen ------------------------------------------------------
 
-# Setzt ein Argument in doppelte Anführungszeichen und escaped innere
-# doppelte Anführungszeichen sowie abschließende Backslashes so, dass es
-# über ProcessStartInfo.Arguments unter Windows PowerShell 5.1 korrekt
-# übergeben wird.
-function Quote-Argument {
+<#
+.SYNOPSIS
+    Formatiert ein Argument für ProcessStartInfo.Arguments.
+
+.DESCRIPTION
+    Setzt ein Argument in doppelte Anführungszeichen und maskiert innere
+    Anführungszeichen sowie abschließende Backslashes für Windows PowerShell 5.1.
+
+.PARAMETER Value
+    Argumenttext, der als einzelnes Prozessargument übergeben werden soll.
+
+.OUTPUTS
+    System.String. Das korrekt zitierte Argument.
+#>
+function ConvertTo-QuotedArgument {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string] $Value)
 
@@ -210,7 +220,19 @@ function Quote-Argument {
 }
 
 function Get-ExecutablePath {
-    # Liefert den vollständigen Pfad eines Programms aus dem PATH oder $null.
+<#
+.SYNOPSIS
+    Ermittelt den Pfad eines Programms.
+
+.DESCRIPTION
+    Sucht einen Befehl im aktuellen PATH und liefert den Pfad des ersten Treffers.
+
+.PARAMETER Name
+    Name des ausführbaren Befehls.
+
+.OUTPUTS
+    System.String oder $null, wenn der Befehl nicht gefunden wurde.
+#>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string] $Name)
 
@@ -221,7 +243,22 @@ function Get-ExecutablePath {
 }
 
 function Test-PythonModule {
-    # Prüft, ob ein Python-Modul importierbar ist, ohne eine Shell zu öffnen.
+<#
+.SYNOPSIS
+    Prüft, ob ein Python-Modul importiert werden kann.
+
+.DESCRIPTION
+    Startet Python direkt mit umgeleiteten Streams und prüft den Exitcode des Imports.
+
+.PARAMETER PythonPath
+    Pfad zur Python-Installation.
+
+.PARAMETER ModuleName
+    Name des zu importierenden Python-Moduls.
+
+.OUTPUTS
+    System.Boolean. $true, wenn das Modul importiert werden konnte.
+#>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string] $PythonPath,
@@ -253,10 +290,20 @@ function Test-PythonModule {
 }
 
 function Get-MissingDependency {
-    # Prüft alle erforderlichen Programme und Python-Module und liefert
-    # deren Pfade bzw. eine Liste der fehlenden Abhängigkeiten.
-    # Ghostscript ist optional: Ein Fehlen wird gemeldet, blockiert den Lauf
-    # aber nicht (die Ghostscript-Stufe wird dann übersprungen).
+<#
+.SYNOPSIS
+    Prüft die erforderlichen und optionalen Abhängigkeiten.
+
+.DESCRIPTION
+    Ermittelt Programm-Pfade und fehlende Module. Fehlendes Ghostscript wird als
+    optionale Abhängigkeit gemeldet und blockiert die Verarbeitung nicht.
+
+.PARAMETER NoGhostscript
+    Überspringt die Suche nach Ghostscript.
+
+.OUTPUTS
+    PSCustomObject mit PythonPath, GhostscriptPath, Missing und OptionalMissing.
+#>
     [CmdletBinding()]
     param([bool] $NoGhostscript = $false)
 
@@ -292,10 +339,23 @@ function Get-MissingDependency {
 }
 
 function Invoke-Tesseract {
-    # Führt tesseract mit den angegebenen Argumenten aus und liefert
-    # Exitcode, Stdout und Stderr als Objekt. Direkter Prozessstart mit
-    # umgeleiteten Streams, damit Tesseract-Fehler nicht durch PowerShells
-    # NativeCommand-Verhalten als Terminierungsfehler fehlinterpretiert werden.
+<#
+.SYNOPSIS
+    Führt Tesseract mit den angegebenen Argumenten aus.
+
+.DESCRIPTION
+    Startet Tesseract direkt und liest umgeleitete Ausgabestreams asynchron, damit
+    Fehler zuverlässig ausgewertet werden und die Pipes nicht blockieren.
+
+.PARAMETER TesseractPath
+    Pfad zur ausführbaren Tesseract-Datei.
+
+.PARAMETER Arguments
+    Argumentzeichenfolge für Tesseract.
+
+.OUTPUTS
+    PSCustomObject mit ExitCode, StdOut und StdErr.
+#>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string] $TesseractPath,
@@ -328,9 +388,20 @@ function Invoke-Tesseract {
 }
 
 function Get-TesseractLanguages {
-    # Ermittelt über `tesseract --list-langs` die installierten Sprachen
-    # und den verwendeten tessdata-Ordner.
-    # Rückgabe: Objekt mit Languages (Sprachcodes) und TessdataPath.
+<#
+.SYNOPSIS
+    Ermittelt installierte Tesseract-Sprachen und den tessdata-Ordner.
+
+.DESCRIPTION
+    Ruft `tesseract --list-langs` auf und liest verfügbare Sprachcodes sowie den
+    tessdata-Pfad aus der Ausgabe.
+
+.PARAMETER TesseractPath
+    Pfad zur ausführbaren Tesseract-Datei.
+
+.OUTPUTS
+    PSCustomObject mit Languages und TessdataPath.
+#>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string] $TesseractPath)
 
@@ -358,9 +429,23 @@ function Get-TesseractLanguages {
 }
 
 function Show-LanguageDownloadHint {
-    # Hinweis bei fehlenden Pflicht-Sprachdaten (deu/eng): Verweist auf das
-    # tessdata_best-Repository und nennt den lokalen Ordner, in den die
-    # .traineddata-Dateien abgelegt werden müssen.
+<#
+.SYNOPSIS
+    Zeigt einen Hinweis zu fehlenden Tesseract-Sprachdaten an.
+
+.DESCRIPTION
+    Nennt fehlende Pflichtsprachen, die Downloadquelle und den lokalen
+    tessdata-Ordner, in dem die Sprachdateien abgelegt werden müssen.
+
+.PARAMETER MissingLanguages
+    Codes der fehlenden Pflichtsprachen.
+
+.PARAMETER TessdataPath
+    Lokaler Ordner für Tesseract-Sprachdateien.
+
+.OUTPUTS
+    Kein Pipeline-Ausgabewert. Gibt den Hinweis über Write-Host aus.
+#>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string[]] $MissingLanguages,
@@ -374,8 +459,21 @@ function Show-LanguageDownloadHint {
 }
 
 function Get-PdfInputFile {
-    # Ermittelt die zu verarbeitenden PDF-Dateien aus einem Datei- oder
-    # Ordnerpfad. Ohne Angabe wird interaktiv danach gefragt.
+<#
+.SYNOPSIS
+    Ermittelt PDF-Eingabedateien aus einem Pfad.
+
+.DESCRIPTION
+    Nimmt eine einzelne PDF oder PDFs aus einem Ordner entgegen. Ordner werden
+    rekursiv durchsucht; _orig-Sicherungen werden ausgeschlossen. Ohne Pfad wird
+    interaktiv danach gefragt.
+
+.PARAMETER Path
+    Pfad zu einer PDF-Datei oder einem Ordner. Optional.
+
+.OUTPUTS
+    System.IO.FileInfo[]. Die zu verarbeitenden PDF-Dateien.
+#>
     [CmdletBinding()]
     param([string] $Path)
 
@@ -414,9 +512,19 @@ function Get-PdfInputFile {
 }
 
 function Get-FileSha256 {
-    # Berechnet den SHA-256-Hash einer Datei und liefert ihn als Hex-String.
-    # Wird verwendet, um ein unverändertes Ergebnis (hash-gleich zum Original)
-    # als Fehlschlag zu erkennen.
+<#
+.SYNOPSIS
+    Berechnet den SHA-256-Hash einer Datei.
+
+.DESCRIPTION
+    Liest die Datei und liefert ihren Hash als Hexadezimalzeichenfolge.
+
+.PARAMETER Path
+    Pfad zur zu prüfenden Datei.
+
+.OUTPUTS
+    System.String. SHA-256-Hash in hexadezimaler Darstellung.
+#>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string] $Path)
 
@@ -432,10 +540,26 @@ function Get-FileSha256 {
     finally { $sha256.Dispose() }
 }
 
-# Komprimiert eine PDF-Datei mit Ghostscript: Zielauflösung (DPI), JPEG q75,
-# Ausgabe als normales PDF Version 1.5. Ersetzt die Eingabedatei nur, wenn das
-# Ergebnis kleiner ist; anderenfalls bleibt die Eingabe unverändert.
-# Rückgabe: $true bei Verkleinerung.
+<#
+.SYNOPSIS
+    Optimiert eine PDF-Datei mit Ghostscript.
+
+.DESCRIPTION
+    Downsampled Bilder mit der angegebenen Auflösung und JPEG-Qualität. Ersetzt
+    die Eingabedatei nur, wenn das Ergebnis kleiner ist.
+
+.PARAMETER GhostscriptPath
+    Pfad zur ausführbaren Ghostscript-Datei.
+
+.PARAMETER Pdf
+    PDF-Datei, die optimiert werden soll.
+
+.PARAMETER Dpi
+    Zielauflösung für das Downsampling.
+
+.OUTPUTS
+    System.Boolean. $true, wenn die Datei erfolgreich verkleinert wurde.
+#>
 function Optimize-WithGhostscript {
     [CmdletBinding()]
     param(
@@ -469,7 +593,7 @@ function Optimize-WithGhostscript {
             ('-sOutputFile={0}' -f $tempPath),
             $Pdf.FullName
         )
-        $argsString = ($gsArgList | ForEach-Object { Quote-Argument -Value $_ }) -join ' '
+        $argsString = ($gsArgList | ForEach-Object { ConvertTo-QuotedArgument -Value $_ }) -join ' '
         $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
         $startInfo.FileName = $GhostscriptPath
         $startInfo.Arguments = $argsString
@@ -506,18 +630,55 @@ function Optimize-WithGhostscript {
 # --- Hauptverarbeitung ----------------------------------------------------
 
 function Invoke-PdfProcessing {
-    # Verarbeitet eine einzelne PDF-Datei in zwei Stufen:
-    #   1. OCRmyPDF: OCR-Textebene ergänzen, optimieren und schiefe Seiten begradigen.
-    #      Ausgabe als normales PDF Version 1.5 (--output-type pdf), kein PDF/A-Archiv.
-    #   2. Ghostscript (optional): Bilder auf die Zielauflösung nachkomprimieren.
-    #      Läuft nur, wenn explizit eine DPI-Zahl übergeben wurde ($GhostscriptDpi > 0).
-    # Das Ergebnis ersetzt die Eingabe; standardmäßig wird sie vorher als _orig.pdf gesichert.
-    # Ein Lauf gilt nur als Fehlschlag, wenn OCRmyPDF fehlschlägt oder das Ergebnis
-    # hash-gleich zum Original ist (keine Änderung).
-    # `--optimize 1` statt 3: Stufe 3 erzeugt eine jbig2-Warnung, die wir nicht
-    # benötigen (jbig2 wird bewusst nicht installiert).
-    # Bei vollständiger Textebene überspringt OCRmyPDF die Seitenvorverarbeitung,
-    # führt aber seine abschließende PDF-Optimierung weiterhin aus.
+<#
+.SYNOPSIS
+    Verarbeitet und optimiert eine einzelne PDF-Datei.
+
+.DESCRIPTION
+    Prüft Signaturen und Textebene, führt OCRmyPDF aus und wendet optional
+    Ghostscript-Optimierung an. Verschlüsselte und digital signierte PDFs werden
+    übersprungen. Das Ergebnis ersetzt die Eingabe; standardmäßig wird das
+    Original zuvor als _orig.pdf gesichert. Bei vollständiger Textebene wird OCR
+    übersprungen, die PDF-Optimierung bleibt aktiv. --optimize 1 wird verwendet,
+    um die optionale jbig2-Abhängigkeit zu vermeiden.
+
+.PARAMETER Pdf
+    Eingabe-PDF, die verarbeitet werden soll.
+
+.PARAMETER PythonPath
+    Pfad zur Python-Installation.
+
+.PARAMETER Language
+    Mit '+' kombinierte Tesseract-Sprachcodes.
+
+.PARAMETER Quality
+    JPEG-Qualität für OCRmyPDF.
+
+.PARAMETER GhostscriptDpi
+    Zielauflösung der optionalen Ghostscript-Optimierung. 0 deaktiviert sie.
+
+.PARAMETER NoDeskew
+    Deaktiviert die Schräglagenkorrektur.
+
+.PARAMETER RotatePages
+    Aktiviert die Erkennung und Korrektur verdrehter Seiten.
+
+.PARAMETER NoGhostscript
+    Deaktiviert Ghostscript.
+
+.PARAMETER ReplaceOriginal
+    Überschreibt die Eingabe ohne _orig-Sicherung.
+
+.PARAMETER ForceOcrRescan
+    Erzwingt OCR auch bei vorhandener vollständiger Textebene.
+
+.PARAMETER GhostscriptPath
+    Pfad zu Ghostscript, sofern verfügbar.
+
+.OUTPUTS
+    PSCustomObject mit Erfolgsstatus, Skip-Status, Dateipfad, Fehlergrund,
+    Warnung sowie Größenangaben.
+#>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,

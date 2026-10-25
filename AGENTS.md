@@ -5,7 +5,8 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 ## Sprache und Kommentare
 - Benutzerseite (Texte, Ausgaben, Fehlermeldungen) und Kommentare in Skripten auf Deutsch; technische Fachbegriffe und Tesseract-Sprachcodes (z. B. `deu`, `eng`) auf Englisch.
 - Jedes Skript beginnt mit comment-based help (`.SYNOPSIS`, `.DESCRIPTION`, mindestens ein `.EXAMPLE`, `.NOTES` mit Abhängigkeiten).
-- Jede Funktion dokumentiert Zweck, Parameter und Rückgabewerte (Kommentarblock oder comment-based help).
+- Jede PowerShell-Funktion hat unmittelbar vor der Definition oder als ersten Inhalt ihres Scriptblocks einen vollständigen comment-based-help-Kopf mit `.SYNOPSIS`, `.DESCRIPTION`, einem `.PARAMETER`-Abschnitt für jeden Parameter und `.OUTPUTS`. Ergänze bei Bedarf `.EXAMPLE` und `.NOTES`, wenn sie Nutzung oder Abhängigkeiten sinnvoll erklären.
+- Jede PowerShell-Funktion verwendet das Muster `ApprovedVerb-Noun`. Vor dem Hinzufügen oder Umbenennen eines Funktionsverbs ist es mit `Get-Verb` auf den Status als approved Verb zu prüfen; Aufrufer und Tests müssen bei Umbenennungen mit angepasst werden.
 - Nicht offensichtliche Entscheidungen kommentieren (das Warum), z. B. warum ein externes Programm direkt über `[System.Diagnostics.Process]` gestartet wird, warum `--output-type pdf` bei OCRmyPDF vermieden wird und warum `--optimize 1` statt 3 verwendet wird.
 - Keine selbsterklärenden Kommentare; stattdessen Abschnitte im Hauptteil mit kurzen Überschriften strukturieren.
 

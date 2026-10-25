@@ -36,9 +36,20 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Wandelt ein Argument für ProcessStartInfo.Arguments in eine Windows-konforme
-# zitierte Zeichenfolge um.
-# Rückgabe: Das sicher zitierte Argument.
+<#
+.SYNOPSIS
+    Formatiert ein Argument für ProcessStartInfo.Arguments.
+
+.DESCRIPTION
+    Maskiert Anführungszeichen und Backslashes so, dass das Argument unter
+    Windows PowerShell 5.1 als einzelnes Prozessargument übergeben wird.
+
+.PARAMETER Value
+    Argumenttext, der zitiert werden soll.
+
+.OUTPUTS
+    System.String. Das korrekt zitierte Argument.
+#>
 function ConvertTo-QuotedArgument {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string] $Value)
@@ -49,10 +60,23 @@ function ConvertTo-QuotedArgument {
     return '"' + $escaped + '"'
 }
 
-# Startet Python mit umgeleiteten und asynchron gelesenen Streams, damit Fehler
-# zuverlässig ausgewertet werden und größere Ausgaben keine Pipe blockieren.
-# Parameter: Python- und Argumentliste für den Prozess.
-# Rückgabe: Exitcode, Standardausgabe und Fehlerausgabe.
+<#
+.SYNOPSIS
+    Führt Python mit den angegebenen Argumenten aus.
+
+.DESCRIPTION
+    Startet Python direkt, liest Standardausgabe und Fehlerausgabe asynchron und
+    liefert beide Streams zusammen mit dem Exitcode zurück.
+
+.PARAMETER PythonPath
+    Pfad zur Python-Installation.
+
+.PARAMETER Arguments
+    Argumentliste für den Python-Prozess.
+
+.OUTPUTS
+    PSCustomObject mit ExitCode, StdOut und StdErr.
+#>
 function Invoke-PythonCommand {
     [CmdletBinding()]
     param(
@@ -92,9 +116,23 @@ function Invoke-PythonCommand {
     }
 }
 
-# Ermittelt PDFs ohne Textoperatoren und PDFs mit nur teilweise textfähigen Seiten.
-# Parameter: PDF-Pfad und Python-Pfad.
-# Rückgabe: Anzahl Seiten, Anzahl Seiten mit Textoperatoren und Prüfstatus.
+<#
+.SYNOPSIS
+    Ermittelt den Status der PDF-Textebene.
+
+.DESCRIPTION
+    Prüft die Seiteninhalte einschließlich eingebetteter Form-XObjects auf
+    Textoperatoren und klassifiziert die PDF nach dem Anteil textfähiger Seiten.
+
+.PARAMETER Pdf
+    PDF-Datei, deren Textebene geprüft wird.
+
+.PARAMETER PythonPath
+    Pfad zur Python-Installation mit pikepdf.
+
+.OUTPUTS
+    PSCustomObject mit FilePath, PageCount, TextPageCount, Status und Error.
+#>
 function Get-PdfTextLayerStatus {
     [CmdletBinding()]
     param(
