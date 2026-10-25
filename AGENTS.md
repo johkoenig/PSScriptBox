@@ -5,7 +5,7 @@ Repository guidance, especially for PowerShell scripts.
 ## Language, comments, and help
 - Write all source-code comments and documentation in English. Keep technical terms and Tesseract language codes (for example, `deu` and `eng`) in English.
 - Console messages must be localized: use German when the Windows UI culture is German and English otherwise. Every script must provide an `-EnglishOutput` switch to force English.
-- Keep translations out of executable logic. Use shared message catalogs under `pdf/l10n/<culture>/Messages.psd1` and a small, documented lookup helper. English source strings are the fallback; add German translations to the German catalog.
+- Keep translations out of executable logic. Use a message catalog under the relevant tool folder's `l10n/<culture>/Messages.psd1` and a small, documented lookup helper. English source strings are the fallback; add German translations to the German catalog.
 - Every script starts with comment-based help containing `.SYNOPSIS`, `.DESCRIPTION`, at least one `.EXAMPLE`, and `.NOTES` listing dependencies.
 - Keep user-facing documentation in both top-level `README.md` / `README.de.md` and each tool folder's `README.md` / `README.de.md`. Update all applicable README files whenever script content, behavior, parameters, or user workflows change; keep the English and German versions consistent.
 - PowerShell script documentation (comment-based help, parameter descriptions, examples, and notes) must remain complete and current in English only. Update it whenever script behavior or interface changes.

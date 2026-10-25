@@ -1,0 +1,54 @@
+# Git configuration tool
+
+`Initialize-GitConfiguration.ps1` initializes the Git author identity (and optionally common standard settings) in a repository's local `.git/config` or in the user's global configuration. It never stores a name or email in the script and does not overwrite existing values in the target scope.
+
+## Usage
+
+Run it from inside a Git repository:
+
+```powershell
+.\Initialize-GitConfiguration.ps1
+```
+
+For each identity value, the script shows a numbered list of discovered choices plus a custom entry. An existing Git setting is listed first, so pressing Enter (default: choice 1) keeps it:
+
+- **Name:** existing Git settings (local, global, system), the Active Directory or Windows display name, or a custom value.
+- **Email:** existing Git settings, the Active Directory `mail` attribute (domain-joined computers), the user principal name (Active Directory / Entra ID), the signed-in Microsoft account, or a custom value.
+
+Git must be installed and available on `PATH`. No administrator privileges are needed. Directory lookups time out quickly and are skipped when no directory is reachable.
+
+| Parameter | Description |
+| --- | --- |
+| `-RepositoryPath <path>` | Directory inside the repository (Local scope). Defaults to the current directory. |
+| `-Scope <Local\|Global>` | Where to write the settings. Defaults to `Local`; `Global` applies to all repositories of the current user. |
+| `-Name <name>` | Value for `user.name`; skips the interactive choice. |
+| `-Email <address>` | Value for `user.email`; skips the interactive choice. |
+| `-EnglishOutput` | Forces English console output regardless of the Windows UI language. |
+
+Examples:
+
+```powershell
+.\Initialize-GitConfiguration.ps1 -RepositoryPath 'C:\src\project'
+.\Initialize-GitConfiguration.ps1 -Name 'Jane Doe' -Email 'jane@example.com'
+.\Initialize-GitConfiguration.ps1 -Scope Global
+.\Initialize-GitConfiguration.ps1 -EnglishOutput
+```
+
+## Recommended settings
+
+| Setting | Value | Purpose |
+| --- | --- | --- |
+| `init.defaultBranch` | `main` | Default branch name for new repositories. |
+| `core.autocrlf` | `true` | Windows line-ending conversion. |
+| `core.longpaths` | `true` | Allows paths longer than 260 characters. |
+| `fetch.prune` | `true` | Removes stale remote-tracking branches. |
+| `pull.rebase` | `false` | Explicit merge behavior on pull. |
+| `push.autoSetupRemote` | `true` | First push sets the upstream automatically. |
+| `format.signOff` | `true` | Adds `Signed-off-by` to patches from `git format-patch`. |
+| `alias.cs` | `commit --signoff` | `git cs` creates a signed-off commit. Git has no setting that signs off every commit automatically. |
+
+Before each prompt the script prints a detailed explanation of the setting and shows the recommendation when your current value differs. The table above summarizes them. Existing values are never changed without your input: each setting is confirmed individually. Pressing Enter accepts the default (the value already set in the target scope, otherwise the recommendation), typing one of the listed values (shown one per line as `[value] explanation`) selects it, free-form settings (`init.defaultBranch`, `alias.cs`) also accept any other text, and `-` leaves the setting untouched. The operation is idempotent: pressing Enter throughout changes nothing on a repeated run.
+
+The script supports PowerShell common parameters, including `-Verbose`, `-Debug`, and `-ErrorAction`. Commit emails are visible in the history; choose a public or no-reply address for public repositories.
+
+See [Contributing](../CONTRIBUTING.md) and the [MIT License](../LICENSE.md).
