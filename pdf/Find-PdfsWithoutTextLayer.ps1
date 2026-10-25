@@ -1,54 +1,100 @@
 ﻿<#
 .SYNOPSIS
-    Findet PDF-Dateien ohne durchsuchbare Textebene.
+    Finds PDF files without a searchable text layer.
 
 .DESCRIPTION
-    Prüft eine PDF-Datei oder alle PDFs in einem Ordner einschließlich Unterordnern.
-    Erkannt werden PDF-Textoperatoren in Seiteninhalten und eingebetteten Formularen.
-    Dateien ohne Textoperatoren sowie PDFs mit nur teilweise vorhandenen Textinhalten
-    werden getrennt aufgelistet. Das Skript bewertet nicht die Qualität oder
-    Durchsuchbarkeit erkannter Textinhalte. Der Dateiinhalt wird nicht verändert.
+    Checks a PDF file or all PDFs in a folder and its subfolders. PDF text
+    operators in page content and embedded forms are detected. Files with no
+    text operators and PDFs with text on only some pages are listed separately.
+    The script does not assess text quality or searchability and does not modify
+    file contents.
 
 .PARAMETER InputPath
-    PDF-Datei oder Ordner, der rekursiv nach PDF-Dateien durchsucht werden soll.
-    Ohne Angabe wird der Pfad interaktiv abgefragt.
+    PDF file or folder to search recursively. If omitted, the path is requested
+    interactively.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
 
 .EXAMPLE
     .\Find-PdfsWithoutTextLayer.ps1 -InputPath 'C:\PDFs'
-    Prüft alle PDFs in C:\PDFs und dessen Unterordnern.
+    Checks all PDFs in C:\PDFs and its subfolders.
 
 .EXAMPLE
     .\Find-PdfsWithoutTextLayer.ps1 -InputPath 'C:\PDFs\Scan.pdf'
-    Prüft nur die angegebene PDF-Datei.
+    Checks only the specified PDF file.
 
 .NOTES
-    Abhängigkeiten: PowerShell 5.1 oder neuer, Python und das Python-Modul pikepdf.
-    Installation des Moduls: py -m pip install --user pikepdf
-    (alternativ: python -m pip install --user pikepdf)
-    Es werden keine Dateien verändert und keine Administratorrechte benötigt.
+    Dependencies: PowerShell 5.1 or later, Python, and the pikepdf Python module.
+    Install the module with: py -m pip install --user pikepdf
+    (or: python -m pip install --user pikepdf)
+    No files are modified, and administrator rights are not required.
 #>
 
 [CmdletBinding()]
 param(
-    [string] $InputPath
+    [string] $InputPath,
+
+    [switch] $EnglishOutput
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$script:OutputLanguage = if (
+    $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
+) { 'en' } else { 'de' }
+$script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
+    Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot 'Localization\de-DE\Messages.psd1')
+}
+else { @{} }
+
 <#
 .SYNOPSIS
-    Formatiert ein Argument für ProcessStartInfo.Arguments.
+    Returns a localized console message.
 
 .DESCRIPTION
-    Maskiert Anführungszeichen und Backslashes so, dass das Argument unter
-    Windows PowerShell 5.1 als einzelnes Prozessargument übergeben wird.
+    Uses the German message catalog when German output is selected; otherwise
+    returns the English source string. Formats the selected template when
+    formatting arguments are provided.
 
-.PARAMETER Value
-    Argumenttext, der zitiert werden soll.
+.PARAMETER Text
+    English source message and lookup key.
+
+.PARAMETER Arguments
+    Optional values used to format placeholders in the message.
 
 .OUTPUTS
-    System.String. Das korrekt zitierte Argument.
+    System.String. The localized and optionally formatted message.
+#>
+function Get-LocalizedText {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $Text,
+        [AllowEmptyCollection()][object[]] $Arguments = @()
+    )
+
+    $template = if ($script:OutputLanguage -eq 'de' -and $script:GermanMessages.ContainsKey($Text)) {
+        $script:GermanMessages[$Text]
+    }
+    else { $Text }
+    if ($Arguments.Count -gt 0) { return $template -f $Arguments }
+    return $template
+}
+
+<#
+.SYNOPSIS
+    Formats an argument for ProcessStartInfo.Arguments.
+
+.DESCRIPTION
+    Escapes quotation marks and backslashes so the argument is passed as a
+    single process argument under Windows PowerShell 5.1.
+
+.PARAMETER Value
+    Argument text to quote.
+
+.OUTPUTS
+    System.String. The correctly quoted argument.
 #>
 function ConvertTo-QuotedArgument {
     [CmdletBinding()]
@@ -62,20 +108,20 @@ function ConvertTo-QuotedArgument {
 
 <#
 .SYNOPSIS
-    Führt Python mit den angegebenen Argumenten aus.
+    Runs Python with the specified arguments.
 
 .DESCRIPTION
-    Startet Python direkt, liest Standardausgabe und Fehlerausgabe asynchron und
-    liefert beide Streams zusammen mit dem Exitcode zurück.
+    Starts Python directly, reads standard output and error asynchronously, and
+    returns both streams with the exit code.
 
 .PARAMETER PythonPath
-    Pfad zur Python-Installation.
+    Path to the Python installation.
 
 .PARAMETER Arguments
-    Argumentliste für den Python-Prozess.
+    Argument list for the Python process.
 
 .OUTPUTS
-    PSCustomObject mit ExitCode, StdOut und StdErr.
+    PSCustomObject with ExitCode, StdOut, and StdErr.
 #>
 function Invoke-PythonCommand {
     [CmdletBinding()]
@@ -99,7 +145,7 @@ function Invoke-PythonCommand {
     $process.StartInfo = $startInfo
     try {
         if (-not $process.Start()) {
-            throw "Python konnte nicht gestartet werden: $PythonPath"
+            throw (Get-LocalizedText -Text 'Python could not be started: {0}' -Arguments @($PythonPath))
         }
 
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
@@ -118,20 +164,20 @@ function Invoke-PythonCommand {
 
 <#
 .SYNOPSIS
-    Ermittelt den Status der PDF-Textebene.
+    Gets the PDF text-layer status.
 
 .DESCRIPTION
-    Prüft die Seiteninhalte einschließlich eingebetteter Form-XObjects auf
-    Textoperatoren und klassifiziert die PDF nach dem Anteil textfähiger Seiten.
+    Checks page content, including embedded Form XObjects, for text operators
+    and classifies the PDF based on the proportion of pages containing text.
 
 .PARAMETER Pdf
-    PDF-Datei, deren Textebene geprüft wird.
+    PDF file whose text layer is being checked.
 
 .PARAMETER PythonPath
-    Pfad zur Python-Installation mit pikepdf.
+    Path to the Python installation with pikepdf.
 
 .OUTPUTS
-    PSCustomObject mit FilePath, PageCount, TextPageCount, Status und Error.
+    PSCustomObject with FilePath, PageCount, TextPageCount, Status, and Error.
 #>
 function Get-PdfTextLayerStatus {
     [CmdletBinding()]
@@ -203,28 +249,28 @@ except Exception as error:
     if ($result.ExitCode -ne 0) {
         $details = $result.StdErr.Trim()
         if (-not $details) { $details = $result.StdOut.Trim() }
-        throw "PDF-Prüfung fehlgeschlagen (Exitcode $($result.ExitCode)): $details"
+        throw (Get-LocalizedText -Text 'PDF check failed (exit code {0}): {1}' -Arguments @($result.ExitCode, $details))
     }
 
     $values = $result.StdOut.Trim() -split "`t"
     if ($values.Count -ne 2 -or $values[0] -notmatch '^\d+$' -or $values[1] -notmatch '^\d+$') {
-        throw "Python lieferte ein ungültiges Prüfergebnis für '$($Pdf.FullName)'."
+        throw (Get-LocalizedText -Text 'Python returned an invalid check result for ''{0}''.' -Arguments @($Pdf.FullName))
     }
 
     $pageCount = [int]$values[0]
     $textPageCount = [int]$values[1]
     if ($pageCount -eq 0) {
-        throw 'Die PDF-Datei enthält keine Seiten.'
+        throw (Get-LocalizedText 'The PDF file contains no pages.')
     }
 
     $status = if ($textPageCount -eq 0) {
-        'Ohne Textebene'
+        'NoTextLayer'
     }
     elseif ($textPageCount -lt $pageCount) {
-        'Teilweise ohne Textebene'
+        'PartialTextLayer'
     }
     else {
-        'Textebene vorhanden'
+        'TextLayerPresent'
     }
 
     return [pscustomobject]@{
@@ -251,15 +297,15 @@ foreach ($headerLine in $headerLines) {
 }
 Write-Host ("       '{0}'" -f ('=' * $headerWidth)) -ForegroundColor Cyan
 
-# --- Eingabe und Abhängigkeiten ------------------------------------------
+# --- Input and dependencies ----------------------------------------------
 
 if ([string]::IsNullOrWhiteSpace($InputPath)) {
-    Write-Host 'Pfad zu einer PDF-Datei oder einem Ordner mit PDFs eingeben.'
-    $InputPath = Read-Host 'InputPath'
+    Write-Host (Get-LocalizedText 'Enter the path to a PDF file or a folder containing PDFs.')
+    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath')
 }
 $InputPath = [Environment]::ExpandEnvironmentVariables($InputPath.Trim().Trim('"'))
 if ([string]::IsNullOrWhiteSpace($InputPath)) {
-    throw 'Es wurde kein Pfad angegeben.'
+    throw (Get-LocalizedText 'No path was specified.')
 }
 
 $pythonCommand = Get-Command -Name 'py' -ErrorAction SilentlyContinue |
@@ -269,26 +315,26 @@ if ($null -eq $pythonCommand) {
         Select-Object -First 1
 }
 if ($null -eq $pythonCommand) {
-    Write-Host 'Fehlende Abhängigkeit: Python (py.exe oder python.exe).' -ForegroundColor Yellow
-    Write-Host 'Installation: https://www.python.org/downloads/'
+    Write-Host (Get-LocalizedText 'Missing dependency: Python (py.exe or python.exe).') -ForegroundColor Yellow
+    Write-Host (Get-LocalizedText 'Installation: https://www.python.org/downloads/')
     exit 1
 }
 $pythonPath = $pythonCommand.Source
 
 $moduleCheck = Invoke-PythonCommand -PythonPath $pythonPath -Arguments @('-c', 'import pikepdf')
 if ($moduleCheck.ExitCode -ne 0) {
-    Write-Host 'Fehlende Abhängigkeit: Python-Modul pikepdf.' -ForegroundColor Yellow
+    Write-Host (Get-LocalizedText 'Missing dependency: Python module pikepdf.') -ForegroundColor Yellow
     if ([System.IO.Path]::GetFileNameWithoutExtension($pythonPath) -ieq 'py') {
-        Write-Host 'Installation: py -m pip install --user pikepdf'
+        Write-Host (Get-LocalizedText 'Installation: py -m pip install --user pikepdf')
     }
     else {
-        Write-Host 'Installation: python -m pip install --user pikepdf'
+        Write-Host (Get-LocalizedText 'Installation: python -m pip install --user pikepdf')
     }
     exit 1
 }
 
 if (-not (Test-Path -LiteralPath $InputPath)) {
-    throw "Der angegebene Pfad wurde nicht gefunden: $InputPath"
+    throw (Get-LocalizedText -Text 'The specified path was not found: {0}' -Arguments @($InputPath))
 }
 
 $inputItem = Get-Item -LiteralPath $InputPath
@@ -302,11 +348,11 @@ elseif ($inputItem -is [System.IO.FileInfo] -and $inputItem.Extension -ieq '.pdf
     $pdfFiles = @($inputItem)
 }
 else {
-    throw "Der Pfad muss auf eine PDF-Datei oder einen Ordner zeigen: $InputPath"
+    throw (Get-LocalizedText -Text 'The path must point to a PDF file or a folder: {0}' -Arguments @($InputPath))
 }
 
 if ($pdfFiles.Count -eq 0) {
-    Write-Host 'Keine PDFs gefunden.' -ForegroundColor Green
+    Write-Host (Get-LocalizedText 'No PDFs found.') -ForegroundColor Green
     exit 0
 }
 
@@ -315,84 +361,85 @@ if (-not $basePathPrefix.EndsWith([string][System.IO.Path]::DirectorySeparatorCh
     $basePathPrefix += [System.IO.Path]::DirectorySeparatorChar
 }
 
-# --- PDFs prüfen ---------------------------------------------------------
+# --- Check PDFs -----------------------------------------------------------
 
-Write-Host "  Ordner: $baseDirectory"
-Write-Host "  Zu prüfende PDFs: $($pdfFiles.Count)"
+Write-Host (Get-LocalizedText -Text '  Folder: {0}' -Arguments @($baseDirectory))
+Write-Host (Get-LocalizedText -Text '  PDFs to check: {0}' -Arguments @($pdfFiles.Count))
 
 $results = @(
     for ($index = 0; $index -lt $pdfFiles.Count; $index++) {
         $pdf = $pdfFiles[$index]
         $relativePath = $pdf.FullName.Substring($basePathPrefix.Length)
         Write-Host ''
-        Write-Host ('--- PDF {0}/{1}: {2} ---' -f ($index + 1), $pdfFiles.Count, $relativePath) -ForegroundColor Cyan
+        Write-Host (Get-LocalizedText -Text '--- PDF {0}/{1}: {2} ---' -Arguments @(($index + 1), $pdfFiles.Count, $relativePath)) -ForegroundColor Cyan
         try {
             $result = Get-PdfTextLayerStatus -Pdf $pdf -PythonPath $pythonPath
             switch ($result.Status) {
-                'Ohne Textebene' {
-                    Write-Host 'Keine Textebene gefunden.' -ForegroundColor Yellow
+                'NoTextLayer' {
+                    Write-Host (Get-LocalizedText 'No text layer found.') -ForegroundColor Yellow
                 }
-                'Teilweise ohne Textebene' {
-                    Write-Host ('Textebene nur auf {0} von {1} Seiten gefunden.' -f $result.TextPageCount, $result.PageCount) -ForegroundColor DarkYellow
+                'PartialTextLayer' {
+                    Write-Host (Get-LocalizedText -Text 'Text found on only {0} of {1} pages.' -Arguments @($result.TextPageCount, $result.PageCount)) -ForegroundColor DarkYellow
                 }
                 default {
-                    Write-Host ('Textebene auf allen {0} Seiten gefunden.' -f $result.PageCount) -ForegroundColor Green
+                    Write-Host (Get-LocalizedText -Text 'Text found on all {0} pages.' -Arguments @($result.PageCount)) -ForegroundColor Green
                 }
             }
             $result
         }
         catch {
-            Write-Warning "PDF konnte nicht geprüft werden: '$relativePath'`n$($_.Exception.Message)"
+            Write-Warning (Get-LocalizedText -Text "Could not check PDF: '{0}'`n{1}" -Arguments @($relativePath, $_.Exception.Message))
             [pscustomobject]@{
                 FilePath      = $pdf.FullName
                 PageCount     = 0
                 TextPageCount = 0
-                Status        = 'Fehler'
+                Status        = 'Error'
                 Error         = $_.Exception.Message
             }
         }
     }
 )
 
-# --- Zusammenfassung -----------------------------------------------------
+# --- Summary --------------------------------------------------------------
 
-$withoutText = @($results | Where-Object { $_.Status -eq 'Ohne Textebene' })
-$partialText = @($results | Where-Object { $_.Status -eq 'Teilweise ohne Textebene' })
-$withText = @($results | Where-Object { $_.Status -eq 'Textebene vorhanden' })
-$errors = @($results | Where-Object { $_.Status -eq 'Fehler' })
-
-Write-Host ''
-Write-Host '=== Zusammenfassung ===' -ForegroundColor Cyan
-Write-Host ('Geprüft: {0}, ohne Textebene: {1}, teilweise: {2}, mit Textebene: {3}, Fehler: {4}' -f `
-    $results.Count, $withoutText.Count, $partialText.Count, $withText.Count, $errors.Count)
+$withoutText = @($results | Where-Object { $_.Status -eq 'NoTextLayer' })
+$partialText = @($results | Where-Object { $_.Status -eq 'PartialTextLayer' })
+$withText = @($results | Where-Object { $_.Status -eq 'TextLayerPresent' })
+$errors = @($results | Where-Object { $_.Status -eq 'Error' })
 
 Write-Host ''
-Write-Host 'PDFs ohne Textebene:' -ForegroundColor Cyan
+Write-Host (Get-LocalizedText '=== Summary ===') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Checked: {0}, no text layer: {1}, partial: {2}, with text layer: {3}, errors: {4}' -Arguments @(
+    $results.Count, $withoutText.Count, $partialText.Count, $withText.Count, $errors.Count
+))
+
+Write-Host ''
+Write-Host (Get-LocalizedText 'PDFs without a text layer:') -ForegroundColor Cyan
 if ($withoutText.Count -eq 0) {
-    Write-Host '  Keine.'
+    Write-Host (Get-LocalizedText '  None.')
 }
 else {
     foreach ($result in $withoutText) {
         $relativePath = $result.FilePath.Substring($basePathPrefix.Length)
-        Write-Host "  - $relativePath ($($result.PageCount) Seiten)" -ForegroundColor Yellow
+        Write-Host (Get-LocalizedText -Text '  - {0} ({1} pages)' -Arguments @($relativePath, $result.PageCount)) -ForegroundColor Yellow
     }
 }
 
 if ($partialText.Count -gt 0) {
     Write-Host ''
-    Write-Host 'PDFs mit teilweise fehlender Textebene:' -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'PDFs with a partially missing text layer:') -ForegroundColor Cyan
     foreach ($result in $partialText) {
         $relativePath = $result.FilePath.Substring($basePathPrefix.Length)
         $pagesWithoutText = $result.PageCount - $result.TextPageCount
-        Write-Host "  - $relativePath ($pagesWithoutText von $($result.PageCount) Seiten ohne Text)" -ForegroundColor DarkYellow
+        Write-Host (Get-LocalizedText -Text '  - {0} ({1} of {2} pages without text)' -Arguments @($relativePath, $pagesWithoutText, $result.PageCount)) -ForegroundColor DarkYellow
     }
 }
 
 if ($errors.Count -gt 0) {
     Write-Host ''
-    Write-Host 'Nicht prüfbare PDFs:' -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'PDFs that could not be checked:') -ForegroundColor Cyan
     foreach ($result in $errors) {
         $relativePath = $result.FilePath.Substring($basePathPrefix.Length)
-        Write-Host "  - $relativePath ($($result.Error))" -ForegroundColor Red
+        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $result.Error)) -ForegroundColor Red
     }
 }

@@ -1,49 +1,50 @@
 ﻿# AGENTS.md
 
-Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-Skripte.
+Repository guidance, especially for PowerShell scripts.
 
-## Sprache und Kommentare
-- Benutzerseite (Texte, Ausgaben, Fehlermeldungen) und Kommentare in Skripten auf Deutsch; technische Fachbegriffe und Tesseract-Sprachcodes (z. B. `deu`, `eng`) auf Englisch.
-- Jedes Skript beginnt mit comment-based help (`.SYNOPSIS`, `.DESCRIPTION`, mindestens ein `.EXAMPLE`, `.NOTES` mit Abhängigkeiten).
-- Jede PowerShell-Funktion hat unmittelbar vor der Definition oder als ersten Inhalt ihres Scriptblocks einen vollständigen comment-based-help-Kopf mit `.SYNOPSIS`, `.DESCRIPTION`, einem `.PARAMETER`-Abschnitt für jeden Parameter und `.OUTPUTS`. Ergänze bei Bedarf `.EXAMPLE` und `.NOTES`, wenn sie Nutzung oder Abhängigkeiten sinnvoll erklären.
-- Jede PowerShell-Funktion verwendet das Muster `ApprovedVerb-Noun`. Vor dem Hinzufügen oder Umbenennen eines Funktionsverbs ist es mit `Get-Verb` auf den Status als approved Verb zu prüfen; Aufrufer und Tests müssen bei Umbenennungen mit angepasst werden.
-- Nicht offensichtliche Entscheidungen kommentieren (das Warum), z. B. warum ein externes Programm direkt über `[System.Diagnostics.Process]` gestartet wird, warum `--output-type pdf` bei OCRmyPDF vermieden wird und warum `--optimize 1` statt 3 verwendet wird.
-- Keine selbsterklärenden Kommentare; stattdessen Abschnitte im Hauptteil mit kurzen Überschriften strukturieren.
+## Language, comments, and help
+- Write all source-code comments and documentation in English. Keep technical terms and Tesseract language codes (for example, `deu` and `eng`) in English.
+- Console messages must be localized: use German when the Windows UI culture is German and English otherwise. Every script must provide an `-EnglishOutput` switch to force English.
+- Keep translations out of executable logic. Use shared message catalogs under `pdf/Localization/<culture>/Messages.psd1` and a small, documented lookup helper. English source strings are the fallback; add German translations to the German catalog.
+- Every script starts with comment-based help containing `.SYNOPSIS`, `.DESCRIPTION`, at least one `.EXAMPLE`, and `.NOTES` listing dependencies.
+- Every PowerShell function has a complete comment-based-help block immediately before its definition or at the start of its script block. Include `.SYNOPSIS`, `.DESCRIPTION`, `.PARAMETER` for every parameter, and `.OUTPUTS`. Add `.EXAMPLE` and `.NOTES` when they clarify usage or dependencies.
+- Every PowerShell function follows the `ApprovedVerb-Noun` pattern. Check verbs with `Get-Verb`; update callers and tests when renaming functions.
+- Comment on non-obvious decisions and explain why. Do not add comments that merely restate obvious code; use short section headings to structure the main script.
 
-## PowerShell-Stil
-- Am Skriptanfang `Set-StrictMode -Version Latest` und `$ErrorActionPreference = 'Stop'` setzen.
-- `[CmdletBinding()]` an Skript und Funktionen; Pflichtparameter mit `[Parameter(Mandatory)]` kennzeichnen.
-- Benutzerfeedback über `Write-Host` / `Write-Warning` / `Write-Error`, nicht über `Write-Output`.
-- Dateipfade konsequent mit `-LiteralPath` und `Join-Path` behandeln; Benutzereingaben vor Verwendung mit `Trim()` und `ExpandEnvironmentVariables` normalisieren.
-- Externe Konsolenprogramme mit umgeleiteten Streams starten und asynchron lesen, damit deren Fehler nicht als PowerShell-Terminierungsfehler fehlinterpretiert werden und große Ausgaben die Pipe nicht blockieren. Ausnahme: OCRmyPDF läuft ohne Stream-Umleitung, damit der Fortschrittsbalken live auf der Konsole erscheint.
-- **PowerShell-Skripte mit UTF-8-BOM speichern** (U+FEFF am Dateianfang). Ohne BOM liest Windows PowerShell 5.1 die Datei als ANSI und Umlaute in Ausgaben werden falsch dargestellt (z. B. `QualitÃ¤t`).
+## PowerShell style
+- Set `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'` near the start of every script.
+- Use `[CmdletBinding()]` on scripts and functions; mark required parameters with `[Parameter(Mandatory)]`.
+- Report user-facing status and errors through `Write-Host`, `Write-Warning`, or `Write-Error`, not `Write-Output`.
+- Use `-LiteralPath` and `Join-Path` consistently. Normalize user input with `Trim()` and `ExpandEnvironmentVariables()` before use.
+- Start external console programs with redirected streams and read asynchronously so errors are not mistaken for PowerShell terminating errors and large output cannot block a pipe. Exception: run OCRmyPDF without stream redirection so its progress bar is displayed live.
+- Save PowerShell scripts with a UTF-8 BOM (U+FEFF). Windows PowerShell 5.1 otherwise interprets non-ASCII text as ANSI.
 
-## Abhängigkeiten und Installation
-- Skripte installieren keine Software und benötigen keine Administratorrechte.
-- Fehlende Pflicht-Abhängigkeiten werden gesammelt geprüft und am Stück mit Installationshinweisen gemeldet.
-- Optionale Werkzeuge (z. B. Ghostscript) dürfen den Lauf nicht blockieren und werden nicht als Pflicht behandelt. `jbig2` wird nicht verwendet.
+## Dependencies and installation
+- Scripts do not install software and should not require administrator rights to run.
+- Check all required dependencies together and report missing dependencies with installation instructions.
+- Optional tools such as Ghostscript must not block a run when unavailable. Do not use `jbig2`.
 
-## Umgang mit Dateien und Daten
-- Eingabedateien werden nach erfolgreicher Verarbeitung standardmäßig als `<Name>_orig.pdf` gesichert. Mit `-ReplaceOriginal` wird das Original ohne Sicherung überschrieben.
-- Ein Lauf gilt nur dann als fehlgeschlagen, wenn OCRmyPDF tatsächlich fehlschlägt oder das Endergebnis hash-gleich (SHA-256) zum Original ist, d. h. keine Veränderung stattgefunden hat. Ein größeres, aber inhaltlich verändertes Ergebnis ist ein Erfolg.
-- Jede nachgelagerte Optimierungsstufe (Ghostscript) ersetzt das Zwischenergebnis nur, wenn es dadurch kleiner wird; bei fehlender Verkleinerung bleibt die kleinere Datei erhalten.
-- Temporäre Dateien landen neben der Eingabedatei und werden im `finally`-Block zuverlässig entfernt.
-- Keine Geheimnisse, Tokens, API-Schlüssel oder persönlichen Daten im Repository.
+## Files and data
+- By default, save the input PDF after successful processing as `<Name>_orig.pdf`. `-ReplaceOriginal` replaces the input without a backup.
+- Treat processing as failed only when OCRmyPDF fails or the final result has the same SHA-256 hash as the original. A larger but changed result is successful.
+- A downstream optimization stage may replace its intermediate result only when it makes the file smaller.
+- Place temporary files beside the input and reliably remove them in a `finally` block.
+- Do not add secrets, tokens, API keys, or personal data to the repository.
 
-## Projektkonventionen (pdf/Invoke-PdfOptimization.ps1)
-- Standard-Sprachfolge für die OCR: `deu+eng+fra+ita+spa` (Deutsch, Englisch, Französisch, Italienisch, Spanisch, in dieser Reihenfolge). Eine abweichende Sprachfolge kann per Parameter `-Language` vorgegeben werden; es gibt **keine interaktive Sprachabfrage** (die Liste aller installierten Sprachen wäre zu lang).
-- **Pflichtsprachen:** `deu` und `eng`. Fehlt eine davon, stoppt das Skript mit einem Zweizeiler: Aufforderung, den Download-Befehl in einer Admin-Shell auszuführen (lädt alle Sprachen aus https://github.com/tesseract-ocr/tessdata herunter), gefolgt vom Befehl. **Optionale Sprachen** (alle übrigen) werden bei Fehlen **stillschweigend aus der Sprachfolge entfernt** und per Hinweis gemeldet, ohne den Lauf zu unterbrechen.
-- **Begradigung von Scan-Seiten ist standardmäßig aktiv (`--deskew`)** und kann mit `-NoDeskew` deaktiviert werden. Verdrehte Seiten werden automatisch um 90°, 180° oder 270° korrigiert (**`--rotate-pages`** ist standardmäßig **deaktiviert**).
-- **`--output-type pdf` wird bewusst nicht gesetzt.** OCRmyPDF läuft im `auto`-Modus; JPEG-Kompression (`--pdfa-image-compression jpeg`) ist dort ohnehin der Standard, daher wird die Option **nicht explizit übergeben** – sonst gibt OCRmyPDF den Hinweis `--pdfa-image-compression requires Ghostscript` aus.
-- **`--image-dpi` wird nicht übergeben:** Bei PDF-Eingaben ignoriert OCRmyPDF diese Option und meldet das auf der Konsole. Die Bildauflösung steuert stattdessen die Ghostscript-Stufe (200 DPI).
-- **`--optimize 1` statt `--optimize 3`:** Stufe 3 erzeugt eine jbig2-Warnung, da jbig2 nicht installiert ist. jbig2 wird bewusst nicht verwendet (nur für Schwarz-Weiß relevant).
-- **Zweistufige Optimierung:** Nach OCRmyPDF folgt eine optionale **Ghostscript**-Stufe (explizite Downsampling-Parameter, 200 DPI, JPEG q75, sRGB; standardmäßig erlaubt, durch `-NoGhostscript` deaktivierbar). Ghostscript ist über Chocolatey installierbar (`choco install ghostscript`) und wird bei Fehlen gemeldet, ohne den Lauf zu blockieren. **qpdf wird nicht verwendet.**
-- `-RotatePages` aktiviert OCRmyPDFs Drehkorrektur mit dem Konfidenzschwellwert 5.
-- `pdf/Clean-OriginalPdfs.ps1` entfernt `_orig`-PDF-Sicherungen nur, wenn die bearbeitete PDF ohne `_orig`-Zusatz daneben existiert; `-WhatIf` zeigt die Löschungen vorab an.
-- `pdf/Find-PdfsWithoutTextLayer.ps1` sucht rekursiv nach PDFs ohne Textoperatoren und weist PDFs mit teilweise fehlender Textebene separat aus. Benötigt Python und `pikepdf`; verändert keine Dateien.
-- Die rohe OCRmyPDF-Ausgabe (Fortschrittsbalken, interne Modulnamen wie `_pipeline.py`) erscheint unverändert auf der Konsole (Live-Ausgabe, keine Filterung).
+## `pdf/Invoke-PdfOptimization.ps1`
+- The default OCR language sequence is `deu+eng+fra+ita+spa` in that order. `-Language` can override it; do not prompt interactively for languages.
+- `deu` and `eng` are required. If either is missing, stop and provide the tessdata download instructions. Other missing languages are removed from the selected sequence and reported without stopping.
+- Deskew is enabled by default with `--deskew` and can be disabled with `-NoDeskew`. Page rotation is disabled by default; `-RotatePages` enables correction with an OCRmyPDF confidence threshold of 5.
+- OCRmyPDF outputs a standard PDF using `--output-type pdf`; do not switch to PDF/A.
+- Do not pass `--image-dpi`: OCRmyPDF ignores it for PDF inputs. Image resolution is controlled by the optional Ghostscript stage when `-GhostscriptDpi` is specified.
+- Use `--optimize 1` rather than `--optimize 3`; level 3 can warn about the intentionally unavailable `jbig2` encoder.
+- Ghostscript is an optional second optimization stage. It uses explicit downsampling parameters, JPEG quality 75, and sRGB conversion, and runs only when `-GhostscriptDpi` is greater than zero and Ghostscript is available. `-NoGhostscript` disables it. Do not use qpdf.
+- PDFs with a complete text layer use OCRmyPDF's `--skip-text` mode by default; optimization still runs. `-ForceOcrRescan` selects `--force-ocr`. Digitally signed and password-protected PDFs that cannot be opened without a password are skipped.
+- `pdf/Clean-OriginalPdfs.ps1` removes `_orig` PDF backups only when the corresponding processed PDF exists beside them. `-WhatIf` previews deletion.
+- `pdf/Find-PdfsWithoutTextLayer.ps1` recursively finds PDFs without text operators and lists partially missing text layers separately. It requires Python and `pikepdf` and does not modify files.
+- OCRmyPDF's raw output, including progress bars and internal module names such as `_pipeline.py`, is shown unchanged in the console.
 
-## Qualitätssicherung vor dem Commit
-- Skriptänderungen mindestens mit einem Beispiel-PDF testen (Parametermodus und interaktiver Modus), soweit in der Umgebung möglich.
-- Vor dem Commit `git diff` prüfen; keine lokalen Test-PDFs, temporären Dateien oder Binärdateien einchecken.
-- Commit-Messages kurz und sachlich halten.
+## Quality assurance before committing
+- When possible, test script changes with a sample PDF in both parameter and interactive modes.
+- Review `git diff` before committing. Do not commit local test PDFs, temporary files, or binary artifacts.
+- Keep commit messages short and factual.
