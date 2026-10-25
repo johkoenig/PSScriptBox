@@ -45,7 +45,7 @@ $script:OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 ) { 'en' } else { 'de' }
 $script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
-    Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot 'Localization\de-DE\Messages.psd1')
+    Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1')
 }
 else { @{} }
 
