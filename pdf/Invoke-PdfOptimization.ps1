@@ -1,10 +1,12 @@
 ﻿<#
 .SYNOPSIS
-    Optimiert PDFs, begradigt schiefe Scan-Seiten und ergänzt eine OCR-Textebene.
+    Optimiert PDFs durch OCR, Begradigung schiefer Scans und optionale Komprimierung.
 
 .DESCRIPTION
     Verarbeitet eine einzelne PDF-Datei oder alle PDF-Dateien in einem angegebenen Ordner
-    einschließlich seiner Unterordner. Nach erfolgreicher OCR wird die Eingabedatei überschrieben.
+    einschließlich seiner Unterordner. OCRmyPDF ergänzt bei Bedarf eine Textebene und
+    begradigt schiefe Scans; optional komprimiert Ghostscript die Bilder zusätzlich.
+    Nach erfolgreicher Verarbeitung wird die Eingabedatei überschrieben.
     Das bisherige Original wird standardmäßig als <Name>_orig.pdf gesichert. Existiert diese
     Sicherung bereits, bleibt sie erhalten; die Eingabedatei wird direkt ersetzt und als Warnung
     aufgeführt. Mit -ReplaceOriginal wird die Eingabedatei ohne Sicherung überschrieben.
@@ -80,19 +82,19 @@
     Sicherungsdatei bereits, wird sie nicht überschrieben und das PDF direkt ersetzt.
 
 .EXAMPLE
-    .\Invoke-PdfOcr.ps1
+    .\Invoke-PdfOptimization.ps1
     Interaktiver Start mit der Standard-Sprachfolge deu+eng+fra+ita+spa, JPEG-Qualität 75,
     automatischer Begradigung schiefer Seiten. Das Original wird nach erfolgreicher
     Verarbeitung als _orig-Datei gesichert.
 
 .EXAMPLE
-    .\Invoke-PdfOcr.ps1 -InputPath 'C:\PDFs' -RotatePages -GhostscriptDpi 150
+    .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -RotatePages -GhostscriptDpi 150
     Verarbeitet alle PDFs in C:\PDFs; Ghostscript rechnet die Bilder anschließend auf
     150 DPI herunter und komprimiert sie als JPEG. Die Originale bleiben als _orig-Dateien
     erhalten und die automatische Seitendrehung wird aktiviert.
 
 .EXAMPLE
-    .\Invoke-PdfOcr.ps1 -InputPath 'C:\PDFs' -ReplaceOriginal
+    .\Invoke-PdfOptimization.ps1 -InputPath 'C:\PDFs' -ReplaceOriginal
     Verarbeitet alle PDFs in C:\PDFs und überschreibt die Originale ohne Sicherung.
 
 .NOTES
@@ -669,13 +671,11 @@ with pikepdf.open(sys.argv[1]) as pdf:
 
 # ASCII-Kopf: Kurzbeschreibung, was das Skript tut.
 Write-Host ''
-Write-Host '       .-------------------------------------------------------.' -ForegroundColor Cyan
-Write-Host '       |  +------------------+                                 |' -ForegroundColor Cyan
-Write-Host '       |  |   PDF  ->  OCR   |        P D F  -  O C R          |' -ForegroundColor Cyan
-Write-Host '       |  | [##########]     |                                 |' -ForegroundColor Cyan
-Write-Host '       |  | [__________] >>> |        SCAN  /  TEXT            |' -ForegroundColor Cyan
-Write-Host '       |  +------------------+        DESKEW / OPTIMIZE        |' -ForegroundColor Cyan
-Write-Host '       ''-------------------------------------------------------''' -ForegroundColor Cyan
+Write-Host '       .-----------------------------------------------.' -ForegroundColor Cyan
+Write-Host '       |  +----------------+                           |' -ForegroundColor Cyan
+Write-Host '       |  |  PDF -> OCR    |   PDF OPTIMIZATION        |' -ForegroundColor Cyan
+Write-Host '       |  +----------------+                           |' -ForegroundColor Cyan
+Write-Host '       ''-----------------------------------------------''' -ForegroundColor Cyan
 Write-Host '  Fuegt PDFs OCR-Textebenen hinzu, begradigt Seiten und optimiert Dateien.' -ForegroundColor Cyan
 if (-not $ReplaceOriginal) {
     Write-Host '  Originale werden als _orig-Dateien gesichert.' -ForegroundColor Cyan
@@ -765,7 +765,7 @@ $languageSelection = $availableLanguages -join '+'
 
 # Kopfzeile.
 Write-Host ''
-Write-Host '=== PDF-OCR: Verarbeitung gestartet ===' -ForegroundColor Cyan
+Write-Host '=== PDF-Optimierung: Verarbeitung gestartet ===' -ForegroundColor Cyan
 Write-Host ('Anzahl Dateien: {0}' -f $pdfFiles.Count)
 Write-Host ('Sprachen: {0}' -f $languageSelection)
 Write-Host ('JPEG-Qualität: {0}' -f $JpegQuality)

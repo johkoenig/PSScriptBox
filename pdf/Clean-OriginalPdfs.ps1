@@ -1,22 +1,22 @@
 ﻿<#
 .SYNOPSIS
-    Entfernt gesicherte Originaldateien, wenn die bearbeitete Datei vorhanden ist.
+    Entfernt Original-PDF-Sicherungen, wenn die bearbeitete PDF vorhanden ist.
 
 .DESCRIPTION
-    Durchsucht einen Ordner rekursiv nach Dateien mit dem Suffix _orig vor der
+    Durchsucht einen Ordner rekursiv nach PDF-Dateien mit dem Suffix _orig vor der
     Dateiendung. Eine Sicherung wird nur gelöscht, wenn im selben Ordner die
-    gleichnamige Datei ohne _orig-Suffix existiert. Mit -WhatIf lässt sich die
-    Löschliste gefahrlos anzeigen.
+    gleichnamige bearbeitete PDF ohne _orig-Suffix existiert. Mit -WhatIf lässt
+    sich die Löschliste gefahrlos anzeigen.
 
 .PARAMETER InputPath
-    Ordner, der rekursiv nach passenden _orig-Dateien durchsucht werden soll.
+    Ordner, der rekursiv nach passenden _orig-PDFs durchsucht werden soll.
 
 .EXAMPLE
-    .\Clean-Originals.ps1 -InputPath 'C:\PDFs' -WhatIf
+    .\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs' -WhatIf
     Zeigt an, welche _orig-Dateien gelöscht würden.
 
 .EXAMPLE
-    .\Clean-Originals.ps1 -InputPath 'C:\PDFs'
+    .\Clean-OriginalPdfs.ps1 -InputPath 'C:\PDFs'
     Fragt vor dem Löschen jeder passenden _orig-Datei nach Bestätigung.
 
 .NOTES
@@ -48,7 +48,7 @@ $pathSegments = @($directory.FullName.TrimEnd('\') -split '[\\/]' | Where-Object
 $pathTail = @($pathSegments | Select-Object -Last 3)
 $summaryPath = if ($pathTail.Count -gt 0) { '.\' + ($pathTail -join '\') + '\' } else { '.\' }
 $originalFiles = @(Get-ChildItem -LiteralPath $directory.FullName -File -Recurse -Force |
-    Where-Object { $_.BaseName -match '_orig$' })
+    Where-Object { $_.Extension -ieq '.pdf' -and $_.BaseName -match '_orig$' })
 
 $eligibleFiles = @(
     foreach ($originalFile in $originalFiles) {
@@ -65,14 +65,14 @@ $deletedCount = 0
 Write-Host ''
 Write-Host '       .-----------------------------------------------.' -ForegroundColor Cyan
 Write-Host '       |  +----------------+                           |' -ForegroundColor Cyan
-Write-Host '       |  |  _orig  ->  X  |       CLEAN ORIGINALS      |' -ForegroundColor Cyan
+Write-Host '       |  |  _orig  ->  X  |     CLEAN ORIGINAL PDFS    |' -ForegroundColor Cyan
 Write-Host '       |  +----------------+                           |' -ForegroundColor Cyan
 Write-Host '       ''-----------------------------------------------''' -ForegroundColor Cyan
 Write-Host "  Ordner: $($directory.FullName)"
-Write-Host "  Zu löschende Dateien: $eligibleCount" -ForegroundColor Yellow
+Write-Host "  Zu löschende Original-PDFs: $eligibleCount" -ForegroundColor Yellow
 
 if ($eligibleCount -eq 0) {
-    Write-Host 'Keine passenden _orig-Dateien mit vorhandener bearbeiteter Datei gefunden.' -ForegroundColor Green
+    Write-Host 'Keine passenden _orig-PDFs mit vorhandener bearbeiteter PDF gefunden.' -ForegroundColor Green
     Write-Host ''
     Write-Host '=== Zusammenfassung ===' -ForegroundColor Cyan
     Write-Host "Pfad: $summaryPath"
@@ -104,7 +104,7 @@ $approvedFiles = @(
         $processedPath = Join-Path -Path $originalFile.DirectoryName -ChildPath ($processedBaseName + $originalFile.Extension)
         $relativePath = $originalFile.FullName.Substring($basePathPrefix.Length)
         $relativeProcessedPath = $processedPath.Substring($basePathPrefix.Length)
-        $action = "Gesicherte Originaldatei löschen; bearbeitete Datei bleibt erhalten: $relativeProcessedPath"
+        $action = "Original-PDF-Sicherung löschen; bearbeitete PDF bleibt erhalten: $relativeProcessedPath"
         if ($PSCmdlet.ShouldProcess($relativePath, $action)) {
             $originalFile
         }
@@ -113,7 +113,7 @@ $approvedFiles = @(
 
 if ($approvedFiles.Count -gt 0) {
     Write-Host ''
-    Write-Host 'Lösche gesicherte Originale...' -ForegroundColor Cyan
+    Write-Host 'Lösche gesicherte Original-PDFs...' -ForegroundColor Cyan
 }
 
 foreach ($originalFile in $approvedFiles) {

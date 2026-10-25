@@ -29,7 +29,7 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - Temporäre Dateien landen neben der Eingabedatei und werden im `finally`-Block zuverlässig entfernt.
 - Keine Geheimnisse, Tokens, API-Schlüssel oder persönlichen Daten im Repository.
 
-## Projektkonventionen (choco/Invoke-PdfOcr.ps1)
+## Projektkonventionen (pdf/Invoke-PdfOptimization.ps1)
 - Standard-Sprachfolge für die OCR: `deu+eng+fra+ita+spa` (Deutsch, Englisch, Französisch, Italienisch, Spanisch, in dieser Reihenfolge). Eine abweichende Sprachfolge kann per Parameter `-Language` vorgegeben werden; es gibt **keine interaktive Sprachabfrage** (die Liste aller installierten Sprachen wäre zu lang).
 - **Pflichtsprachen:** `deu` und `eng`. Fehlt eine davon, stoppt das Skript mit einem Zweizeiler: Aufforderung, den Download-Befehl in einer Admin-Shell auszuführen (lädt alle Sprachen aus https://github.com/tesseract-ocr/tessdata herunter), gefolgt vom Befehl. **Optionale Sprachen** (alle übrigen) werden bei Fehlen **stillschweigend aus der Sprachfolge entfernt** und per Hinweis gemeldet, ohne den Lauf zu unterbrechen.
 - **Begradigung von Scan-Seiten ist standardmäßig aktiv (`--deskew`)** und kann mit `-NoDeskew` deaktiviert werden. Verdrehte Seiten werden automatisch um 90°, 180° oder 270° korrigiert (**`--rotate-pages`** ist standardmäßig **deaktiviert**).
@@ -38,8 +38,8 @@ Vorgaben für die Arbeit an diesem Repository, insbesondere für die PowerShell-
 - **`--optimize 1` statt `--optimize 3`:** Stufe 3 erzeugt eine jbig2-Warnung, da jbig2 nicht installiert ist. jbig2 wird bewusst nicht verwendet (nur für Schwarz-Weiß relevant).
 - **Zweistufige Optimierung:** Nach OCRmyPDF folgt eine optionale **Ghostscript**-Stufe (explizite Downsampling-Parameter, 200 DPI, JPEG q75, sRGB; standardmäßig erlaubt, durch `-NoGhostscript` deaktivierbar). Ghostscript ist über Chocolatey installierbar (`choco install ghostscript`) und wird bei Fehlen gemeldet, ohne den Lauf zu blockieren. **qpdf wird nicht verwendet.**
 - `-RotatePages` aktiviert OCRmyPDFs Drehkorrektur mit dem Konfidenzschwellwert 5.
-- `Clean-Originals.ps1` entfernt `_orig`-Sicherungen nur, wenn die bearbeitete Datei ohne `_orig`-Zusatz daneben existiert; `-WhatIf` zeigt die Löschungen vorab an.
-- `Find-PdfsWithoutTextLayer.ps1` sucht rekursiv nach PDFs ohne Textoperatoren und weist PDFs mit teilweise fehlender Textebene separat aus. Benötigt Python und `pikepdf`; verändert keine Dateien.
+- `pdf/Clean-OriginalPdfs.ps1` entfernt `_orig`-PDF-Sicherungen nur, wenn die bearbeitete PDF ohne `_orig`-Zusatz daneben existiert; `-WhatIf` zeigt die Löschungen vorab an.
+- `pdf/Find-PdfsWithoutTextLayer.ps1` sucht rekursiv nach PDFs ohne Textoperatoren und weist PDFs mit teilweise fehlender Textebene separat aus. Benötigt Python und `pikepdf`; verändert keine Dateien.
 - Die rohe OCRmyPDF-Ausgabe (Fortschrittsbalken, interne Modulnamen wie `_pipeline.py`) erscheint unverändert auf der Konsole (Live-Ausgabe, keine Filterung).
 
 ## Qualitätssicherung vor dem Commit
