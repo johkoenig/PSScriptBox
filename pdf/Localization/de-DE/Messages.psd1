@@ -5,6 +5,8 @@
     'The specified folder was not found: {0}' = 'Der angegebene Ordner wurde nicht gefunden: {0}'
     '  Folder: {0}' = '  Ordner: {0}'
     '  Original PDF backups eligible for deletion: {0}' = '  Zu löschende Original-PDF-Sicherungen: {0}'
+    'Removes eligible original PDF backups.' = 'Entfernt geeignete Original-PDF-Sicherungen.'
+    'Finds PDFs with missing text layers.' = 'Findet PDFs mit fehlenden Textebenen.'
     'No matching _orig PDFs with a processed PDF were found.' = 'Keine passenden _orig-PDFs mit vorhandener bearbeiteter PDF gefunden.'
     '=== Summary ===' = '=== Zusammenfassung ==='
     'Path: {0}' = 'Pfad: {0}'

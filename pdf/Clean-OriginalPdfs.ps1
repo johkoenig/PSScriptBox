@@ -83,20 +83,23 @@ function Get-LocalizedText {
     return $template
 }
 
-$headerWidth = 71
 $headerLines = @(
-    '  +----------------------+  PDF TOOLBOX / DOCUMENT WORKFLOW'
-    '  | [ORIG] ---> [ X ]   |  ORIGINAL PDF CLEANUP'
-    '  | VERIFY / REMOVE     |  SAFE BACKUP MANAGEMENT'
-    '  +----------------------+'
+    '       .-------------------------------------------.'
+    '      /                                           /|'
+    '     /___________________________________________/ |'
+    '     |  .-------------------------------------.  | |'
+    '     |  | PDF BACKUP CLEANUP                  |  | |'
+    '     |  | VERIFY / REMOVE _ORIG               |  | /'
+    '     |  ''-------------------------------------''  |/'
+    '     ''-------------------------------------------'''
 )
 
 Write-Host ''
-Write-Host ('       .{0}.' -f ('=' * $headerWidth)) -ForegroundColor Cyan
 foreach ($headerLine in $headerLines) {
-    Write-Host ('       |{0}|' -f $headerLine.PadRight($headerWidth)) -ForegroundColor Cyan
+    Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host ("       '{0}'" -f ('=' * $headerWidth)) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Removes eligible original PDF backups.') -ForegroundColor Cyan
+Write-Host ''
 
 if ([string]::IsNullOrWhiteSpace($InputPath)) {
     Write-Host (Get-LocalizedText 'Enter the folder containing original PDF backups.')

@@ -282,20 +282,23 @@ except Exception as error:
     }
 }
 
-$headerWidth = 71
 $headerLines = @(
-    '  +----------------------+  PDF TOOLBOX / DOCUMENT WORKFLOW'
-    '  | [PDF] ---> [TEXT]   |  FIND MISSING TEXT LAYERS'
-    '  | SCAN / CLASSIFY     |  CHECK EVERY PAGE'
-    '  +----------------------+'
+    '       .-------------------------------------------.'
+    '      /                                           /|'
+    '     /___________________________________________/ |'
+    '     |  .-------------------------------------.  | |'
+    '     |  | PDF TEXT LAYER INSPECTOR            |  | |'
+    '     |  | FIND / CHECK / CLASSIFY             |  | /'
+    '     |  ''-------------------------------------''  |/'
+    '     ''-------------------------------------------'''
 )
 
 Write-Host ''
-Write-Host ('       .{0}.' -f ('=' * $headerWidth)) -ForegroundColor Cyan
 foreach ($headerLine in $headerLines) {
-    Write-Host ('       |{0}|' -f $headerLine.PadRight($headerWidth)) -ForegroundColor Cyan
+    Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host ("       '{0}'" -f ('=' * $headerWidth)) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Finds PDFs with missing text layers.') -ForegroundColor Cyan
+Write-Host ''
 
 # --- Input and dependencies ----------------------------------------------
 

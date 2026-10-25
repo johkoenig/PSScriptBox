@@ -961,21 +961,22 @@ with pdf:
 
 # --- Main program ---------------------------------------------------------
 
-# ASCII banner describing the script's purpose.
-$headerWidth = 71
+# Document-style banner describing the script's purpose.
 $headerLines = @(
-    '  +----------------------+  PDF TOOLBOX / DOCUMENT WORKFLOW'
-    '  | [PDF] ---> [OCR]    |  PDF OPTIMIZATION'
-    '  | OCR / DESKEW / SIZE |  SEARCHABLE, COMPACT OUTPUT'
-    '  +----------------------+'
+    '       .-------------------------------------------.'
+    '      /                                           /|'
+    '     /___________________________________________/ |'
+    '     |  .-------------------------------------.  | |'
+    '     |  | PDF OCR & OPTIMIZATION              |  | |'
+    '     |  | OCR / DESKEW / COMPRESS             |  | /'
+    '     |  ''-------------------------------------''  |/'
+    '     ''-------------------------------------------'''
 )
 
 Write-Host ''
-Write-Host ('       .{0}.' -f ('=' * $headerWidth)) -ForegroundColor Cyan
 foreach ($headerLine in $headerLines) {
-    Write-Host ('       |{0}|' -f $headerLine.PadRight($headerWidth)) -ForegroundColor Cyan
+    Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host ("       '{0}'" -f ('=' * $headerWidth)) -ForegroundColor Cyan
 Write-Host (Get-LocalizedText '  Adds OCR text layers, deskews pages and optimizes PDFs.') -ForegroundColor Cyan
 if (-not $ReplaceOriginal) {
     Write-Host (Get-LocalizedText '  Originals are saved as _orig files.') -ForegroundColor Cyan
