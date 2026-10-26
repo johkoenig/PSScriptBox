@@ -42,6 +42,10 @@ Repository guidance, especially for PowerShell scripts.
   - End with a cyan `=== Summary ===` block: `Path:` line, `Succeeded: x, skipped: y, failed: z`, totals where meaningful, then `Failed ...:` and `Skipped ...:` lists (`  None.` when empty, otherwise `  - <name> (<reason>)` in yellow). Preview runs (`-WhatIf`) still print the summary.
   - Report fatal errors as one concise message without a stack trace and end with exit code 1; do not let raw exceptions reach the console.
   - Sections that do not apply (for example item lines or the summary in interactive configuration tools) may be omitted; the banner and the error handling are always required.
+- For numbered multi-step workflows, print an action-oriented header for each step and substep. A substep directly
+  following its parent does not need a blank line; otherwise, separate headers with a blank line. Ask for confirmation
+  before state-changing actions, not for informational checks. Use double-quoted PowerShell prompt strings when they
+  need to expand variables.
 - Use `-LiteralPath` and `Join-Path` consistently. Normalize user input with `Trim()` and `ExpandEnvironmentVariables()` before use.
 - Start external console programs with redirected streams and read asynchronously so errors are not mistaken for PowerShell terminating errors and large output cannot block a pipe. Exception: run OCRmyPDF without stream redirection so its progress bar is displayed live.
 - Save PowerShell scripts with a UTF-8 BOM (U+FEFF). Windows PowerShell 5.1 otherwise interprets non-ASCII text as ANSI.
@@ -56,8 +60,14 @@ Repository guidance, especially for PowerShell scripts.
 - Optional tools must not block a run when unavailable. Report their absence and continue with the supported reduced behavior.
 
 ## Files and data
-- Scripts should be idempotent where practical. Prefer stateless detection over persistent state files, and never add persistent files beside user data unless the user approves them. Document limits to idempotency and any explicit force/bypass options; users may knowingly bypass idempotency with such options.
+
+- Scripts should be idempotent where practical: inspect the current state first and make changes only when needed.
+  Prefer stateless detection over persistent state files, and never add persistent files beside user data unless the
+  user approves them. Document limits to idempotency and any explicit force/bypass options; users may knowingly bypass
+  idempotency with such options.
 - Never hardcode or store personal data in source files (except author tags). Discover user profile paths, account names, email addresses, and other environment-specific values dynamically. Scripts must work on Windows with local, Active Directory, and Microsoft online accounts.
+- When migrating Windows user folders to a Nextcloud destination, display and create the `Pictures` destination as
+  `Photos`.
 - Preserve user inputs unless the documented operation explicitly modifies or deletes them. For multi-stage document processing, do not replace an intermediate result with a downstream optimization unless the result improves according to the operation's stated acceptance criteria.
 - Keep temporary files on the same volume as their inputs when atomic replacement requires it, and reliably remove them in a `finally` block.
 - Do not add secrets, tokens, API keys, or personal data to the repository.
