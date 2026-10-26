@@ -3,12 +3,12 @@
     Provides the per-file processing pipeline for the OCR script.
 
 .DESCRIPTION
-    Defines Invoke-PdfProcessing, which checks one PDF, runs OCRmyPDF, applies the
-    optional Ghostscript stage, validates the result, and replaces the input.
+    Defines Invoke-PdfProcessing, which checks one PDF, runs OCRmyPDF, validates
+    the result, and replaces the input.
 
 .NOTES
-    Dependencies: Windows PowerShell 5.1 or PowerShell 7. Uses Get-LocalizedText,
-    ConvertTo-QuotedArgument, Optimize-WithGhostscript, and Get-FileSha256.
+    Dependencies: Windows PowerShell 5.1 or PowerShell 7. Uses Get-LocalizedText
+    and Get-FileSha256.
 #>
 
 # SPDX-License-Identifier: MIT
@@ -18,15 +18,17 @@
 
 <#
 .SYNOPSIS
-    Processes and optimizes a single PDF file.
+    Adds OCR and corrects a single scanned PDF.
 
 .DESCRIPTION
-    Checks signatures and the text layer, runs OCRmyPDF, and optionally applies
-    Ghostscript optimization. Digitally born PDFs are skipped by default;
-    scanned     PDFs with existing OCR are automatically reprocessed so deskew and rotation
-    can run. Encrypted and digitally signed PDFs are skipped.
+    Checks signatures and the text layer, then runs OCRmyPDF when OCR is
+    needed. Digitally born PDFs are skipped. Existing OCR text is preserved;
+    page rotation is detected separately and applied as PDF page metadata.
+    OCRmyPDF skips pages that already have text, while adding OCR to textless
+    pages in mixed documents. Encrypted and digitally signed PDFs are reported
+    as issues because they cannot be processed.
     The result replaces the input; by default, the original is first saved as
-    _orig.pdf. --optimize 1 avoids the optional jbig2 dependency.
+    _orig.pdf. Image optimization is disabled.
 
     Console output is not written directly. Each message is passed to the
     Reporter scriptblock, which the caller uses to display it.
@@ -40,33 +42,20 @@
 .PARAMETER Language
     Tesseract language codes joined with '+'.
 
-.PARAMETER Quality
-    JPEG quality for OCRmyPDF.
-
-.PARAMETER GhostscriptDpi
-    Target resolution for optional Ghostscript optimization. 0 disables it.
-
 .PARAMETER NoDeskew
     Disables deskewing.
 
 .PARAMETER NoRotationOfPages
     Disables detection and correction of rotated pages.
 
-.PARAMETER ProcessDigitallyBornPdfs
-    Processes PDFs classified as digitally born.
-
-.PARAMETER NoGhostscript
-    Disables Ghostscript.
-
 .PARAMETER ReplaceOriginal
     Replaces the input without creating an _orig backup.
 
-.PARAMETER ForceReprocess
-    Explicitly reprocesses eligible PDFs. Scanned PDFs with existing text are
-    already reprocessed by default.
-
 .PARAMETER GhostscriptPath
-    Path to Ghostscript, if available.
+    Path to Ghostscript, used to render pages for orientation detection.
+
+.PARAMETER TesseractPath
+    Path to Tesseract, used for orientation detection without OCR.
 
 .PARAMETER UiLanguage
     Language of the messages: 'de' selects the German catalog, anything else English.
@@ -89,15 +78,11 @@ function Invoke-PdfProcessing {
         [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
         [Parameter(Mandatory)][string] $PythonPath,
         [Parameter(Mandatory)][string] $Language,
-        [Parameter(Mandatory)][int] $Quality,
-        [Parameter(Mandatory)][int] $GhostscriptDpi,
         [Parameter(Mandatory)][bool] $NoDeskew,
         [Parameter(Mandatory)][bool] $NoRotationOfPages,
-        [Parameter(Mandatory)][bool] $ProcessDigitallyBornPdfs,
-        [Parameter(Mandatory)][bool] $NoGhostscript,
         [Parameter(Mandatory)][bool] $ReplaceOriginal,
-        [Parameter(Mandatory)][bool] $ForceReprocess,
-        [string] $GhostscriptPath,
+        [AllowNull()][string] $GhostscriptPath,
+        [AllowNull()][string] $TesseractPath,
         [string] $UiLanguage = 'en',
         [hashtable] $Messages = @{},
         [scriptblock] $Reporter = { param($Kind, $Color, $Text) }
@@ -108,6 +93,7 @@ function Invoke-PdfProcessing {
     # Keep temporary files beside the input so replacement stays on the same volume.
     $tempStem = '.{0}' -f [guid]::NewGuid().ToString('N')
     $tempPath = Join-Path $Pdf.DirectoryName ($tempStem + '.pdf.part')
+    $rotationTempPath = Join-Path $Pdf.DirectoryName ($tempStem + '.rotated.pdf.part')
     $originalPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
     $replaceBackupPath = Join-Path $Pdf.DirectoryName ($tempStem + '.bak.part')
     $signatureCheckPath = Join-Path $Pdf.DirectoryName ($tempStem + '.sig.py.part')
@@ -188,6 +174,9 @@ except pikepdf.PasswordError:
     sys.exit(0)
 
 with pdf:
+    if pdf.is_encrypted:
+        print("ENCRYPTED")
+        sys.exit(0)
     acro_form = pdf.Root.get("/AcroForm")
     fields = acro_form.get("/Fields", []) if acro_form is not None else []
     permissions = pdf.Root.get("/Perms")
@@ -239,9 +228,9 @@ with pdf:
         }
         $signatureStatus = ($signatureCheckOutput | ForEach-Object { $_.ToString() }) -join ''
         if ($signatureStatus.Trim() -eq 'ENCRYPTED') {
-            $failureReason = Get-LocalizedText @localization -Text 'Encrypted (password required)'
-            & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Skipped: '{0}'`nThe PDF is encrypted and cannot be processed without a password." -Arguments @($Pdf.Name))
-            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
+            $failureReason = Get-LocalizedText @localization -Text 'Encrypted PDF'
+            & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Could not process: '{0}'`nThe PDF is encrypted and will not be processed." -Arguments @($Pdf.Name))
+            return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
         $signatureValues = $signatureStatus.Trim() -split "`t"
         if (
@@ -266,13 +255,14 @@ with pdf:
         if ($signatureStatus -eq 'SIGNED') {
             $failureReason = Get-LocalizedText @localization -Text 'Digitally signed PDF'
             $failureDetails = Get-LocalizedText @localization -Text 'The input PDF has a digital signature. OCR would alter the document and invalidate the signature.'
-            & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Skipped: '{0}'`n{1}" -Arguments @($Pdf.Name, $failureDetails))
-            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
+            & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Could not process: '{0}'`n{1}" -Arguments @($Pdf.Name, $failureDetails))
+            return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
 
-        if ($isDigitallyBorn -and -not $ProcessDigitallyBornPdfs) {
+        if ($isDigitallyBorn)
+        {
             $failureReason = Get-LocalizedText @localization -Text 'Digitally born PDF; skipped by default'
-            & $Reporter 'Host' 'Green' (Get-LocalizedText @localization -Text 'This PDF appears digitally born; skipping it. Use -ProcessDigitallyBornPdfs to process it.')
+            & $Reporter 'Host' 'Green' (Get-LocalizedText @localization -Text 'This PDF appears digitally born; skipping it.')
             return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
 
@@ -282,70 +272,125 @@ with pdf:
             & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Backup '{0}' already exists and will be preserved; replacing the PDF directly." -Arguments @($relativeOriginalPath))
         }
 
-        $rebuildOcr = $textPageCount -gt 0 -and (-not $isDigitallyBorn -or $ForceReprocess)
-        if ($rebuildOcr) {
-            & $Reporter 'Host' 'Yellow' (Get-LocalizedText @localization -Text 'Existing OCR text will be rebuilt so deskew and rotation correction can run; repeated runs may change the PDF again.')
+        $hasExistingText = $textPageCount -gt 0
+        $shouldRunOcr = $true
+        $processingInputPath = $Pdf.FullName
+        $resultPath = $tempPath
+        $changedRotationPages = 0
+        if ($hasExistingText)
+        {
+            & $Reporter 'Host' 'Yellow' (Get-LocalizedText @localization -Text 'Existing OCR text will be preserved; page rotation is detected without running OCR.')
+            if (-not $NoRotationOfPages)
+            {
+                if ($GhostscriptPath -and $TesseractPath)
+                {
+                    $rotationResult = Invoke-PdfRotationOnly -Pdf $Pdf -PageCount $pageCount `
+                        -PythonPath $PythonPath -GhostscriptPath $GhostscriptPath -TesseractPath $TesseractPath `
+                        -OutputPath $rotationTempPath -ConfidenceThreshold 5 `
+                        -UiLanguage $UiLanguage -Messages $Messages
+                    $changedRotationPages = $rotationResult.ChangedPages.Count
+                    if ($changedRotationPages -gt 0)
+                    {
+                        $processingInputPath = $rotationTempPath
+                    }
+                    if ($rotationResult.UndeterminedPages.Count -gt 0)
+                    {
+                        & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text 'Orientation could not be determined for pages: {0}; those pages were left unchanged.' -Arguments @(($rotationResult.UndeterminedPages -join ', ')))
+                    }
+                }
+                else
+                {
+                    $rotationWarning = Get-LocalizedText @localization -Text 'Ghostscript is unavailable; page rotation could not be checked for this PDF.'
+                    $backupWarning = if ($backupWarning)
+                    {
+                        $backupWarning + ' ' + $rotationWarning
+                    }
+                    else
+                    {
+                        $rotationWarning
+                    }
+                    & $Reporter 'Warning' $null $rotationWarning
+                }
+            }
+
+            if ($textPageCount -eq $pageCount)
+            {
+                $shouldRunOcr = $false
+                $resultPath = $rotationTempPath
+                if ($changedRotationPages -eq 0)
+                {
+                    $failureReason = Get-LocalizedText @localization -Text 'Existing OCR was preserved; no page rotation was applied.'
+                    & $Reporter 'Host' 'Yellow' $failureReason
+                    return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $backupWarning; OriginalBytes = [long]0; ResultBytes = [long]0 }
+                }
+            }
         }
 
-        $ocrArguments = @(
-            '-m', 'ocrmypdf',
-            '--output-type', 'pdf',
-            '--optimize', '1',
-            '--jpeg-quality', "$Quality",
-            '--language', $Language
-        )
-        if ($rebuildOcr) {
-            $ocrArguments += '--force-ocr'
-        }
-        else {
-            $ocrArguments += '--skip-text'
-        }
-        if (-not $NoDeskew) { $ocrArguments += '--deskew' }
-        if (-not $NoRotationOfPages) { $ocrArguments += @('--rotate-pages', '--rotate-pages-threshold', '5') }
-        $ocrArguments += @($Pdf.FullName, $tempPath)
+        if ($shouldRunOcr)
+        {
+            $ocrArguments = @(
+                '-m', 'ocrmypdf',
+                '--output-type', 'pdf',
+                '--optimize', '0',
+                '--language', $Language,
+                '--skip-text'
+            )
+            if (-not $NoDeskew)
+            {
+                $ocrArguments += '--deskew'
+            }
+            if (-not $NoRotationOfPages -and -not $hasExistingText)
+            {
+                $ocrArguments += @('--rotate-pages', '--rotate-pages-threshold', '5')
+            }
+            $ocrArguments += @($processingInputPath, $tempPath)
 
-        # Do not redirect streams: preserve OCRmyPDF's native console output and progress display.
-        $previousErrorActionPreference = $ErrorActionPreference
-        try {
-            $ErrorActionPreference = 'Continue'
-            & $PythonPath @ocrArguments
-            $ocrExitCode = $LASTEXITCODE
+            # Do not redirect streams: preserve OCRmyPDF's native progress display.
+            $previousErrorActionPreference = $ErrorActionPreference
+            try
+            {
+                $ErrorActionPreference = 'Continue'
+                & $PythonPath @ocrArguments
+                $ocrExitCode = $LASTEXITCODE
+            }
+            finally
+            {
+                $ErrorActionPreference = $previousErrorActionPreference
+            }
+            if ($ocrExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath))
+            {
+                $failureReason = Get-LocalizedText @localization -Text 'OCRmyPDF error (exit code {0})' -Arguments @($ocrExitCode)
+                $failureDetails = Get-LocalizedText @localization -Text '{0}. See the OCRmyPDF console output for details.' -Arguments @($failureReason)
+                throw $failureDetails
+            }
         }
-        finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
-        if ($ocrExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) {
-            $failureReason = Get-LocalizedText @localization -Text 'OCRmyPDF error (exit code {0})' -Arguments @($ocrExitCode)
-            $failureDetails = Get-LocalizedText @localization -Text '{0}. See the OCRmyPDF console output for details.' -Arguments @($failureReason)
-            throw $failureDetails
+        else
+        {
+            $resultPath = $rotationTempPath
         }
 
-        # Run Ghostscript only when a target resolution is specified and the
-        # executable is available. Accept its result only when it is smaller.
-        if (-not $NoGhostscript -and $GhostscriptDpi -gt 0 -and $GhostscriptPath) {
-            $gsResult = Get-Item -LiteralPath $tempPath
-            Optimize-WithGhostscript -GhostscriptPath $GhostscriptPath -Pdf $gsResult -Dpi $GhostscriptDpi | Out-Null
+        if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf))
+        {
+            throw (Get-LocalizedText @localization 'The processing step did not produce an output PDF.')
         }
-
         $originalSize = (Get-Item -LiteralPath $Pdf.FullName).Length
-        $resultSize = (Get-Item -LiteralPath $tempPath).Length
+        $resultSize = (Get-Item -LiteralPath $resultPath).Length
 
         # An identical hash means no change occurred and the run failed.
-        # A larger but changed result is still a successful transformation.
         $originalHash = Get-FileSha256 -Path $Pdf.FullName
-        $resultHash = Get-FileSha256 -Path $tempPath
+        $resultHash = Get-FileSha256 -Path $resultPath
         if ($originalHash -eq $resultHash) {
             & $Reporter 'Host' 'Yellow' (Get-LocalizedText @localization -Text 'The result is identical to the original (no changes); discarding the output.')
-            return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = (Get-LocalizedText @localization -Text 'No changes'); Warning = $backupWarning; OriginalBytes = [long]$originalSize; ResultBytes = [long]0 }
+            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = (Get-LocalizedText @localization -Text 'No changes'); Warning = $backupWarning; OriginalBytes = [long]$originalSize; ResultBytes = [long]0 }
         }
 
         # Replace the input only after successful processing and hash validation.
         if (-not $ReplaceOriginal -and -not (Test-Path -LiteralPath $originalPath)) {
-            [System.IO.File]::Replace($tempPath, $Pdf.FullName, $originalPath)
+            [System.IO.File]::Replace($resultPath, $Pdf.FullName, $originalPath)
             & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Original backed up: {0}' -Arguments @($originalPath))
         }
         else {
-            [System.IO.File]::Replace($tempPath, $Pdf.FullName, $replaceBackupPath)
+            [System.IO.File]::Replace($resultPath, $Pdf.FullName, $replaceBackupPath)
         }
         if ($resultSize -lt $originalSize) {
             & $Reporter 'Host' 'Green' (Get-LocalizedText @localization -Text 'Optimized: {0:N1} MB -> {1:N1} MB' -Arguments @(($originalSize / 1MB), ($resultSize / 1MB)))
@@ -368,6 +413,10 @@ with pdf:
         # Always remove temporary files, including after failures.
         if (Test-Path -LiteralPath $tempPath) {
             Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path -LiteralPath $rotationTempPath)
+        {
+            Remove-Item -LiteralPath $rotationTempPath -Force -ErrorAction SilentlyContinue
         }
         if (Test-Path -LiteralPath $replaceBackupPath) {
             Remove-Item -LiteralPath $replaceBackupPath -Force -ErrorAction SilentlyContinue

@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Removes original PDF backups when the processed PDF exists.
+    Removes PDF backups when the processed PDF exists.
 
 .DESCRIPTION
     Recursively searches a folder for PDF files with the _orig suffix before the
@@ -16,15 +16,15 @@
     Forces English console output regardless of the Windows display language.
 
 .EXAMPLE
-    .\Clear-OriginalPdfBackups.ps1
+    .\Remove-PdfBackups.ps1
     Prompts for a folder.
 
 .EXAMPLE
-    .\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
+    .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
     Previews which _orig files would be deleted.
 
 .EXAMPLE
-    .\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs'
+    .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs'
     Prompts for confirmation before deleting each matching _orig file.
 
 .NOTES

@@ -29,15 +29,14 @@ Describe 'Optimize-WithGhostscript' {
         [System.IO.File]::WriteAllBytes($script:Pdf, [byte[]](1..64))
     }
 
-    It 'returns $false and leaves the input untouched when Ghostscript cannot be started' {
+    It 'reports a start failure and leaves the input untouched when Ghostscript cannot be started' {
         $before = (Get-Item -LiteralPath $script:Pdf).Length
-        $result = Optimize-WithGhostscript -GhostscriptPath 'C:\scriptbox-no-such\gs.exe' -Pdf (Get-Item -LiteralPath $script:Pdf) -Dpi 200
-        $result | Should -BeFalse
+        { Optimize-WithGhostscript -GhostscriptPath 'C:\scriptbox-no-such\gs.exe' -Pdf (Get-Item -LiteralPath $script:Pdf) -Dpi 200 -Quality 75 } | Should -Throw
         (Get-Item -LiteralPath $script:Pdf).Length | Should -Be $before
     }
 
     It 'removes no temporary file in the input folder after a failure' {
-        Optimize-WithGhostscript -GhostscriptPath 'C:\scriptbox-no-such\gs.exe' -Pdf (Get-Item -LiteralPath $script:Pdf) -Dpi 200 | Out-Null
+        { Optimize-WithGhostscript -GhostscriptPath 'C:\scriptbox-no-such\gs.exe' -Pdf (Get-Item -LiteralPath $script:Pdf) -Dpi 200 -Quality 75 } | Should -Throw
         @(Get-ChildItem -LiteralPath (Split-Path -Parent $script:Pdf) -Filter '.*.gs.pdf.part' -Force).Count | Should -Be 0
     }
 
@@ -46,6 +45,6 @@ Describe 'Optimize-WithGhostscript' {
         # An unreadable input makes Ghostscript fail, so no optimized file is produced.
         $broken = Join-Path $TestDrive 'broken.pdf'
         [System.IO.File]::WriteAllBytes($broken, [byte[]](0, 1, 2))
-        Optimize-WithGhostscript -GhostscriptPath $script:GsPath -Pdf (Get-Item -LiteralPath $broken) -Dpi 200 | Should -BeFalse
+        { Optimize-WithGhostscript -GhostscriptPath $script:GsPath -Pdf (Get-Item -LiteralPath $broken) -Dpi 200 -Quality 75 } | Should -Throw
     }
 }

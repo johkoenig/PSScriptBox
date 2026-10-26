@@ -56,7 +56,7 @@ Describe 'Get-MissingDependency' {
         Mock Test-PythonModule { $true }
         $result = Get-MissingDependency -PythonRuntime $script:Runtime -TesseractPath 'C:\Tesseract\tesseract.exe' -GhostscriptPath $null
         $result.Missing.Count | Should -Be 0
-        $result.OptionalMissing | Should -Be @('Ghostscript (required only with -GhostscriptDpi)')
+        $result.OptionalMissing | Should -Be @('Ghostscript (used for rotation-only processing when existing OCR is found)')
         $result.GhostscriptPath | Should -BeNullOrEmpty
     }
 

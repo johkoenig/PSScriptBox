@@ -2,7 +2,7 @@
 # Copyright (c) 2026 scriptbox contributors
 <#
 .SYNOPSIS
-    Placeholder for the unit tests of pdf\Clear-OriginalPdfBackups.ps1.
+    Placeholder for the unit tests of pdf\ConvertTo-SearchablePdf.ps1.
 
 .DESCRIPTION
     The script runs its main logic at top level and has no unit tests yet. The
@@ -13,7 +13,7 @@
     Dependencies: Pester 5 or later. Run through tests\Invoke-Tests.ps1.
 #>
 
-Describe 'Clear-OriginalPdfBackups' {
-    It 'top-level script flow is not unit tested; helpers are covered in tests\pdf\internal' -Skip {
+Describe 'ConvertTo-SearchablePdf' {
+    It 'has unit tests (pending refactoring of the legacy script)' -Skip {
     }
 }

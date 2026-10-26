@@ -308,7 +308,7 @@ if (-not $state.TrainingStatus -or -not $state.TrainingStatus.CheckSucceeded) {
 }
 
 $requiredLanguages = @('deu', 'eng')
-$recommendedLanguages = @('fra', 'ita', 'spa', 'equ')
+$recommendedLanguages = @('fra', 'ita', 'spa')
 $missingRequiredLanguages = @($requiredLanguages | Where-Object { $state.TrainingStatus.Languages -notcontains $_ })
 $missingRecommendedLanguages = @($recommendedLanguages | Where-Object { $state.TrainingStatus.Languages -notcontains $_ })
 $missingLanguages = @($missingRequiredLanguages + $missingRecommendedLanguages)

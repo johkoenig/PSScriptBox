@@ -14,10 +14,11 @@ This folder contains PowerShell utilities for preparing and processing PDF files
    ```
 
 3. Follow any instructions for missing Tesseract language data. The setup script does not download `.traineddata` files.
-4. Process PDFs, for example:
+4. Add OCR to scans and reduce PDF size as separate steps:
 
    ```powershell
-   .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs'
+   .\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs'
+   .\Optimize-PdfSize.ps1 -InputPath 'C:\PDFs'
    ```
 
 PowerShell execution policy may require a policy-approved way to run local scripts. Do not weaken system policy globally just to run these tools.
@@ -31,7 +32,8 @@ PowerShell execution policy may require a policy-approved way to run local scrip
 - `py.exe` is only used to discover a concrete `python.exe` path. Scripts then invoke that interpreter directly.
 - Missing Python packages are installed into the selected interpreter. A machine-wide interpreter requires administrator privileges.
 - Before opening the UAC prompt, setup lists the planned operations and waits for Enter. Any non-empty response cancels.
-- Tesseract language data is inspected but never downloaded. The OCR defaults are `deu+eng+fra+ita+spa+equ`; `deu` and `eng` are required. The other models, including `equ` for equation recognition, are optional.
+- Tesseract language data is inspected but never downloaded. The OCR defaults are `deu+eng+fra+ita+spa`; `deu` and `eng`
+  are required, and the other languages are optional.
 
 ## Scripts and switches
 
@@ -52,38 +54,67 @@ Examples:
 .\Initialize-PdfProcessor.ps1 -EnglishOutput
 ```
 
-### `Optimize-ScannedPdfs.ps1`
+### `ConvertTo-SearchablePdf.ps1`
 
-Processes scanned PDFs in one file or a folder tree. Digitally born PDFs are skipped by default. The script uses PDF text visibility and image-resource evidence as a heuristic; mixed and unusual documents may be classified imperfectly. Use `-ProcessDigitallyBornPdfs` to process digitally born PDFs anyway. OCRmyPDF adds a text layer to pages that need it, deskews scans, and detects rotated pages by default. The input is replaced after successful processing; by default, a backup named `<Name>_orig.pdf` is created. If that backup already exists, it is preserved and the input is replaced without overwriting the backup.
+Adds OCR to scanned PDFs and corrects skewed or rotated pages. Digitally born PDFs are skipped using a heuristic based
+on visible text and image resources; mixed or unusual documents may be classified imperfectly. Encrypted PDFs and
+digitally signed PDFs cannot be processed and are reported as issues. OCRmyPDF image optimization is disabled so image
+downsampling and JPEG compression remain the separate responsibility of `Optimize-PdfSize.ps1`. Existing OCR text is
+preserved; Ghostscript renders
+temporary page previews for Tesseract orientation detection, and pikepdf updates only page rotation metadata. This
+avoids rerunning OCR or rasterizing pages that already have text. In partially OCRed scans, OCR is added only to pages
+without text; deskew applies only to those pages. Ghostscript is optional for ordinary OCR but required for rotation
+detection on pages that already have text. On success, the input is replaced; by default, a backup named
+`<Name>_orig.pdf` is created. If that backup already exists, it is preserved and the input is replaced directly.
 
-Scanned PDFs that already contain OCR text are reprocessed by default so deskew and rotation correction can run. OCRmyPDF uses `--force-ocr` for those files, regenerating the OCR layer and rasterizing page content; this can alter vector content and can change the PDF on repeated runs. Use `-NoDeskew` or `-NoRotationOfPages` to disable the corresponding correction.
-
-| Parameter / switch | Description |
-| --- | --- |
-| `-InputPath <path>` | PDF file or folder. If omitted, prompts for a path. |
-| `-Language <codes>` | `+`-separated Tesseract languages. Default: `deu+eng+fra+ita+spa+equ`; `deu` and `eng` are required. `equ` is Tesseract's optional equation-recognition model, not an OCRmyPDF subcommand. |
-| `-JpegQuality <1-100>` | JPEG quality for embedded images. Default: `75`. |
-| `-GhostscriptDpi <50-1200>` | Enables Ghostscript downsampling at the specified DPI. Default: disabled (`0`). |
-| `-NoDeskew` | Disables the default deskew operation. |
-| `-NoRotationOfPages` | Disables automatic rotation detection and correction. Rotation correction is enabled by default, using confidence threshold `5`. |
-| `-ProcessDigitallyBornPdfs` | Processes PDFs classified as digitally born; these are skipped by default. |
-| `-NoGhostscript` | Disables the optional Ghostscript stage. |
-| `-ReplaceOriginal` | Replaces the input without creating a new `_orig` backup. |
-| `-ForceReprocess` | Explicitly reprocesses PDFs with existing text when digitally born PDFs are enabled. Scanned PDFs with existing OCR are already reprocessed by default. |
-| `-EnglishOutput` | Forces English console output regardless of Windows UI language. |
+| Parameter / switch   | Description                                                                                                                                      |
+|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-InputPath <path>`  | PDF file or folder. If omitted, prompts for a path.                                                                                              |
+| `-Language <codes>`  | `+`-separated Tesseract languages. Default: `deu+eng+fra+ita+spa`; `deu` and `eng` are required, and unavailable optional languages are removed. |
+| `-NoDeskew`          | Disables deskew on pages that need OCR. Pages with existing text are not deskewed.                                                               |
+| `-NoRotationOfPages` | Disables automatic rotation detection and correction. Rotation correction is enabled by default with confidence threshold `5`.                   |
+| `-ReplaceOriginal`   | Replaces the input without creating a new `_orig` backup.                                                                                        |
+| `-EnglishOutput`     | Forces English console output regardless of Windows UI language.                                                                                 |
 
 Examples:
 
 ```powershell
-.\Optimize-ScannedPdfs.ps1
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -GhostscriptDpi 150
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -NoRotationOfPages
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs\Scan.pdf' -ReplaceOriginal
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -ProcessDigitallyBornPdfs
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -EnglishOutput
+.\ConvertTo-SearchablePdf.ps1
+.\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs' -NoRotationOfPages
+.\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs\Scan.pdf' -ReplaceOriginal
+.\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -EnglishOutput
 ```
 
-Digitally born PDFs are skipped by default, without rewriting them. Scanned PDFs with existing text are automatically processed with OCRmyPDF force mode so deskew and rotation correction can run; OCR is regenerated and page content is rasterized. `-ProcessDigitallyBornPdfs` opts into processing digitally born PDFs, and `-ForceReprocess` can explicitly rebuild their existing text layer. Repeated processing may change the output and is not guaranteed to be idempotent. Signed PDFs and encrypted PDFs that cannot be opened without a password are skipped. The result is a standard PDF, not PDF/A. Ghostscript runs only when `-GhostscriptDpi` is specified.
+The result is a standard PDF, not PDF/A. Existing OCR text is not regenerated on later runs; rotation is changed only
+when orientation detection identifies a correction above the confidence threshold. Routine skips and unchanged files
+are counted in the summary but not listed individually; encrypted or signed PDFs appear in the issue list.
+
+### `Optimize-PdfSize.ps1`
+
+Reduces PDF size by downsampling color, grayscale, and monochrome images with Ghostscript. Color and grayscale images
+are encoded as JPEG. Files smaller than 1 MB are skipped by default; the target is 300 DPI and JPEG quality 75.
+Digitally signed and encrypted PDFs cannot be processed and are reported as issues. Digitally born PDFs are processed
+as well as scans. The original is replaced only when the optimized PDF is smaller; by default, an `_orig.pdf` backup is
+created, and existing backups are preserved. Files below the minimum size and files that produce no size reduction are
+counted as skipped but are not listed individually in the summary. For folder input, all PDFs are discovered first and
+only files meeting the minimum size are passed to the processing loop.
+
+| Parameter / switch     | Description                                                                                                                     |
+|------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| `-InputPath <path>`    | PDF file or folder. If omitted, prompts for a path.                                                                             |
+| `-Dpi <50-1200>`       | Target resolution for image downsampling. Default: `300`.                                                                       |
+| `-JpegQuality <1-100>` | JPEG quality for downsampled color and grayscale images. Default: `75`.                                                         |
+| `-MinFileSize <bytes>` | Minimum original file size to process. Default: `1MB`; use `0` to disable. PowerShell size literals such as `2MB` are accepted. |
+| `-ReplaceOriginal`     | Replaces the input without creating a new `_orig` backup.                                                                       |
+| `-EnglishOutput`       | Forces English console output regardless of Windows UI language.                                                                |
+
+Examples:
+
+```powershell
+.\Optimize-PdfSize.ps1
+.\Optimize-PdfSize.ps1 -InputPath 'C:\PDFs' -Dpi 200 -JpegQuality 65 -MinFileSize 2MB
+.\Optimize-PdfSize.ps1 -InputPath 'C:\PDFs\Document.pdf' -ReplaceOriginal
+```
 
 ### `Find-PdfsWithoutTextLayer.ps1`
 
@@ -101,7 +132,7 @@ Examples:
 .\Find-PdfsWithoutTextLayer.ps1 -InputPath 'C:\PDFs\Scan.pdf' -EnglishOutput
 ```
 
-### `Clear-OriginalPdfBackups.ps1`
+### `Remove-PdfBackups.ps1`
 
 Finds `_orig.pdf` backups for which the corresponding processed PDF exists in the same folder. Each deletion is subject to PowerShell's confirmation behavior.
 
@@ -115,23 +146,51 @@ Finds `_orig.pdf` backups for which the corresponding processed PDF exists in th
 Examples:
 
 ```powershell
-.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
-.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm:$false
-.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -EnglishOutput
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm:$false
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -EnglishOutput
+```
+
+### `Restore-PdfOriginals.ps1`
+
+Finds `_orig.pdf` backups whose corresponding processed PDFs exist in the same folder. For each approved pair, it
+atomically replaces the processed PDF with the original backup, removing the processed file and consuming the `_orig`
+backup. Confirmation is enabled by default; review the target folder carefully before proceeding.
+
+| Parameter / switch    | Description                                                            |
+|-----------------------|------------------------------------------------------------------------|
+| `-InputPath <folder>` | Folder to search recursively. If omitted, prompts for a path.          |
+| `-WhatIf`             | Lists planned restorations without changing files.                     |
+| `-Confirm`            | Prompts before each restoration; `-Confirm:$false` suppresses prompts. |
+| `-EnglishOutput`      | Forces English console output regardless of Windows UI language.       |
+
+Examples:
+
+```powershell
+.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -WhatIf
+.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs'
+.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm:$false -EnglishOutput
 ```
 
 ## Shared PowerShell parameters
 
-Scripts also support PowerShell common parameters where applicable, including `-Verbose`, `-Debug`, `-ErrorAction`, and `-WarningAction`. `-WhatIf` and `-Confirm` are supported by `Clear-OriginalPdfBackups.ps1` through `SupportsShouldProcess`.
+Scripts also support PowerShell common parameters where applicable, including `-Verbose`, `-Debug`, `-ErrorAction`, and
+`-WarningAction`. `-WhatIf` and `-Confirm` are supported by `Remove-PdfBackups.ps1` and `Restore-PdfOriginals.ps1`
+through `SupportsShouldProcess`.
 
 ## Safety and behavior
 
-- `Optimize-ScannedPdfs.ps1` uses temporary files beside the input and cleans them up after processing.
+- Both optimization scripts use temporary files beside the input and clean them up after processing.
 - No persistent state or marker file is created beside a PDF. Temporary processing files are removed after the run.
-- Classification is stateless and uses visible text and scanned-image evidence. It is best-effort and may misclassify mixed or unusual PDFs. Existing OCR on scanned PDFs is regenerated to enable page corrections; this also rasterizes page content.
-- A PDF is considered successfully changed only when processing succeeds and the result hash differs from the original. Larger results can still be valid.
+- OCR classification is stateless and uses visible text and scanned-image evidence. It is best-effort and may
+  misclassify mixed or unusual PDFs. Existing OCR text is preserved; page rotation is corrected by updating PDF page
+  metadata, and OCR is added only to pages without text.
+- The OCR script accepts changed results even when they are larger than the original. The size script replaces a PDF
+  only when Ghostscript produces a smaller result.
 - Existing `_orig` backups are preserved.
-- `Clear-OriginalPdfBackups.ps1` deletes only backups whose corresponding processed PDF exists.
+- `Remove-PdfBackups.ps1` deletes only backups whose corresponding processed PDF exists.
+- `Restore-PdfOriginals.ps1` restores only matching backup/processed pairs; a successful restore replaces the processed
+  PDF and removes the `_orig` backup.
 - Do not use these tools on files that must remain byte-identical, such as digitally signed PDFs.
 - The project is licensed under the [MIT License](../LICENSE.md).
 - Contribution guidance is in [CONTRIBUTING.md](../CONTRIBUTING.md).

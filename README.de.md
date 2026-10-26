@@ -12,18 +12,32 @@ Kleine PowerShell-Werkzeuge für alltägliche Aufgaben, darunter PDF-Verarbeitun
 Verfügbare Werkzeuge:
 
 - `Initialize-PdfProcessor.ps1` — prüft und installiert Abhängigkeiten für die PDF-Verarbeitung.
-- `Optimize-ScannedPdfs.ps1` — verarbeitet gescannte PDFs, ergänzt bei Bedarf OCR, korrigiert die Seitenausrichtung und komprimiert PDFs optional.
+- `ConvertTo-SearchablePdf.ps1` — ergänzt OCR und korrigiert gescannte Seiten; digital erzeugte PDFs werden
+  übersprungen, verschlüsselte und signierte PDFs als Probleme gemeldet.
+- `Optimize-PdfSize.ps1` — skaliert Bilder zur Größenreduzierung herunter; Standardziel sind 300 DPI und JPEG-Qualität
+  75; Originale unter 1 MB werden übersprungen.
 - `Find-PdfsWithoutTextLayer.ps1` — findet PDFs mit fehlenden oder teilweise fehlenden Textebenen.
-- `Clear-OriginalPdfBackups.ps1` — entfernt `_orig`-Sicherungen nur, wenn die zugehörige bearbeitete PDF vorhanden ist.
+- `Remove-PdfBackups.ps1` — entfernt `_orig`-Sicherungen nur, wenn die zugehörige bearbeitete PDF vorhanden ist.
+- `Restore-PdfOriginals.ps1` — ersetzt bearbeitete PDFs durch passende `_orig`-Originale.
 
-| Skript | Parameter und Schalter |
-| --- | --- |
-| `Initialize-PdfProcessor.ps1` | `-EnglishOutput`. Interne ausgeblendete Parameter: `-ElevatedChild`, `-RuntimePythonPath`. |
-| `Optimize-ScannedPdfs.ps1` | `-InputPath <Pfad>`, `-Language <Codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-NoRotationOfPages`, `-ProcessDigitallyBornPdfs`, `-NoGhostscript`, `-ReplaceOriginal`, `-ForceReprocess`, `-EnglishOutput`. |
-| `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <Pfad>`, `-EnglishOutput`. |
-| `Clear-OriginalPdfBackups.ps1` | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm` (mit `-Confirm:$false` werden Rückfragen unterdrückt), `-EnglishOutput`. |
+| Skript                          | Parameter und Schalter                                                                                                                                                                          |
+|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Initialize-PdfProcessor.ps1`   | `-EnglishOutput`. Interne ausgeblendete Parameter: `-ElevatedChild`, `-RuntimePythonPath`.                                                                                                      |
+| `ConvertTo-SearchablePdf.ps1`   | `-InputPath <Pfad>`, `-Language <Codes>`, `-NoDeskew`, `-NoRotationOfPages`, `-ReplaceOriginal`, `-EnglishOutput`.                                                                              |
+| `Optimize-PdfSize.ps1`          | `-InputPath <Pfad>`, `-Dpi <50-1200>` (Standard `300`), `-JpegQuality <1-100>` (Standard `75`), `-MinFileSize <Bytes>` (Standard `1MB`; `0` deaktiviert), `-ReplaceOriginal`, `-EnglishOutput`. |
+| `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <Pfad>`, `-EnglishOutput`.                                                                                                                                                          |
+| `Remove-PdfBackups.ps1`         | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm` (mit `-Confirm:$false` werden Rückfragen unterdrückt), `-EnglishOutput`.                                                                           |
+| `Restore-PdfOriginals.ps1`      | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm` (mit `-Confirm:$false` werden Rückfragen unterdrückt), `-EnglishOutput`.                                                                           |
 
-Die Verarbeitung gescannter PDFs verwendet eine bestmögliche zustandslose Klassifizierung: digital erzeugte PDFs werden standardmäßig übersprungen; neben der PDF wird kein dauerhafter Marker abgelegt. Gescannte PDFs mit vorhandener OCR werden automatisch erneut verarbeitet, damit Schräglagen- und Rotationskorrektur angewendet werden. Die OCR wird neu erzeugt und der Seiteninhalt gerastert. `-ProcessDigitallyBornPdfs` verarbeitet digital erzeugte PDFs ausdrücklich. Die Klassifizierung ist eine Heuristik und kann gemischte oder ungewöhnliche PDFs falsch einordnen.
+Die OCR-Verarbeitung gescannter PDFs verwendet eine bestmögliche zustandslose Klassifizierung: digital erzeugte PDFs
+werden übersprungen; neben der PDF wird kein dauerhafter Marker abgelegt. Gescannte PDFs mit vorhandener OCR werden
+nicht erneut mit OCR verarbeitet; vorhandener Text bleibt erhalten. Seitenrotationen werden separat erkannt und
+korrigiert, ohne die Textebene neu zu erzeugen. Bei teilweise erkannten Scans wird OCR nur für Seiten ohne Text ergänzt.
+Für die Rotationserkennung auf Seiten mit vorhandener Textebene wird Ghostscript benötigt. Die Größenoptimierung ist
+ein separater Schritt und verarbeitet auch digital erzeugte PDFs. Bei Ordnern ermittelt die Größenoptimierung zuerst
+alle PDFs und verarbeitet nur Dateien, die mindestens die Mindestgröße erreichen. Verschlüsselte und digital signierte
+PDFs können nicht verarbeitet werden und erscheinen in der Problemliste. Regulär übersprungene und unveränderte
+Dateien werden in der Zusammenfassung gezählt, aber nicht einzeln aufgeführt.
 
 Die [PDF-Anleitung](pdf/README.de.md) beschreibt das Verhalten der Parameter, Beispiele, Einrichtung, Abhängigkeiten und Sicherheitsaspekte.
 

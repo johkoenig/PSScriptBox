@@ -12,18 +12,30 @@ Small PowerShell utilities for everyday tasks, including PDF processing, Git con
 Available tools:
 
 - `Initialize-PdfProcessor.ps1` — checks and installs PDF-processing dependencies.
-- `Optimize-ScannedPdfs.ps1` — processes scanned PDFs, adds OCR where needed, corrects page orientation, and optionally compresses PDFs.
+- `ConvertTo-SearchablePdf.ps1` — adds OCR and corrects scanned pages; digitally born PDFs are skipped, while encrypted
+  and signed PDFs are reported as issues.
+- `Optimize-PdfSize.ps1` — downsamples images to reduce PDF size, targeting 300 DPI and JPEG quality 75 by default;
+  skips originals smaller than 1 MB.
 - `Find-PdfsWithoutTextLayer.ps1` — reports PDFs with missing or partially missing text layers.
-- `Clear-OriginalPdfBackups.ps1` — removes `_orig` backups only when the corresponding processed PDF exists.
+- `Remove-PdfBackups.ps1` — removes `_orig` backups only when the corresponding processed PDF exists.
+- `Restore-PdfOriginals.ps1` — replaces processed PDFs with matching `_orig` originals.
 
-| Script | Parameters and switches |
-| --- | --- |
-| `Initialize-PdfProcessor.ps1` | `-EnglishOutput`. Internal hidden parameters: `-ElevatedChild`, `-RuntimePythonPath`. |
-| `Optimize-ScannedPdfs.ps1` | `-InputPath <path>`, `-Language <codes>`, `-JpegQuality <1-100>`, `-GhostscriptDpi <50-1200>`, `-NoDeskew`, `-NoRotationOfPages`, `-ProcessDigitallyBornPdfs`, `-NoGhostscript`, `-ReplaceOriginal`, `-ForceReprocess`, `-EnglishOutput`. |
-| `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <path>`, `-EnglishOutput`. |
-| `Clear-OriginalPdfBackups.ps1` | `-InputPath <folder>`, `-WhatIf`, `-Confirm` (use `-Confirm:$false` to suppress confirmation), `-EnglishOutput`. |
+| Script                          | Parameters and switches                                                                                                                                                                   |
+|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Initialize-PdfProcessor.ps1`   | `-EnglishOutput`. Internal hidden parameters: `-ElevatedChild`, `-RuntimePythonPath`.                                                                                                     |
+| `ConvertTo-SearchablePdf.ps1`   | `-InputPath <path>`, `-Language <codes>`, `-NoDeskew`, `-NoRotationOfPages`, `-ReplaceOriginal`, `-EnglishOutput`.                                                                        |
+| `Optimize-PdfSize.ps1`          | `-InputPath <path>`, `-Dpi <50-1200>` (default `300`), `-JpegQuality <1-100>` (default `75`), `-MinFileSize <bytes>` (default `1MB`; `0` disables), `-ReplaceOriginal`, `-EnglishOutput`. |
+| `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <path>`, `-EnglishOutput`.                                                                                                                                                    |
+| `Remove-PdfBackups.ps1`         | `-InputPath <folder>`, `-WhatIf`, `-Confirm` (use `-Confirm:$false` to suppress confirmation), `-EnglishOutput`.                                                                          |
+| `Restore-PdfOriginals.ps1`      | `-InputPath <folder>`, `-WhatIf`, `-Confirm` (use `-Confirm:$false` to suppress confirmation), `-EnglishOutput`.                                                                          |
 
-Scanned-PDF processing uses best-effort, stateless classification: digitally born PDFs are skipped by default, and no persistent marker is written beside them. Scanned PDFs with existing OCR are reprocessed automatically so deskew and rotation correction can run; OCR is regenerated and page content is rasterized. `-ProcessDigitallyBornPdfs` opts into processing digitally born PDFs. Classification is heuristic and may not identify mixed or unusual PDFs correctly.
+Scanned-PDF OCR uses best-effort, stateless classification: digitally born PDFs are skipped and no persistent marker is
+written beside them. Existing OCR text is preserved; page rotation is detected separately and corrected without
+regenerating the text layer. In partially OCRed scans, OCR is added only to pages without text. Ghostscript is needed
+for rotation detection on pages that already have text. PDF-size optimization is a separate step and processes digitally
+born PDFs too. For folder input, size optimization discovers all PDFs first and processes only files that meet the
+minimum size. Encrypted and digitally signed PDFs cannot be processed and appear in the issue list. Routine skips and
+unchanged files are counted in summaries but are not listed individually.
 
 See the [PDF tools guide](pdf/README.md) for parameter behavior, examples, setup, dependencies, and safety notes.
 
