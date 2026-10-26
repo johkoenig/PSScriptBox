@@ -58,5 +58,7 @@ See the [Nextcloud tool guide](nextcloud/README.md) for details and examples.
 
 Planned work is listed in [open-issues.md](open-issues.md).
 
+## License
+
 The project is licensed under the [MIT License](LICENSE.md).
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
