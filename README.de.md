@@ -51,9 +51,17 @@ Der GitHub-Actions-Workflow führt `tests/Invoke-Tests.ps1` bei Pull Requests mi
 
 `git/Initialize-GitConfiguration.ps1` legt die Git-Autor-Identität (lokal oder global) fest, indem es gefundene Namen und E-Mail-Adressen (vorhandene Git-Einstellungen, Active-Directory-/Windows-Kontodaten, Microsoft-Konto) oder einen eigenen Wert zur Auswahl anbietet und empfohlene Standardeinstellungen einzeln bestätigen lässt. Vorhandene Werte sind jeweils der Standard; im Skript werden keine Identitätsdaten gespeichert.
 
-| Skript | Parameter und Schalter |
-| --- | --- |
+`git/Remove-ObsoleteGitBranches.ps1` entfernt veraltete lokale Branches aus dem Repository am aktuellen Speicherort.
+`main` und der aktuelle Branch bleiben geschützt; Dateien im Arbeitsbereich werden nicht verändert.
+
+| Skript                            | Parameter und Schalter                                                                                    |
+|-----------------------------------|-----------------------------------------------------------------------------------------------------------|
 | `Initialize-GitConfiguration.ps1` | `-RepositoryPath <Pfad>`, `-Scope <Local\|Global>`, `-Name <Name>`, `-Email <Adresse>`, `-EnglishOutput`. |
+| `Remove-ObsoleteGitBranches.ps1`  | `-WhatIf`, `-Confirm`, `-EnglishOutput`.                                                                  |
+
+Ein Branch ist ein Kandidat, wenn er nicht weiter als der lokale `main`-Branch oder sein verfügbarer Upstream ist oder
+vollständig in den aktuell ausgecheckten Branch integriert wurde. Die Bereinigung verwendet nur lokale Referenzen; mit
+`-WhatIf` kann sie vorab angezeigt werden.
 
 Parameter und Beispiele stehen in der [Git-Anleitung](git/README.de.md).
 

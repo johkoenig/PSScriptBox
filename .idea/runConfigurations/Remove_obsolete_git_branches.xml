@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Remove obsolete git branches" type="PowerShellRunType" factoryName="PowerShell" folderName="git" scriptUrl="$PROJECT_DIR$/git/Remove-ObsoleteGitBranches.ps1" executablePath="pwsh.exe">
+    <envs />
+    <method v="2" />
+  </configuration>
+</component>

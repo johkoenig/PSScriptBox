@@ -24,6 +24,34 @@ Git must be installed and available on `PATH`. No administrator privileges are n
 
 ## Scripts and switches
 
+### `Remove-ObsoleteGitBranches.ps1`
+
+Run this script from any directory inside the repository whose local branches you want to clean up. It protects the
+local `main` branch and the currently checked-out branch. A local branch is an obsolete candidate if **any** of these
+conditions is true: it is not ahead of local `main`, it is not ahead of its available upstream, or it is fully merged
+into the currently checked-out branch. The script previews and confirms removals, and checks that a branch has not moved
+since analysis before deleting it.
+
+| Parameter / switch | Description                                                                  |
+|--------------------|------------------------------------------------------------------------------|
+| `-WhatIf`          | Lists the branch removals that would be attempted without deleting branches. |
+| `-Confirm`         | Prompts before each branch removal.                                          |
+| `-Confirm:$false`  | Suppresses removal prompts.                                                  |
+| `-EnglishOutput`   | Forces English console output regardless of the Windows UI language.         |
+
+Examples:
+
+```powershell
+.\Remove-ObsoleteGitBranches.ps1
+.\Remove-ObsoleteGitBranches.ps1 -WhatIf
+.\Remove-ObsoleteGitBranches.ps1 -Confirm:$false
+```
+
+The script uses the current local refs and does not fetch from remotes. If a branch has no available upstream ref, the
+upstream comparison is not used. It never checks out branches or changes files, so staged, unstaged, and untracked
+working-tree changes are left untouched. Branches checked out in another worktree cannot be removed by Git and are
+reported as failures.
+
 ### `Initialize-GitConfiguration.ps1`
 
 The script runs interactively by default. The switches below skip the prompts or change the target scope.

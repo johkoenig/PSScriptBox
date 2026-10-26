@@ -24,6 +24,35 @@ Git muss installiert und über `PATH` erreichbar sein. Administratorrechte sind 
 
 ## Skripte und Schalter
 
+### `Remove-ObsoleteGitBranches.ps1`
+
+Starte das Skript in einem beliebigen Verzeichnis des Repositorys, dessen lokale Branches bereinigt werden sollen. Der
+lokale Branch `main` und der aktuell ausgecheckte Branch sind geschützt. Ein lokaler Branch gilt als veralteter
+Kandidat, wenn **mindestens eine** dieser Bedingungen zutrifft: Er ist nicht weiter als der lokale `main`-Branch, er ist
+nicht weiter als sein verfügbarer Upstream oder er ist vollständig in den aktuell ausgecheckten Branch integriert. Das
+Skript zeigt die geplanten Löschungen an und fragt nach Bestätigung. Vor dem Löschen wird geprüft, ob sich der Branch
+seit der Analyse geändert hat.
+
+| Parameter / Schalter | Beschreibung                                                                  |
+|----------------------|-------------------------------------------------------------------------------|
+| `-WhatIf`            | Zeigt die geplanten Löschungen an, ohne Branches zu entfernen.                |
+| `-Confirm`           | Fragt vor dem Entfernen jedes Branches nach.                                  |
+| `-Confirm:$false`    | Unterdrückt Rückfragen beim Entfernen.                                        |
+| `-EnglishOutput`     | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
+
+Beispiele:
+
+```powershell
+.\Remove-ObsoleteGitBranches.ps1
+.\Remove-ObsoleteGitBranches.ps1 -WhatIf
+.\Remove-ObsoleteGitBranches.ps1 -Confirm:$false
+```
+
+Das Skript verwendet nur die lokalen Referenzen und führt keinen Fetch aus. Gibt es keinen verfügbaren Upstream-Branch,
+wird dieser Upstream-Vergleich nicht angewendet. Das Skript wechselt niemals den Branch und ändert keine Dateien;
+gestagte, nicht gestagte und nicht versionierte Änderungen im Arbeitsbereich bleiben unberührt. Git kann Branches, die
+in einem anderen Worktree ausgecheckt sind, nicht entfernen; solche Fälle werden als Fehler gemeldet.
+
 ### `Initialize-GitConfiguration.ps1`
 
 Das Skript läuft standardmäßig interaktiv. Die folgenden Schalter überspringen die Abfragen oder ändern den Zielbereich.
