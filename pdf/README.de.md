@@ -14,10 +14,11 @@ Dieser Ordner enthält PowerShell-Werkzeuge zum Einrichten und Verarbeiten von P
    ```
 
 3. Beachte Hinweise zu fehlenden Tesseract-Sprachdaten. Das Setup lädt keine `.traineddata`-Dateien herunter.
-4. Verarbeite PDFs, zum Beispiel:
+4. Führe OCR für Scans und Größenreduzierung als getrennte Schritte aus:
 
    ```powershell
-   .\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs'
+   .\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs'
+   .\Optimize-PdfSize.ps1 -InputPath 'C:\PDFs'
    ```
 
 Die PowerShell-Ausführungsrichtlinie kann eine genehmigte Vorgehensweise zum Ausführen lokaler Skripte erfordern. Ändere die systemweite Richtlinie nicht allein für diese Werkzeuge.
@@ -31,7 +32,8 @@ Die PowerShell-Ausführungsrichtlinie kann eine genehmigte Vorgehensweise zum Au
 - `py.exe` dient nur dazu, einen konkreten `python.exe`-Pfad zu ermitteln. Die Skripte starten anschließend diesen Interpreter direkt.
 - Fehlende Python-Pakete werden in der ausgewählten Python-Installation installiert. Für einen systemweiten Interpreter sind Administratorrechte erforderlich.
 - Vor dem UAC-Dialog listet das Setup die geplanten Aktionen auf und wartet auf Enter. Jede nicht leere Eingabe bricht ab.
-- Tesseract-Sprachdaten werden geprüft, aber nicht heruntergeladen. Die Standardsprachen sind `deu+eng+fra+ita+spa+equ`; `deu` und `eng` sind erforderlich. Die übrigen Modelle, einschließlich `equ` für Gleichungserkennung, sind optional.
+- Tesseract-Sprachdaten werden geprüft, aber nicht heruntergeladen. Die OCR-Standardsprachen sind `deu+eng+fra+ita+spa`;
+  `deu` und `eng` sind erforderlich, die übrigen Sprachen sind optional.
 
 ## Skripte und Schalter
 
@@ -52,38 +54,71 @@ Beispiele:
 .\Initialize-PdfProcessor.ps1 -EnglishOutput
 ```
 
-### `Optimize-ScannedPdfs.ps1`
+### `ConvertTo-SearchablePdf.ps1`
 
-Verarbeitet gescannte PDFs in einer einzelnen Datei oder einem Ordnerbaum. Digital erzeugte PDFs werden standardmäßig übersprungen. Zur Klassifizierung dienen die Sichtbarkeit des PDF-Texts und Hinweise auf Bildseiten; gemischte und ungewöhnliche Dokumente können falsch eingeordnet werden. Mit `-ProcessDigitallyBornPdfs` lassen sich digital erzeugte PDFs dennoch verarbeiten. OCRmyPDF ergänzt fehlende Textebenen, begradigt Scans und erkennt standardmäßig verdrehte Seiten. Nach erfolgreicher Verarbeitung wird die Eingabedatei ersetzt; standardmäßig wird vorher eine Sicherung `<Name>_orig.pdf` erstellt. Existiert diese Sicherung bereits, bleibt sie erhalten und die Eingabedatei wird ohne Überschreiben der Sicherung ersetzt.
+Fügt gescannten PDFs OCR hinzu und korrigiert Schräglagen und verdrehte Seiten. Digital erzeugte PDFs werden anhand
+sichtbaren Texts und vorhandener Bildressourcen heuristisch erkannt und übersprungen; gemischte oder ungewöhnliche
+Dokumente können falsch eingeordnet werden. Verschlüsselte und digital signierte PDFs können nicht verarbeitet werden
+und werden als Probleme gemeldet. Die Bildoptimierung von OCRmyPDF ist deaktiviert, damit Herunterskalieren und
+JPEG-Komprimierung ausschließlich im separaten Skript `Optimize-PdfSize.ps1` stattfinden. Vorhandene OCR-Textebenen
+bleiben erhalten; Ghostscript rendert temporäre
+Seitenvorschauen für die Tesseract-Ausrichtungserkennung, und pikepdf aktualisiert nur die Seitenrotations-Metadaten.
+Dadurch wird OCR nicht erneut ausgeführt und Seiten mit Textebene werden nicht gerastert. Bei teilweise erkannten Scans
+wird OCR nur auf Seiten ohne Text ergänzt; die Schräglagenkorrektur wirkt nur auf diese Seiten. Ghostscript ist für
+normale OCR optional, wird jedoch zur Rotationserkennung auf Seiten mit vorhandener Textebene benötigt. Nach
+erfolgreicher Verarbeitung wird die Eingabedatei ersetzt; standardmäßig wird vorher eine Sicherung `<Name>_orig.pdf`
+erstellt. Existiert diese Sicherung bereits, bleibt sie erhalten und die Eingabedatei wird direkt ersetzt.
 
-Gescannte PDFs mit vorhandener OCR-Textebene werden standardmäßig erneut verarbeitet, damit Schräglagen- und Rotationskorrektur ausgeführt werden. OCRmyPDF verwendet dafür `--force-ocr`, erzeugt die OCR-Textebene neu und rastert den Seiteninhalt; dadurch können Vektorinhalte verändert werden und wiederholte Läufe können das PDF erneut ändern. Mit `-NoDeskew` oder `-NoRotationOfPages` lässt sich die jeweilige Korrektur deaktivieren.
-
-| Parameter / Schalter | Beschreibung |
-| --- | --- |
-| `-InputPath <Pfad>` | PDF-Datei oder Ordner. Ohne Angabe wird der Pfad abgefragt. |
-| `-Language <Codes>` | Tesseract-Sprachen, getrennt durch `+`. Standard: `deu+eng+fra+ita+spa+equ`; `deu` und `eng` sind erforderlich. `equ` ist Tesseracts optionales Modell zur Gleichungserkennung und kein OCRmyPDF-Unterbefehl. |
-| `-JpegQuality <1-100>` | JPEG-Qualität eingebetteter Bilder. Standard: `75`. |
-| `-GhostscriptDpi <50-1200>` | Aktiviert Ghostscript-Downsampling mit der angegebenen DPI-Auflösung. Standard: deaktiviert (`0`). |
-| `-NoDeskew` | Deaktiviert die standardmäßig aktive Begradigung. |
-| `-NoRotationOfPages` | Deaktiviert die automatische Erkennung und Korrektur verdrehter Seiten. Standardmäßig aktiv, Konfidenzschwelle `5`. |
-| `-ProcessDigitallyBornPdfs` | Verarbeitet als digital erzeugt eingestufte PDFs; standardmäßig werden sie übersprungen. |
-| `-NoGhostscript` | Deaktiviert den optionalen Ghostscript-Schritt. |
-| `-ReplaceOriginal` | Ersetzt die Eingabe, ohne eine neue `_orig`-Sicherung anzulegen. |
-| `-ForceReprocess` | Verarbeitet PDFs mit vorhandenem Text ausdrücklich erneut, wenn digital erzeugte PDFs freigegeben wurden. Gescannte PDFs mit vorhandener OCR werden standardmäßig erneut verarbeitet. |
-| `-EnglishOutput` | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
+| Parameter / Schalter | Beschreibung                                                                                                                                                       |
+|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-InputPath <Pfad>`  | PDF-Datei oder Ordner. Ohne Angabe wird der Pfad abgefragt.                                                                                                        |
+| `-Language <Codes>`  | Tesseract-Sprachen, getrennt durch `+`. Standard: `deu+eng+fra+ita+spa`; `deu` und `eng` sind erforderlich; nicht installierte optionale Sprachen werden entfernt. |
+| `-NoDeskew`          | Deaktiviert die Schräglagenkorrektur auf Seiten, die OCR benötigen. Seiten mit vorhandenem Text werden nicht begradigt.                                            |
+| `-NoRotationOfPages` | Deaktiviert die automatische Erkennung und Korrektur verdrehter Seiten. Standardmäßig aktiv, Konfidenzschwelle `5`.                                                |
+| `-ReplaceOriginal`   | Ersetzt die Eingabe, ohne eine neue `_orig`-Sicherung anzulegen.                                                                                                   |
+| `-EnglishOutput`     | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.                                                                                      |
 
 Beispiele:
 
 ```powershell
-.\Optimize-ScannedPdfs.ps1
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -GhostscriptDpi 150
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -NoRotationOfPages
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs\Scan.pdf' -ReplaceOriginal
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -ProcessDigitallyBornPdfs
-.\Optimize-ScannedPdfs.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -EnglishOutput
+.\ConvertTo-SearchablePdf.ps1
+.\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs' -NoRotationOfPages
+.\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs\Scan.pdf' -ReplaceOriginal
+.\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs' -Language 'deu+eng' -EnglishOutput
 ```
 
-Digital erzeugte PDFs werden standardmäßig übersprungen, ohne sie erneut zu schreiben. Gescannte PDFs mit vorhandener Textebene werden automatisch mit OCRmyPDFs Force-Modus verarbeitet, damit Schräglagen- und Rotationskorrektur ausgeführt werden. Dabei wird die OCR-Textebene neu erzeugt und der Seiteninhalt gerastert; Vektorinhalte können sich dadurch ändern. `-ProcessDigitallyBornPdfs` verarbeitet digital erzeugte PDFs ausdrücklich; `-ForceReprocess` kann deren Textebene erneuern. Wiederholte Verarbeitung kann das PDF ändern und ist nicht garantiert idempotent. Signierte PDFs und verschlüsselte PDFs, die sich nicht ohne Passwort öffnen lassen, werden übersprungen. Das Ergebnis ist eine normale PDF und kein PDF/A. Ghostscript läuft nur, wenn `-GhostscriptDpi` angegeben wurde.
+Das Ergebnis ist eine normale PDF und kein PDF/A. Vorhandene OCR-Textebenen werden bei späteren Läufen nicht erneuert;
+Seitenrotationen werden nur geändert, wenn die Ausrichtungserkennung eine Korrektur oberhalb der Konfidenzschwelle
+feststellt. Regulär übersprungene und unveränderte Dateien werden in der Zusammenfassung gezählt, aber nicht einzeln
+aufgeführt; verschlüsselte oder signierte PDFs erscheinen in der Problemliste.
+
+### `Optimize-PdfSize.ps1`
+
+Verkleinert PDFs, indem Ghostscript Farb-, Graustufen- und Schwarzweißbilder herunterskaliert. Farb- und
+Graustufenbilder werden als JPEG kodiert. PDFs unter 1 MB werden standardmäßig übersprungen; Ziel sind 300 DPI und
+JPEG-Qualität 75. Digital signierte und verschlüsselte PDFs können nicht verarbeitet werden und werden als Probleme
+gemeldet. Digital erzeugte PDFs werden ebenfalls verarbeitet. Das Original wird nur ersetzt, wenn das optimierte PDF
+kleiner ist; standardmäßig wird eine `_orig.pdf`-Sicherung angelegt und vorhandene Sicherungen bleiben erhalten.
+Dateien unterhalb der Mindestgröße und Dateien ohne Größenreduzierung werden als übersprungen gezählt, aber in der
+Zusammenfassung nicht einzeln aufgeführt. Bei Ordnern werden zuerst alle PDFs ermittelt; verarbeitet werden nur
+Dateien, die mindestens die Mindestgröße erreichen.
+
+| Parameter / Schalter   | Beschreibung                                                                                                                         |
+|------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `-InputPath <Pfad>`    | PDF-Datei oder Ordner. Ohne Angabe wird der Pfad abgefragt.                                                                          |
+| `-Dpi <50-1200>`       | Zielauflösung für das Herunterskalieren der Bilder. Standard: `300`.                                                                 |
+| `-JpegQuality <1-100>` | JPEG-Qualität für heruntergerechnete Farb- und Graustufenbilder. Standard: `75`.                                                     |
+| `-MinFileSize <Bytes>` | Mindestgröße des Originals zur Verarbeitung. Standard: `1MB`; mit `0` deaktiviert. PowerShell-Größenangaben wie `2MB` sind zulässig. |
+| `-ReplaceOriginal`     | Ersetzt die Eingabe, ohne eine neue `_orig`-Sicherung anzulegen.                                                                     |
+| `-EnglishOutput`       | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.                                                        |
+
+Beispiele:
+
+```powershell
+.\Optimize-PdfSize.ps1
+.\Optimize-PdfSize.ps1 -InputPath 'C:\PDFs' -Dpi 200 -JpegQuality 65 -MinFileSize 2MB
+.\Optimize-PdfSize.ps1 -InputPath 'C:\PDFs\Document.pdf' -ReplaceOriginal
+```
 
 ### `Find-PdfsWithoutTextLayer.ps1`
 
@@ -101,7 +136,7 @@ Beispiele:
 .\Find-PdfsWithoutTextLayer.ps1 -InputPath 'C:\PDFs\Scan.pdf' -EnglishOutput
 ```
 
-### `Clear-OriginalPdfBackups.ps1`
+### `Remove-PdfBackups.ps1`
 
 Findet `_orig.pdf`-Sicherungen, zu denen die bearbeitete PDF im selben Ordner vorhanden ist. Jede Löschung unterliegt dem Bestätigungsverhalten von PowerShell.
 
@@ -115,23 +150,54 @@ Findet `_orig.pdf`-Sicherungen, zu denen die bearbeitete PDF im selben Ordner vo
 Beispiele:
 
 ```powershell
-.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
-.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm:$false
-.\Clear-OriginalPdfBackups.ps1 -InputPath 'C:\PDFs' -EnglishOutput
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm:$false
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -EnglishOutput
+```
+
+### `Restore-PdfOriginals.ps1`
+
+Findet `_orig.pdf`-Sicherungen, zu denen die bearbeitete PDF im selben Ordner vorhanden ist. Für jedes bestätigte Paar
+wird die bearbeitete PDF atomar durch das Original ersetzt; die bearbeitete Datei wird dadurch
+entfernt und die `_orig`-Sicherung aufgebraucht. Die Bestätigung ist standardmäßig aktiv; prüfe den Zielordner
+sorgfältig, bevor du fortfährst.
+
+| Parameter / Schalter  | Beschreibung                                                                      |
+|-----------------------|-----------------------------------------------------------------------------------|
+| `-InputPath <Ordner>` | Rekursiv zu durchsuchender Ordner. Ohne Angabe wird der Pfad abgefragt.           |
+| `-WhatIf`             | Zeigt geplante Wiederherstellungen an, ohne Dateien zu ändern.                    |
+| `-Confirm`            | Fragt vor jeder Wiederherstellung nach; `-Confirm:$false` unterdrückt Rückfragen. |
+| `-EnglishOutput`      | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.     |
+
+Beispiele:
+
+```powershell
+.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -WhatIf
+.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs'
+.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm:$false -EnglishOutput
 ```
 
 ## Gemeinsame PowerShell-Parameter
 
-Skripte unterstützen, soweit anwendbar, außerdem PowerShell-Standardparameter wie `-Verbose`, `-Debug`, `-ErrorAction` und `-WarningAction`. `Clear-OriginalPdfBackups.ps1` unterstützt über `SupportsShouldProcess` auch `-WhatIf` und `-Confirm`.
+Skripte unterstützen, soweit anwendbar, außerdem PowerShell-Standardparameter wie `-Verbose`, `-Debug`, `-ErrorAction`
+und `-WarningAction`. `Remove-PdfBackups.ps1` und `Restore-PdfOriginals.ps1` unterstützen über
+`SupportsShouldProcess` auch `-WhatIf` und `-Confirm`.
 
 ## Sicherheit und Verhalten
 
-- `Optimize-ScannedPdfs.ps1` legt temporäre Dateien neben der Eingabe an und entfernt sie nach der Verarbeitung.
+- Beide Optimierungsskripte legen temporäre Dateien neben der Eingabe an und entfernen sie nach der Verarbeitung.
 - Neben der PDF werden keine dauerhaften Status- oder Markierungsdateien angelegt. Temporäre Verarbeitungsdateien werden nach dem Lauf entfernt.
-- Die zustandslose Klassifizierung verwendet sichtbaren Text und Hinweise auf gescannte Bildseiten. Sie ist eine bestmögliche Heuristik; gemischte oder ungewöhnliche PDFs können falsch eingeordnet werden. Vorhandene OCR gescannter PDFs wird erneuert, damit Seitenkorrekturen angewendet werden können; dabei wird der Seiteninhalt gerastert.
-- Eine PDF gilt nur dann als erfolgreich verändert, wenn die Verarbeitung erfolgreich war und sich der Ergebnis-Hash von der Originaldatei unterscheidet. Auch größere Ergebnisse können gültig sein.
+- Die OCR-Klassifizierung verwendet zustandslos sichtbaren Text und Hinweise auf gescannte Bildseiten. Sie ist eine
+  bestmögliche Heuristik; gemischte oder ungewöhnliche PDFs können falsch eingeordnet werden. Vorhandene OCR-Textebenen
+  bleiben erhalten; Seitenrotationen werden durch Aktualisieren der PDF-Seitenmetadaten korrigiert, und OCR wird nur
+  für Seiten ohne Textebene ergänzt.
+- Das OCR-Skript akzeptiert geänderte Ergebnisse auch dann, wenn sie größer als das Original sind. Das
+  Größenoptimierungsskript ersetzt eine PDF nur, wenn Ghostscript ein kleineres Ergebnis erzeugt.
 - Vorhandene `_orig`-Sicherungen bleiben erhalten.
-- `Clear-OriginalPdfBackups.ps1` löscht nur Sicherungen, zu denen die bearbeitete PDF vorhanden ist.
+- `Remove-PdfBackups.ps1` löscht nur Sicherungen, zu denen die bearbeitete PDF vorhanden ist.
+- `Restore-PdfOriginals.ps1` stellt nur passende Sicherungs-/Bearbeitungspaare wieder her; dabei ersetzt das Original
+  die
+  bearbeitete PDF und die `_orig`-Sicherung wird entfernt.
 - Verwende diese Werkzeuge nicht für Dateien, die byte-identisch bleiben müssen, etwa digital signierte PDFs.
 - Das Projekt steht unter der [MIT-Lizenz](../LICENSE.md).
 - Hinweise zum Mitwirken stehen in [CONTRIBUTING.md](../CONTRIBUTING.md).

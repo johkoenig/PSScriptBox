@@ -1,10 +1,10 @@
 ﻿<#
 .SYNOPSIS
-    Provides the Ghostscript optimization helper for the OCR script.
+    Provides the Ghostscript image optimization helper.
 
 .DESCRIPTION
-    Defines Optimize-WithGhostscript, which runs the optional Ghostscript
-    downsampling stage on a processed PDF.
+    Defines Optimize-WithGhostscript, which downsamples PDF images and keeps the
+    Ghostscript output only when it is smaller than the input.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7. Uses ConvertTo-QuotedArgument.
@@ -34,20 +34,25 @@ function Optimize-WithGhostscript {
 .PARAMETER Dpi
     Target resolution for downsampling.
 
+.PARAMETER Quality
+    JPEG quality for downsampled images.
+
 .OUTPUTS
-    System.Boolean. $true if the file was successfully reduced in size.
+    System.Boolean. $true if the file was reduced, $false if the output was not
+    smaller. Process and output failures are thrown to the caller.
 #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string] $GhostscriptPath,
         [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
-        [Parameter(Mandatory)][int] $Dpi
+        [Parameter(Mandatory)][int] $Dpi,
+        [Parameter(Mandatory)][int] $Quality
     )
 
     $tempPath = Join-Path $Pdf.DirectoryName ('.{0}.gs.pdf.part' -f [guid]::NewGuid().ToString('N'))
     try {
-        # Explicit downsampling parameters guarantee the target resolution for
-        # color, grayscale, and monochrome images, embedded as JPEG.
+        # Explicit downsampling parameters set the target resolution for all
+        # image types; color and grayscale images use JPEG encoding.
         # -dCompatibilityLevel=1.5 sets the output PDF version to 1.5.
         $gsArgList = @(
             '-dBATCH', '-dNOPAUSE', '-dQUIET',
@@ -64,7 +69,7 @@ function Optimize-WithGhostscript {
             '-dAutoFilterGrayImages=false',
             '-dColorConversionStrategy=/sRGB',
             '-dColorConversionStrategyForImages=/sRGB',
-            '-dJPEGQ=75',
+            "-dJPEGQ=$Quality",
             '-dCompatibilityLevel=1.5',
             ('-sOutputFile={0}' -f $tempPath),
             $Pdf.FullName
@@ -80,12 +85,32 @@ function Optimize-WithGhostscript {
         $process = [System.Diagnostics.Process]::new()
         $process.StartInfo = $startInfo
         try {
-            if (-not $process.Start()) { return $false }
+            if (-not $process.Start())
+            {
+                throw 'Ghostscript could not be started.'
+            }
             # Read streams asynchronously to prevent pipe deadlocks.
-            $process.StandardOutput.ReadToEndAsync() | Out-Null
-            $process.StandardError.ReadToEndAsync() | Out-Null
+            $standardOutput = $process.StandardOutput.ReadToEndAsync()
+            $standardError = $process.StandardError.ReadToEndAsync()
             $process.WaitForExit()
-            if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath)) { return $false }
+            $outputText = $standardOutput.GetAwaiter().GetResult()
+            $errorText = $standardError.GetAwaiter().GetResult()
+            if ($process.ExitCode -ne 0)
+            {
+                $details = if ($errorText)
+                {
+                    $errorText
+                }
+                else
+                {
+                    $outputText
+                }
+                throw "Ghostscript exited with code $( $process.ExitCode ): $details"
+            }
+            if (-not (Test-Path -LiteralPath $tempPath))
+            {
+                throw 'Ghostscript did not produce an output file.'
+            }
         }
         finally { $process.Dispose() }
         $originalSize = $Pdf.Length
@@ -95,7 +120,6 @@ function Optimize-WithGhostscript {
         Move-Item -LiteralPath $tempPath -Destination $Pdf.FullName -Force
         return $true
     }
-    catch { return $false }
     finally {
         if (Test-Path -LiteralPath $tempPath) {
             Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue

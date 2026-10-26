@@ -66,12 +66,13 @@ function Get-MissingDependency {
     if (-not $pythonPath) { $missing.Add((Get-LocalizedText @localization -Text 'Python interpreter')) }
     if (-not $TesseractPath) { $missing.Add('Tesseract') }
 
-    # Ghostscript is the optional optimization stage after OCRmyPDF.
+    # Ghostscript is optional for basic OCR but supports rotation-only processing
+    # of scanned PDFs that already contain text.
     $resolvedGhostscriptPath = $null
     if (-not $NoGhostscript) {
         $resolvedGhostscriptPath = $GhostscriptPath
         if (-not $resolvedGhostscriptPath) {
-            $optionalMissing.Add((Get-LocalizedText @localization -Text 'Ghostscript (required only with -GhostscriptDpi)'))
+            $optionalMissing.Add((Get-LocalizedText @localization -Text 'Ghostscript (used for rotation-only processing when existing OCR is found)'))
         }
     }
 

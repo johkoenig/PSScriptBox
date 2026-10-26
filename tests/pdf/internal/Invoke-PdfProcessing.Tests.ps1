@@ -15,9 +15,7 @@
 
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\ConvertTo-QuotedArgument.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-FileSha256.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Optimize-WithGhostscript.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Invoke-PdfProcessing.ps1')
 
     function script:Invoke-WithDefaults {
@@ -26,14 +24,9 @@ BeforeAll {
             Pdf                     = $Pdf
             PythonPath              = 'C:\scriptbox-no-such\python.exe'
             Language                = 'deu'
-            Quality                 = 75
-            GhostscriptDpi          = 0
             NoDeskew                = $false
             NoRotationOfPages       = $false
-            ProcessDigitallyBornPdfs = $false
-            NoGhostscript           = $true
             ReplaceOriginal         = $false
-            ForceReprocess          = $false
         }
         if ($Reporter) { $arguments.Reporter = $Reporter }
         Invoke-PdfProcessing @arguments
