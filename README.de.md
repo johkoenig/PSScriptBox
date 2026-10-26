@@ -29,6 +29,10 @@ Die [PDF-Anleitung](pdf/README.de.md) beschreibt das Verhalten der Parameter, Be
 
 Führe die Skripte in PowerShell aus. Bei deutscher Windows-Anzeigesprache erscheinen deutsche Konsolentexte, sonst englische. `-EnglishOutput` erzwingt Englisch.
 
+## Tests
+
+Der GitHub-Actions-Workflow führt `tests/Invoke-Tests.ps1` bei Pull Requests mit Ziel `main` unter Windows PowerShell 5.1 und PowerShell 7 aus. Dieselbe Testsuite lässt sich lokal im Repository-Stamm mit `.\tests\Invoke-Tests.ps1` starten; erforderlich ist Pester 5 oder höher.
+
 ## Git-Konfiguration
 
 `git/Initialize-GitConfiguration.ps1` legt die Git-Autor-Identität (lokal oder global) fest, indem es gefundene Namen und E-Mail-Adressen (vorhandene Git-Einstellungen, Active-Directory-/Windows-Kontodaten, Microsoft-Konto) oder einen eigenen Wert zur Auswahl anbietet und empfohlene Standardeinstellungen einzeln bestätigen lässt. Vorhandene Werte sind jeweils der Standard; im Skript werden keine Identitätsdaten gespeichert.

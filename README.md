@@ -29,6 +29,10 @@ See the [PDF tools guide](pdf/README.md) for parameter behavior, examples, setup
 
 Run scripts from PowerShell. The scripts select German console messages on a German Windows UI and English messages otherwise; `-EnglishOutput` forces English.
 
+## Testing
+
+The GitHub Actions workflow runs `tests/Invoke-Tests.ps1` with Windows PowerShell 5.1 and PowerShell 7 for pull requests targeting `main`. To run the same test suite locally, use `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5 or later is required.
+
 ## Git configuration
 
 `git/Initialize-GitConfiguration.ps1` sets the Git author identity (local or global) by offering discovered names and emails (existing Git settings, Active Directory / Windows account data, Microsoft account) or a custom value, and confirms recommended standard settings one by one. Existing values are the defaults and nothing is stored in the script.
