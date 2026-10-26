@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Provides per-file PDF size optimization.
 

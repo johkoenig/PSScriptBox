@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Reduces PDF file sizes by downsampling images.
 

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Detects and applies PDF page rotations without running OCR.
 

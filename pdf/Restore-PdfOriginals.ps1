@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Restores original PDFs from backups and removes the processed PDFs.
 

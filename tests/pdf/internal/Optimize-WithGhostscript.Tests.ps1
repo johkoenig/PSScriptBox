@@ -40,11 +40,12 @@ Describe 'Optimize-WithGhostscript' {
         @(Get-ChildItem -LiteralPath (Split-Path -Parent $script:Pdf) -Filter '.*.gs.pdf.part' -Force).Count | Should -Be 0
     }
 
-    It 'returns $false when Ghostscript exits with an error' {
+    It 'throws and cleans up when Ghostscript exits with an error' {
         if (-not $script:GsPath) { Set-ItResult -Skipped -Because 'Ghostscript is not installed'; return }
-        # An unreadable input makes Ghostscript fail, so no optimized file is produced.
-        $broken = Join-Path $TestDrive 'broken.pdf'
-        [System.IO.File]::WriteAllBytes($broken, [byte[]](0, 1, 2))
-        { Optimize-WithGhostscript -GhostscriptPath $script:GsPath -Pdf (Get-Item -LiteralPath $broken) -Dpi 200 -Quality 75 } | Should -Throw
+        $missingPdf = [System.IO.FileInfo]::new((Join-Path $TestDrive 'missing.pdf'))
+        {
+            Optimize-WithGhostscript -GhostscriptPath $script:GsPath -Pdf $missingPdf -Dpi 200 -Quality 75
+        } | Should -Throw '*Ghostscript exited with code*'
+        @(Get-ChildItem -LiteralPath $TestDrive -Filter '.*.gs.pdf.part' -Force).Count | Should -Be 0
     }
 }
