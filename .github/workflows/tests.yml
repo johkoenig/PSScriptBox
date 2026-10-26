@@ -9,26 +9,21 @@ permissions:
   contents: read
 
 jobs:
-  tests:
-    name: Tests (${{ matrix.shell }})
+  tests-powershell:
+    name: Tests (Windows PowerShell 5.1)
     runs-on: windows-latest
-    strategy:
-      matrix:
-        shell:
-          - powershell
-          - pwsh
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Install Pester
-        shell: ${{ matrix.shell }}
+        shell: powershell
         run: Install-Module -Name Pester -MinimumVersion 5.0 -Force -Scope CurrentUser
 
       - name: Run tests
         id: tests
-        shell: ${{ matrix.shell }}
+        shell: powershell
         run: |
           $coveragePath = Join-Path ([System.IO.Path]::GetTempPath()) 'scriptbox-coverage.xml'
           "coverage_path=$coveragePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
@@ -38,5 +33,32 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.shell }}
+          name: coverage-windows-powershell-5.1
+          path: ${{ steps.tests.outputs.coverage_path }}
+
+  tests-pwsh:
+    name: Tests (PowerShell 7)
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Pester
+        shell: pwsh
+        run: Install-Module -Name Pester -MinimumVersion 5.0 -Force -Scope CurrentUser
+
+      - name: Run tests
+        id: tests
+        shell: pwsh
+        run: |
+          $coveragePath = Join-Path ([System.IO.Path]::GetTempPath()) 'scriptbox-coverage.xml'
+          "coverage_path=$coveragePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          .\tests\Invoke-Tests.ps1 -Coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-powershell-7
           path: ${{ steps.tests.outputs.coverage_path }}
