@@ -54,4 +54,30 @@
     'Defines the shortcut "git cs". With "commit --signoff" it creates a commit with a Signed-off-by line (certifying the Developer Certificate of Origin).' = 'Definiert das Kürzel "git cs". Mit "commit --signoff" erstellt es einen Commit mit Signed-off-by-Zeile (Bestätigung des Developer Certificate of Origin).'
     'Defines "git cs" as "git commit --signoff"' = 'Definiert "git cs" als "git commit --signoff"'
     '  Sets the Git author identity and confirms recommended standard settings.' = '  Setzt die Git-Autorenidentität und bestätigt empfohlene Standardeinstellungen.'
+    "Git returned invalid branch data: '{0}'" = "Git hat ungültige Branch-Daten zurückgegeben: '{0}'"
+    "The main branch '{0}' was not found in this repository." = "Der Main-Branch '{0}' wurde in diesem Repository nicht gefunden."
+    "Git returned an invalid commit count for '{0}': '{1}'" = "Git hat für '{0}' eine ungültige Commit-Anzahl zurückgegeben: '{1}'"
+    'Not ahead of main' = 'Nicht vor main'
+    'Not ahead of upstream' = 'Nicht vor dem Upstream'
+    'Fully merged into the current branch' = 'Vollständig in den aktuellen Branch integriert'
+    'Branch changed after analysis; refusing to remove it: {0}' = 'Branch wurde nach der Analyse geändert und wird nicht entfernt: {0}'
+    'Git for Windows was not found on PATH.' = 'Git for Windows wurde nicht in PATH gefunden.'
+    '  Removes obsolete local branches without changing the working tree.' = '  Entfernt veraltete lokale Branches, ohne den Arbeitsbereich zu ändern.'
+    '  Supports preview; removal runs without confirmation.' = '  Unterstützt eine Vorschau; das Entfernen erfolgt ohne Rückfrage.'
+    '=== Obsolete Git branches: processing started ===' = '=== Entfernen veralteter Git-Branches: Verarbeitung gestartet ==='
+    'Repository: {0}' = 'Repository: {0}'
+    'Current branch: {0}' = 'Aktueller Branch: {0}'
+    'Local branches: {0}' = 'Lokale Branches: {0}'
+    'Obsolete candidates: {0}' = 'Veraltete Kandidaten: {0}'
+    'Nothing to remove; no obsolete local branches were found.' = 'Nichts zu entfernen; es wurden keine veralteten lokalen Branches gefunden.'
+    '--- Branch {0}/{1}: {2} ---' = '--- Branch {0}/{1}: {2} ---'
+    'Reasons: {0}' = 'Gründe: {0}'
+    'Would remove: {0}' = 'Würde entfernt: {0}'
+    'Removed: {0}' = 'Entfernt: {0}'
+    "Could not remove branch '{0}': {1}" = "Branch '{0}' konnte nicht entfernt werden: {1}"
+    '=== Summary ===' = '=== Zusammenfassung ==='
+    'Branches checked: {0}; obsolete candidates: {1}' = 'Geprüfte Branches: {0}; veraltete Kandidaten: {1}'
+    'Removed: {0}, previewed: {1}, failed: {2}' = 'Entfernt: {0}, in Vorschau angezeigt: {1}, fehlgeschlagen: {2}'
+    'Failed branches:' = 'Fehlerhafte Branches:'
+    'Fatal error: {0}' = 'Schwerwiegender Fehler: {0}'
 }

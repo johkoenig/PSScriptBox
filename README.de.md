@@ -47,13 +47,22 @@ Führe die Skripte in PowerShell aus. Bei deutscher Windows-Anzeigesprache ersch
 
 Der GitHub-Actions-Workflow führt `tests/Invoke-Tests.ps1` bei Pull Requests mit Ziel `main` unter Windows PowerShell 5.1 und PowerShell 7 aus. Dieselbe Testsuite lässt sich lokal im Repository-Stamm mit `.\tests\Invoke-Tests.ps1` starten; erforderlich ist Pester 5 oder höher.
 
-## Git-Konfiguration
+## Git-Werkzeuge
 
 `git/Initialize-GitConfiguration.ps1` legt die Git-Autor-Identität (lokal oder global) fest, indem es gefundene Namen und E-Mail-Adressen (vorhandene Git-Einstellungen, Active-Directory-/Windows-Kontodaten, Microsoft-Konto) oder einen eigenen Wert zur Auswahl anbietet und empfohlene Standardeinstellungen einzeln bestätigen lässt. Vorhandene Werte sind jeweils der Standard; im Skript werden keine Identitätsdaten gespeichert.
 
-| Skript | Parameter und Schalter |
-| --- | --- |
+`git/Remove-ObsoleteGitBranches.ps1` entfernt veraltete lokale Branches aus dem Repository am aktuellen Speicherort.
+`main` und der aktuelle Branch bleiben geschützt; Dateien im Arbeitsbereich werden nicht verändert. Ohne `-WhatIf`
+werden Kandidaten sofort und ohne Rückfrage entfernt; `-WhatIf` zeigt sie als Vorschau an.
+
+| Skript                            | Parameter und Schalter                                                                                    |
+|-----------------------------------|-----------------------------------------------------------------------------------------------------------|
 | `Initialize-GitConfiguration.ps1` | `-RepositoryPath <Pfad>`, `-Scope <Local\|Global>`, `-Name <Name>`, `-Email <Adresse>`, `-EnglishOutput`. |
+| `Remove-ObsoleteGitBranches.ps1`  | `-WhatIf`, `-EnglishOutput`.                                                                              |
+
+Ein Branch ist ein Kandidat, wenn er nicht weiter als der lokale `main`-Branch oder sein verfügbarer Upstream ist oder
+vollständig in den aktuell ausgecheckten Branch integriert wurde. Die Bereinigung verwendet nur lokale Referenzen; mit
+`-WhatIf` kann sie vorab angezeigt werden.
 
 Parameter und Beispiele stehen in der [Git-Anleitung](git/README.de.md).
 

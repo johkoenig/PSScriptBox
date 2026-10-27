@@ -1,19 +1,30 @@
-# Git-Konfigurationswerkzeug
+# Git-Werkzeuge
 
 > Englische Version: [README.md](README.md)
 
-`Initialize-GitConfiguration.ps1` richtet die Git-Autor-Identität (und optional gängige Standardeinstellungen) in der lokalen `.git/config` eines Repositorys oder in der globalen Benutzerkonfiguration ein. Name und E-Mail werden nicht im Skript hinterlegt; bereits im Zielbereich gesetzte Werte werden nicht überschrieben.
+Dieser Ordner enthält zwei Git-Werkzeuge. `Initialize-GitConfiguration.ps1` richtet die Git-Autor-Identität (und
+optional gängige Standardeinstellungen) in der lokalen `.git/config` eines Repositorys oder in der globalen
+Benutzerkonfiguration ein. `Remove-ObsoleteGitBranches.ps1` bereinigt veraltete lokale Branches, ohne Dateien im
+Arbeitsbereich zu verändern. Das Konfigurationsskript speichert weder Namen noch E-Mail-Adressen und überschreibt keine
+vorhandenen Werte im Zielbereich.
 
 ## Schnellstart
 
-1. Wechsle in ein Verzeichnis innerhalb des Git-Repositorys, das konfiguriert werden soll.
-2. Starte das Skript:
+Um veraltete Branches zunächst als Vorschau anzuzeigen, wechsle in das Repository und starte:
+
+```powershell
+.\Remove-ObsoleteGitBranches.ps1 -WhatIf
+```
+
+Starte das Skript ohne `-WhatIf`, um alle Kandidaten sofort und ohne Rückfrage zu entfernen. Um Git-Identität und
+Standardeinstellungen einzurichten, starte:
 
 ```powershell
 .\Initialize-GitConfiguration.ps1
 ```
 
-3. Für jeden Identitätswert zeigt das Skript eine nummerierte Liste gefundener Möglichkeiten plus eigener Eingabe. Eine vorhandene Git-Einstellung steht an erster Stelle, die Eingabetaste (Standard: Auswahl 1) behält sie bei:
+Für jeden Identitätswert zeigt das Konfigurationsskript eine nummerierte Liste gefundener Möglichkeiten plus eigener
+Eingabe. Eine vorhandene Git-Einstellung steht an erster Stelle, die Eingabetaste (Standard: Auswahl 1) behält sie bei:
 
 - **Name:** vorhandene Git-Einstellungen (lokal, global, System), Anzeigename aus Active Directory bzw. Windows oder ein eigener Wert.
 - **E-Mail:** vorhandene Git-Einstellungen, das Active-Directory-Attribut `mail` (domänenverbundene Rechner), der Benutzerprinzipalname (Active Directory / Entra ID), das angemeldete Microsoft-Konto oder ein eigener Wert.
@@ -23,6 +34,32 @@
 Git muss installiert und über `PATH` erreichbar sein. Administratorrechte sind nicht erforderlich. Verzeichnisabfragen haben ein kurzes Zeitlimit und werden übersprungen, wenn kein Verzeichnis erreichbar ist.
 
 ## Skripte und Schalter
+
+### `Remove-ObsoleteGitBranches.ps1`
+
+Starte das Skript in einem beliebigen Verzeichnis des Repositorys, dessen lokale Branches bereinigt werden sollen. Der
+lokale Branch `main` und der aktuell ausgecheckte Branch sind geschützt. Ein lokaler Branch gilt als veralteter
+Kandidat, wenn **mindestens eine** dieser Bedingungen zutrifft: Er ist nicht weiter als der lokale `main`-Branch, er ist
+nicht weiter als sein verfügbarer Upstream oder er ist vollständig in den aktuell ausgecheckten Branch integriert. Das
+Skript zeigt Kandidaten mit `-WhatIf` als Vorschau an; andernfalls werden sie sofort und ohne Rückfrage entfernt. Vor
+jedem Löschen wird geprüft, ob sich der Branch seit der Analyse geändert hat.
+
+| Parameter / Schalter | Beschreibung                                                                  |
+|----------------------|-------------------------------------------------------------------------------|
+| `-WhatIf`            | Zeigt veraltete Branches an, die entfernt würden, ohne sie zu löschen.        |
+| `-EnglishOutput`     | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
+
+Beispiele:
+
+```powershell
+.\Remove-ObsoleteGitBranches.ps1
+.\Remove-ObsoleteGitBranches.ps1 -WhatIf
+```
+
+Das Skript verwendet nur die lokalen Referenzen und führt keinen Fetch aus. Gibt es keinen verfügbaren Upstream-Branch,
+wird dieser Upstream-Vergleich nicht angewendet. Das Skript wechselt niemals den Branch und ändert keine Dateien;
+gestagte, nicht gestagte und nicht versionierte Änderungen im Arbeitsbereich bleiben unberührt. Git kann Branches, die
+in einem anderen Worktree ausgecheckt sind, nicht entfernen; solche Fälle werden als Fehler gemeldet.
 
 ### `Initialize-GitConfiguration.ps1`
 
@@ -62,7 +99,9 @@ Vor jeder Abfrage gibt das Skript eine ausführliche Erklärung der Einstellung 
 
 ## Gemeinsame PowerShell-Parameter
 
-Das Skript unterstützt die üblichen Parameter `-Verbose`, `-Debug`, `-ErrorAction` und `-WarningAction`. Es implementiert kein `-WhatIf` und kein `-Confirm`.
+Beide Skripte unterstützen die üblichen Parameter `-Verbose`, `-Debug`, `-ErrorAction` und `-WarningAction`.
+`Initialize-GitConfiguration.ps1` implementiert kein `-WhatIf` und kein `-Confirm`. `Remove-ObsoleteGitBranches.ps1`
+bietet mit `-WhatIf` eine Vorschau; andernfalls werden veraltete Branches sofort und ohne Rückfrage entfernt.
 
 ## Sicherheit und Verhalten
 
