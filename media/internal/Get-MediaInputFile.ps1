@@ -1,0 +1,90 @@
+﻿<#
+.SYNOPSIS
+    Provides video file discovery for the media optimizer.
+
+.DESCRIPTION
+    Defines Get-MediaInputFile, which resolves a supported video file or folder
+    of MOV and MP4 files into a sorted list and excludes original backups.
+
+.NOTES
+    Dependencies: Windows PowerShell 5.1 or PowerShell 7. Uses Get-LocalizedText.
+#>
+
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 scriptbox contributors
+# Contributors:
+# - Johannes Koenig <dev@jokoenig.de>
+
+<#
+.SYNOPSIS
+    Gets supported video files from a path.
+
+.DESCRIPTION
+    Accepts one MOV or MP4 file or recursively discovers both formats in a
+    folder. Files ending in _orig are excluded. The function never prompts.
+
+.PARAMETER Path
+    Path to a MOV or MP4 file, or a folder. Surrounding quotation marks and
+    environment variables are resolved.
+
+.PARAMETER UiLanguage
+    Language of error messages: 'de' selects German, anything else English.
+
+.PARAMETER Messages
+    German message catalog keyed by the English source text.
+
+.OUTPUTS
+    PSCustomObject with Files (System.IO.FileInfo[]) and BasePath (string).
+#>
+function Get-MediaInputFile
+{
+    [CmdletBinding()]
+    param(
+        [string] $Path,
+        [string] $UiLanguage = 'en',
+        [hashtable] $Messages = @{ }
+    )
+
+    $localization = @{ Language = $UiLanguage; Messages = $Messages }
+    if ( [string]::IsNullOrWhiteSpace($Path))
+    {
+        throw (Get-LocalizedText @localization -Text 'No path was entered.')
+    }
+
+    $Path = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"'))
+    if (-not (Test-Path -LiteralPath $Path))
+    {
+        throw (Get-LocalizedText @localization -Text 'Path not found: {0}' -Arguments @($Path))
+    }
+
+    $item = Get-Item -LiteralPath $Path
+    if ($item.PSIsContainer)
+    {
+        $files = @(
+        foreach ($filter in @('*.mov', '*.mp4'))
+        {
+            Get-ChildItem -LiteralPath $item.FullName -File -Filter $filter -Recurse
+        }
+        ) | Where-Object { $_.BaseName -notmatch '_orig$' } |
+                Sort-Object -Property FullName
+        $basePath = $item.FullName
+    }
+    else
+    {
+        if ($item.Extension -notin @('.mov', '.mp4'))
+        {
+            throw (Get-LocalizedText @localization -Text 'The selected file is not a supported video file (.mov or .mp4).')
+        }
+        $files = if ($item.BaseName -match '_orig$')
+        {
+            @()
+        }
+        else
+        {
+            @($item)
+        }
+        $basePath = $item.DirectoryName
+    }
+
+    [pscustomobject]@{ Files = @($files); BasePath = $basePath }
+}

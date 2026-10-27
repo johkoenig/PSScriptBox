@@ -43,6 +43,24 @@ Die [PDF-Anleitung](pdf/README.de.md) beschreibt das Verhalten der Parameter, Be
 
 Führe die Skripte in PowerShell aus. Bei deutscher Windows-Anzeigesprache erscheinen deutsche Konsolentexte, sonst englische. `-EnglishOutput` erzwingt Englisch.
 
+## Medienwerkzeuge
+
+`media/Optimize-MediaSize.ps1` kodiert geeignete `.mov`- und `.mp4`-Videos als 720p-H.265/HEVC-MP4 mit einer
+durchschnittlichen Video-Bitrate von 1,9 Mb/s und 96 kb/s Audio. Querformat wird auf 1280x720 und Hochformat auf
+720x1280 begrenzt; ein sechsminütiges Video zielt auf ungefähr 90 MB, die tatsächliche Größe variiert jedoch. H.264 bis
+einschließlich 10 Mb/s sowie HEVC-, AV1- und VP9-Quelldateien werden übersprungen. Ergebnisse werden nur übernommen,
+wenn sie kleiner sind; unterstützte Dateizeitstempel und eingebettete Datums- und Zeitmetadaten werden vor dem Ersetzen
+geprüft. Standardmäßig wird das Original als `<Name>_orig` mit seiner ursprünglichen Erweiterung gesichert. Die
+Kodierung ist verlustbehaftet und kann keine unmerkliche Qualitätsänderung garantieren. FFmpeg (einschließlich FFprobe)
+mit `libx265` und ExifTool müssen über `PATH` verfügbar sein.
+
+| Skript                   | Parameter und Schalter                                                            |
+|--------------------------|-----------------------------------------------------------------------------------|
+| `Optimize-MediaSize.ps1` | `-InputPath <Pfad>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
+
+Die [Anleitung zu den Medienwerkzeugen](media/README.de.md) enthält Beispiele, Abhängigkeiten und Einschränkungen beim
+Erhalt von Datumsangaben.
+
 ## Tests
 
 Der GitHub-Actions-Workflow führt `tests/Invoke-Tests.ps1` bei Pull Requests mit Ziel `main` unter Windows PowerShell 5.1 und PowerShell 7 aus. Dieselbe Testsuite lässt sich lokal im Repository-Stamm mit `.\tests\Invoke-Tests.ps1` starten; erforderlich ist Pester 5 oder höher.
@@ -68,7 +86,13 @@ Parameter und Beispiele stehen in der [Git-Anleitung](git/README.de.md).
 
 ## Nextcloud-Dateikopie und lokale Bereinigung
 
-Der Ablauf verwendet zwei Skripte: `nextcloud/Copy-UserDataToNextcloud.ps1` kopiert ausgewählte Windows-Benutzerordner in vorhandene Nextcloud-Zielordner und löscht niemals Quelldaten. Nach abgeschlossener Synchronisierung zum Server kann `nextcloud/Remove-MigratedUserData.ps1` lokale Dateien löschen, deren SHA-256-Hash mit einer Datei im zugeordneten Nextcloud-Zielordner übereinstimmt, sowie leere lokale Unterordner, wenn der entsprechende Nextcloud-Ordner existiert. Vor dem Löschen bestätigt der Benutzer die vollständige Synchronisierung und genehmigt die Bereinigung für jeden Hauptordner separat.
+Der Ablauf verwendet zwei Skripte: `nextcloud/Copy-UserDataToNextcloud.ps1` kopiert ausgewählte Windows-Benutzerordner
+in vorhandene Nextcloud-Zielordner und löscht niemals Quelldaten. Dateiübertragungen werden in `.part`-Dateien
+zwischengespeichert und erst nach Abschluss unter den endgültigen Namen verschoben. Nach abgeschlossener
+Synchronisierung zum Server kann `nextcloud/Remove-MigratedUserData.ps1` lokale Dateien löschen, deren SHA-256-Hash mit
+einer Datei im zugeordneten Nextcloud-Zielordner übereinstimmt, sowie leere lokale Unterordner, wenn der entsprechende
+Nextcloud-Ordner existiert. Vor dem Löschen bestätigt der Benutzer die vollständige Synchronisierung und genehmigt die
+Bereinigung für jeden Hauptordner separat.
 
 | Skript | Parameter und Schalter |
 | --- | --- |

@@ -8,7 +8,7 @@
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7. Requires
-    ConvertTo-QuotedArgument and Get-ExecutablePath from the same internal folder.
+    ConvertTo-QuotedArgument from common\internal and Get-ExecutablePath from the same internal folder.
 #>
 
 # SPDX-License-Identifier: MIT

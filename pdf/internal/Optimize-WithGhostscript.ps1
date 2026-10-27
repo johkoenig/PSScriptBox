@@ -7,7 +7,7 @@
     Ghostscript output only when it is smaller than the input.
 
 .NOTES
-    Dependencies: Windows PowerShell 5.1 or PowerShell 7. Uses ConvertTo-QuotedArgument.
+    Dependencies: Windows PowerShell 5.1 or PowerShell 7. Uses ConvertTo-QuotedArgument from common\internal.
 #>
 
 # SPDX-License-Identifier: MIT

@@ -70,6 +70,10 @@ Repository guidance, especially for PowerShell scripts.
   `Photos`.
 - Preserve user inputs unless the documented operation explicitly modifies or deletes them. For multi-stage document processing, do not replace an intermediate result with a downstream optimization unless the result improves according to the operation's stated acceptance criteria.
 - Keep temporary files on the same volume as their inputs when atomic replacement requires it, and reliably remove them in a `finally` block.
+- Every temporary file must end in `.part` (for example, `video.mp4.part`) so sync clients such as Nextcloud ignore
+  in-progress data; pass explicit format options to tools that cannot infer the format from a `.part` suffix. Never
+  stream or copy long-running data directly to a final filename: write or copy to a same-volume `.part` file, verify it,
+  then move or atomically replace it into the final path. Temporary rollback and staging files also use `.part`.
 - Do not add secrets, tokens, API keys, or personal data to the repository.
 
 ## Quality assurance before committing

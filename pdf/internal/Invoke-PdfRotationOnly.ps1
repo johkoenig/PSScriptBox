@@ -73,8 +73,8 @@ function Invoke-PdfRotationOnly
     )
 
     $localization = @{ Language = $UiLanguage; Messages = $Messages }
-    $temporaryDirectory = Join-Path $Pdf.DirectoryName ('.{0}.orientation' -f [guid]::NewGuid().ToString('N'))
-    $renderPattern = Join-Path $temporaryDirectory 'page-%d.png'
+    $temporaryDirectory = Join-Path $Pdf.DirectoryName ('.{0}.orientation.part' -f [guid]::NewGuid().ToString('N'))
+    $renderPattern = Join-Path $temporaryDirectory 'page-%d.png.part'
     $rotationChanges = [System.Collections.Generic.List[object]]::new()
     $undeterminedPages = [System.Collections.Generic.List[int]]::new()
 
@@ -109,8 +109,8 @@ function Invoke-PdfRotationOnly
         }
 
         $pageImages = @(
-        Get-ChildItem -LiteralPath $temporaryDirectory -Filter 'page-*.png' -File |
-                Sort-Object { [int]([regex]::Match($_.BaseName, '\d+$').Value) }
+        Get-ChildItem -LiteralPath $temporaryDirectory -Filter 'page-*.png.part' -File |
+                Sort-Object { [int]([regex]::Match($_.Name, '^page-(\d+)\.png\.part$').Groups[1].Value) }
         )
         if ($pageImages.Count -ne $PageCount)
         {
@@ -119,7 +119,7 @@ function Invoke-PdfRotationOnly
 
         foreach ($pageImage in $pageImages)
         {
-            $pageNumber = [int]([regex]::Match($pageImage.BaseName, '\d+$').Value)
+            $pageNumber = [int]([regex]::Match($pageImage.Name, '^page-(\d+)\.png\.part$').Groups[1].Value)
             $orientationResult = Invoke-SetupProcess -FilePath $TesseractPath `
                 -Arguments @($pageImage.FullName, 'stdout', '-l', 'osd', '--psm', '0') `
                 -UiLanguage $UiLanguage -Messages $Messages

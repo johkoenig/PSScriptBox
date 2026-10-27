@@ -14,7 +14,7 @@
 
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\ConvertTo-QuotedArgument.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\common\internal\ConvertTo-QuotedArgument.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Optimize-WithGhostscript.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Invoke-PdfSizeOptimization.ps1')
 }
@@ -63,7 +63,7 @@ Describe 'Invoke-PdfSizeOptimization' {
         $result.Success | Should -BeFalse
         $result.Skipped | Should -BeTrue
         $result.FailureReason | Should -Match '^Below minimum file size: 1[.,]00 MB$'
-        [System.IO.File]::Exists((Join-Path $script:Folder '.check.py')) | Should -BeFalse
+        @(Get-ChildItem -LiteralPath $script:Folder -Filter '*.part' -File -Force).Count | Should -Be 0
         @(Get-ChildItem -LiteralPath $script:Folder -Force | Where-Object { $_.Name -ne 'document.pdf' }).Count | Should -Be 0
     }
 }

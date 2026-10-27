@@ -8,7 +8,7 @@
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7. Requires
-    ConvertTo-QuotedArgument from the same internal folder.
+    ConvertTo-QuotedArgument from common\internal.
 #>
 
 # SPDX-License-Identifier: MIT

@@ -6,9 +6,8 @@
 
 .DESCRIPTION
     Checks identical-content skipping, duplicate detection within the source,
-    empty-folder creation, post-copy hash verification, and the progress
-    callback. Uses TestDrive folders only; Invoke-RobocopyFile is mocked where
-    a copy must not happen.
+    empty-folder creation, pre-publication hash verification through the
+    staging helper, and the progress callback. Uses TestDrive folders only.
 
 .NOTES
     Dependencies: Pester 5 or later. Run through tests\Invoke-Tests.ps1.
@@ -20,7 +19,7 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-FileSha256.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Get-FolderInventory.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Invoke-RobocopyFile.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Copy-FileToStaging.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Copy-ChangedFiles.ps1')
 
     function Invoke-Copy {
@@ -122,13 +121,6 @@ Describe 'Copy-ChangedFiles' {
         $script:Calls[-1].Completed | Should -BeTrue
     }
 
-    It 'throws when the copied content does not match the source' {
-        [System.IO.File]::WriteAllText((Join-Path $script:Source 'broken.txt'), 'expected')
-        Mock Invoke-RobocopyFile {
-            [System.IO.File]::WriteAllText((Join-Path $script:Destination 'broken.txt'), 'other')
-        }
-    }
-
     It 'throws when a source file changes during the identical-content check' {
         [System.IO.File]::WriteAllText((Join-Path $script:Source 'moving.txt'), 'content')
         [System.IO.File]::WriteAllText((Join-Path $script:Destination 'moving.txt'), 'content')
@@ -148,17 +140,4 @@ Describe 'Copy-ChangedFiles' {
                 -FolderName 'Test' } | Should -Throw -ExpectedMessage '*Source file changed*'
     }
 
-    It 'uses the German catalog for a verification error' {
-        [System.IO.File]::WriteAllText((Join-Path $script:Source 'de.txt'), 'expected')
-        Mock Invoke-RobocopyFile {
-            [System.IO.File]::WriteAllText((Join-Path $script:Destination 'de.txt'), 'other')
-        }
-        $messages = @{ 'File content does not match at destination: {0}' = 'Inhalt stimmt nicht überein: {0}' }
-
-        { Copy-ChangedFiles -Source $script:Source -Destination $script:Destination `
-                -SourceInventory (Get-FolderInventory -Path $script:Source) `
-                -DestinationInventory (Get-FolderInventory -Path $script:Destination) `
-                -FolderName 'Test' -Language 'de' -Messages $messages } |
-            Should -Throw -ExpectedMessage 'Inhalt stimmt nicht überein: de.txt*'
-    }
 }

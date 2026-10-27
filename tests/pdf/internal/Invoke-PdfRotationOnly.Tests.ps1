@@ -14,7 +14,7 @@
 
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\ConvertTo-QuotedArgument.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\common\internal\ConvertTo-QuotedArgument.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Invoke-SetupProcess.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Invoke-PythonCommand.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Invoke-PdfRotationOnly.ps1')
@@ -58,6 +58,7 @@ Describe 'Invoke-PdfRotationOnly' {
         $result.ChangedPages | Should -Be @(1)
         $result.UndeterminedPages | Should -BeNullOrEmpty
         Test-Path -LiteralPath $outputPath | Should -BeTrue
+        @(Get-ChildItem -LiteralPath $script:Folder -Directory -Filter '.*.orientation.part' -Force).Count | Should -Be 0
         Should -Invoke Invoke-PythonCommand -Times 1
     }
 
@@ -84,6 +85,7 @@ Describe 'Invoke-PdfRotationOnly' {
         $result.ChangedPages | Should -BeNullOrEmpty
         $result.UndeterminedPages | Should -Be @(1)
         Test-Path -LiteralPath $outputPath | Should -BeFalse
+        @(Get-ChildItem -LiteralPath $script:Folder -Directory -Filter '.*.orientation.part' -Force).Count | Should -Be 0
         Should -Invoke Invoke-PythonCommand -Times 0
     }
 

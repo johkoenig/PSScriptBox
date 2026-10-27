@@ -28,7 +28,10 @@ This folder contains two PowerShell scripts: one copies selected Windows user fo
 
 ## Dependency setup
 
-The Nextcloud sync client must be installed and configured. The synchronization folder is `%USERPROFILE%\Nextcloud` by default, or the path given with `-NextcloudPath`. The Nextcloud root and every selected destination folder must already exist; nested directories are created as needed. The copy script uses Robocopy, which is included in Windows.
+The Nextcloud sync client must be installed and configured. The synchronization folder is `%USERPROFILE%\Nextcloud` by
+default, or the path given with `-NextcloudPath`. The Nextcloud root and every selected destination folder must already
+exist; nested directories are created as needed. File copying uses built-in PowerShell and .NET APIs; no external copy
+utility is required.
 
 ## Scripts and switches
 
@@ -38,7 +41,12 @@ Copies the selected user folders (Desktop, Documents, Pictures, Music, Videos) i
 
 The scripts discover the current user's actual Windows special-folder paths, including redirected folders.
 
-The copy script checks read access only. Files whose SHA-256 hash already exists anywhere in the corresponding Nextcloud destination folder are skipped without a per-file warning. Its inventory includes Nextcloud virtual-file placeholders and does not traverse symbolic links or junctions; hashing a placeholder downloads its content from the server if it is not stored locally. Robocopy transfers the remaining files in restartable mode with retries and displays a progress bar.
+The copy script checks read access only. Files whose SHA-256 hash already exists anywhere in the corresponding Nextcloud
+destination folder are skipped without a per-file warning. Its inventory includes Nextcloud virtual-file placeholders
+and does not traverse symbolic links or junctions; hashing a placeholder downloads its content from the server if it is
+not stored locally. Remaining files are copied in chunks with retries and a progress bar. Each transfer uses a
+same-directory `.part` file, verifies the source and staged hashes, then moves or atomically replaces the final file
+only after the copy completes.
 
 | Parameter / switch | Description |
 | --- | --- |
@@ -88,7 +96,9 @@ Both scripts use `SupportsShouldProcess`, so `-WhatIf` and `-Confirm` are availa
 - Destination content is never mirrored or purged.
 - The copy script checks read access only. Files whose SHA-256 hash already exists anywhere in the corresponding destination folder are skipped without a per-file warning.
 - Immediately before each deletion, the cleanup script rechecks the local hash against the matching destination files found earlier. Changed, missing, or no-longer-identical files are retained.
-- Robocopy transfers the remaining files in restartable mode with retries and shows a progress bar.
+- File transfers use chunked, retryable copies into same-directory `.part` staging files. The source and staged hashes
+  are verified before the completed file is moved or atomically replaces the final destination, so the sync client does
+  not see an in-progress final file.
 - The synchronization acknowledgement is a user statement. The cleanup script cannot verify the server state independently.
 - The project is licensed under the [MIT License](../LICENSE.md).
 - Contribution guidance is in [CONTRIBUTING.md](../CONTRIBUTING.md).

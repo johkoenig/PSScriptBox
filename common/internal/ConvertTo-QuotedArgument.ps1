@@ -1,10 +1,10 @@
 ﻿<#
 .SYNOPSIS
-    Provides the process argument quoting helper for the PDF scripts.
+    Provides the Windows process argument quoting helper shared by tool scripts.
 
 .DESCRIPTION
     Defines ConvertTo-QuotedArgument, which builds ProcessStartInfo.Arguments
-    values for external programs.
+    values for external programs on Windows PowerShell 5.1 and PowerShell 7.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7.

@@ -41,6 +41,22 @@ See the [PDF tools guide](pdf/README.md) for parameter behavior, examples, setup
 
 Run scripts from PowerShell. The scripts select German console messages on a German Windows UI and English messages otherwise; `-EnglishOutput` forces English.
 
+## Media tools
+
+`media/Optimize-MediaSize.ps1` re-encodes eligible `.mov` and `.mp4` videos as 720p H.265/HEVC MP4 using a 1.9 Mb/s
+average video bitrate and 96 kb/s audio. Landscape output is limited to 1280x720 and portrait output to 720x1280; a
+six-minute video is targeted at roughly 90 MB, though actual size varies. H.264 at or below 10 Mb/s and HEVC, AV1, or
+VP9 sources are skipped. Results are kept only when smaller, with supported file timestamps and embedded date/time
+metadata verified before replacement. By default, the original is saved as `<Name>_orig` with its original extension.
+Encoding is lossy and cannot guarantee imperceptible changes. FFmpeg (including FFprobe) with `libx265` and ExifTool
+must be available in `PATH`.
+
+| Script                   | Parameters and switches                                                           |
+|--------------------------|-----------------------------------------------------------------------------------|
+| `Optimize-MediaSize.ps1` | `-InputPath <path>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
+
+See the [Media tools guide](media/README.md) for examples, dependencies, and date-preservation limits.
+
 ## Testing
 
 The GitHub Actions workflow runs `tests/Invoke-Tests.ps1` with Windows PowerShell 5.1 and PowerShell 7 for pull requests targeting `main`. To run the same test suite locally, use `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5 or later is required.
@@ -65,7 +81,12 @@ See the [Git tool guide](git/README.md) for parameters and examples.
 
 ## Nextcloud file copy and local cleanup
 
-The workflow uses two scripts: `nextcloud/Copy-UserDataToNextcloud.ps1` copies selected Windows user folders into existing Nextcloud destination folders and never deletes source data. After synchronization to the server is complete, `nextcloud/Remove-MigratedUserData.ps1` can delete local files whose SHA-256 hash matches a file in the corresponding Nextcloud destination folder, as well as empty local subfolders when the corresponding Nextcloud folder exists. Before deletion, the user confirms that synchronization is complete and approves cleanup separately for each main folder.
+The workflow uses two scripts: `nextcloud/Copy-UserDataToNextcloud.ps1` copies selected Windows user folders into
+existing Nextcloud destination folders and never deletes source data. File transfers are staged as `.part` files and
+moved into their final names only when complete. After synchronization to the server is complete,
+`nextcloud/Remove-MigratedUserData.ps1` can delete local files whose SHA-256 hash matches a file in the corresponding
+Nextcloud destination folder, as well as empty local subfolders when the corresponding Nextcloud folder exists. Before
+deletion, the user confirms that synchronization is complete and approves cleanup separately for each main folder.
 
 | Script | Parameters and switches |
 | --- | --- |
