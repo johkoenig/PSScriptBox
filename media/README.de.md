@@ -19,6 +19,18 @@ Datumsangaben. Verwende Windows PowerShell 5.1 oder PowerShell 7 in einer normal
    .\Optimize-MediaSize.ps1 -InputPath 'C:\Medien'
    ```
 
+4. Zeige eine Vorschau der Sicherungen an, deren bearbeitete Mediendatei vorhanden ist:
+
+   ```powershell
+   .\Remove-MediaBackups.ps1 -InputPath 'C:\Medien' -WhatIf
+   ```
+
+5. Lösche nach Prüfung der Liste geeignete Sicherungen; das Skript fragt vor jeder Löschung nach:
+
+   ```powershell
+   .\Remove-MediaBackups.ps1 -InputPath 'C:\Medien'
+   ```
+
 Die PowerShell-Ausführungsrichtlinie kann eine richtlinienkonforme Methode erfordern, um lokale Skripte auszuführen.
 Schwäche die systemweite Richtlinie nicht nur für diese Werkzeuge.
 
@@ -80,10 +92,32 @@ Standardmäßig wird das Original erst dann mit seiner ursprünglichen Erweiteru
 kleineres Ergebnis mit geprüften Datumsangaben bereitsteht. Eine vorhandene Sicherung wird niemals überschrieben; die
 Datei wird als Problem gemeldet.
 
+### `Remove-MediaBackups.ps1`
+
+Findet rekursiv `_orig`-Sicherungen für MOV-, MP4-, JPG- und JPEG-Dateien. Eine Sicherung ist nur geeignet, wenn die
+bearbeitete Datei im selben Ordner vorhanden ist. Eine MOV-Sicherung wie `clip_orig.mov` wird der optimierten Datei
+`clip.mp4` zugeordnet; andere unterstützte Sicherungen werden mit derselben Erweiterung abgeglichen. `-WhatIf` zeigt
+eine Vorschau an; standardmäßig fragt das Skript vor jeder Löschung nach.
+
+| Parameter / Schalter | Beschreibung                                                                                     |
+|----------------------|--------------------------------------------------------------------------------------------------|
+| `-InputPath <Pfad>`  | Rekursiv zu durchsuchender Ordner. Ohne Angabe wird nach einem Ordner gefragt.                   |
+| `-WhatIf`            | Zeigt geeignete Sicherungen an, ohne Dateien zu löschen.                                         |
+| `-Confirm`           | Fragt vor jeder geeigneten Sicherung nach; mit `-Confirm:$false` wird die Rückfrage unterdrückt. |
+| `-EnglishOutput`     | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.                    |
+
+Beispiele:
+
+```powershell
+.\Remove-MediaBackups.ps1
+.\Remove-MediaBackups.ps1 -InputPath 'C:\Medien' -WhatIf
+.\Remove-MediaBackups.ps1 -InputPath 'C:\Medien'
+```
+
 ## Gemeinsame PowerShell-Parameter
 
-Das Skript unterstützt allgemeine Parameter wie `-Verbose`, `-Debug`, `-ErrorAction`, `-WarningAction`, `-WhatIf` und
-`-Confirm`. `-WhatIf` und `-Confirm` werden über `SupportsShouldProcess` bereitgestellt.
+Beide Skripte unterstützen allgemeine Parameter wie `-Verbose`, `-Debug`, `-ErrorAction`, `-WarningAction`, `-WhatIf`
+und `-Confirm`. `-WhatIf` und `-Confirm` werden über `SupportsShouldProcess` bereitgestellt.
 
 ## Sicherheit und Verhalten
 
@@ -113,6 +147,8 @@ Das Skript unterstützt allgemeine Parameter wie `-Verbose`, `-Debug`, `-ErrorAc
   sind. Sichere wichtige Dateien vor Verwendung dieses Schalters.
 - Das Skript löscht keine zugehörigen Live-Photo-Videos und verarbeitet keine anderen Formate als `.mov`, `.mp4`,
   `.jpg` und `.jpeg`.
+- `Remove-MediaBackups.ps1` löscht nur `_orig`-Sicherungen, wenn die bearbeitete Datei im selben Ordner vorhanden ist.
+  MOV-Sicherungen werden MP4-Ausgaben zugeordnet. Mit `-WhatIf` lassen sich die Kandidaten vor dem Löschen prüfen.
 - Verwende das Werkzeug nicht für Dateien, die byte-identisch bleiben müssen.
 - Das Projekt steht unter der [MIT-Lizenz](../LICENSE.md).
 - Hinweise zum Mitwirken stehen in [CONTRIBUTING.md](../CONTRIBUTING.md).

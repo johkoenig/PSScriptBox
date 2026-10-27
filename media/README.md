@@ -18,6 +18,18 @@ dates. Use Windows PowerShell 5.1 or PowerShell 7 from a regular user session.
    .\Optimize-MediaSize.ps1 -InputPath 'C:\Media'
    ```
 
+4. Preview removal of backups whose processed media file exists:
+
+   ```powershell
+   .\Remove-MediaBackups.ps1 -InputPath 'C:\Media' -WhatIf
+   ```
+
+5. After checking the list, remove eligible backups; the script asks before each deletion:
+
+   ```powershell
+   .\Remove-MediaBackups.ps1 -InputPath 'C:\Media'
+   ```
+
 PowerShell execution policy may require a policy-approved way to run local scripts. Do not weaken system policy globally
 just to run these tools.
 
@@ -75,9 +87,31 @@ Examples:
 By default, the original is moved to `<Name>_orig` with its original extension only after a smaller, date-verified
 result is ready. An existing backup is never overwritten; that file is reported as an issue.
 
+### `Remove-MediaBackups.ps1`
+
+Recursively finds `_orig` backups for MOV, MP4, JPG, and JPEG files. A backup is eligible only when its processed
+counterpart exists in the same folder. A MOV backup such as `clip_orig.mov` is paired with the optimized `clip.mp4`;
+other supported backups are paired with the same extension. The script previews with `-WhatIf` and prompts before each
+deletion by default.
+
+| Parameter / switch  | Description                                                                         |
+|---------------------|-------------------------------------------------------------------------------------|
+| `-InputPath <path>` | Folder to search recursively. If omitted, prompts for a folder.                     |
+| `-WhatIf`           | Lists eligible backups without deleting files.                                      |
+| `-Confirm`          | Prompts before deleting each eligible backup; use `-Confirm:$false` to suppress it. |
+| `-EnglishOutput`    | Forces English console output regardless of Windows UI language.                    |
+
+Examples:
+
+```powershell
+.\Remove-MediaBackups.ps1
+.\Remove-MediaBackups.ps1 -InputPath 'C:\Media' -WhatIf
+.\Remove-MediaBackups.ps1 -InputPath 'C:\Media'
+```
+
 ## Shared PowerShell parameters
 
-The script supports common parameters including `-Verbose`, `-Debug`, `-ErrorAction`, `-WarningAction`, `-WhatIf`, and
+Both scripts support common parameters including `-Verbose`, `-Debug`, `-ErrorAction`, `-WarningAction`, `-WhatIf`, and
 `-Confirm`. `-WhatIf` and `-Confirm` are provided through `SupportsShouldProcess`.
 
 ## Safety and behavior
@@ -106,6 +140,8 @@ The script supports common parameters including `-Verbose`, `-Debug`, `-ErrorAct
   important files before using this option.
 - The script does not delete matching Live Photo videos or process formats other than `.mov`, `.mp4`, `.jpg`, and
   `.jpeg`.
+- `Remove-MediaBackups.ps1` deletes only `_orig` backups with an existing processed counterpart in the same folder.
+  MOV backups are matched to MP4 outputs. Use `-WhatIf` to review candidates before deletion.
 - Do not use this tool on files that must remain byte-identical.
 - The project is licensed under the [MIT License](../LICENSE.md).
 - Contribution guidance is in [CONTRIBUTING.md](../CONTRIBUTING.md).

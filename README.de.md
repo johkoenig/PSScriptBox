@@ -58,10 +58,13 @@ nicht verglichen. Der interne Samsung-Maker-Note-Zeitstempel `TimeStamp` und das
 Standardmäßig wird das Original als `<Name>_orig` mit seiner ursprünglichen Erweiterung gesichert.
 Die Kodierung ist verlustbehaftet und kann keine unmerkliche Qualitätsänderung garantieren. FFmpeg (einschließlich
 FFprobe) mit `libx265`- und MJPEG-Encodern sowie ExifTool müssen über `PATH` verfügbar sein.
+`media/Remove-MediaBackups.ps1` entfernt interaktiv `_orig`-Sicherungen nur, wenn die bearbeitete Datei vorhanden ist;
+eine MOV-Sicherung wird der MP4-Ausgabe zugeordnet.
 
-| Skript                   | Parameter und Schalter                                                            |
-|--------------------------|-----------------------------------------------------------------------------------|
-| `Optimize-MediaSize.ps1` | `-InputPath <Pfad>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
+| Skript                    | Parameter und Schalter                                                            |
+|---------------------------|-----------------------------------------------------------------------------------|
+| `Optimize-MediaSize.ps1`  | `-InputPath <Pfad>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
+| `Remove-MediaBackups.ps1` | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
 
 Die [Anleitung zu den Medienwerkzeugen](media/README.de.md) enthält Beispiele, Abhängigkeiten und Einschränkungen beim
 Erhalt von Datumsangaben.

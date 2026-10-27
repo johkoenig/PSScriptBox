@@ -52,11 +52,13 @@ smaller, with supported file timestamps and embedded EXIF/XMP and container capt
 Per-track timestamps, Samsung maker-note `TimeStamp`, and non-capture EXIF `IFD0:ModifyDate` are excluded from
 verification. By default, the original is saved as `<Name>_orig` with its original extension. Encoding is lossy and
 cannot guarantee imperceptible changes. FFmpeg (including FFprobe) with `libx265` and MJPEG encoders, plus ExifTool,
-must be available in `PATH`.
+must be available in `PATH`. `media/Remove-MediaBackups.ps1` interactively removes `_orig` backups only when their
+processed counterpart exists; a MOV backup is matched to its MP4 output.
 
-| Script                   | Parameters and switches                                                           |
-|--------------------------|-----------------------------------------------------------------------------------|
-| `Optimize-MediaSize.ps1` | `-InputPath <path>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
+| Script                    | Parameters and switches                                                           |
+|---------------------------|-----------------------------------------------------------------------------------|
+| `Optimize-MediaSize.ps1`  | `-InputPath <path>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
+| `Remove-MediaBackups.ps1` | `-InputPath <folder>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
 
 See the [Media tools guide](media/README.md) for examples, dependencies, and date-preservation limits.
 

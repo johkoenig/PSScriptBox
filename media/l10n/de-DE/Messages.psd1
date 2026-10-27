@@ -4,6 +4,22 @@
 # - Johannes Koenig <dev@jokoenig.de>
 
 @{
+    'Removes eligible original media backups.' = 'Entfernt geeignete Original-Mediensicherungen.'
+    'Enter the folder containing original media backups.' = 'Gib den Ordner mit den Original-Mediensicherungen ein.'
+    'No folder was specified.' = 'Es wurde kein Ordner angegeben.'
+    'The specified folder was not found: {0}' = 'Der angegebene Ordner wurde nicht gefunden: {0}'
+    '  Folder: {0}' = '  Ordner: {0}'
+    '  Original media backups eligible for deletion: {0}' = '  Zu löschende Original-Mediensicherungen: {0}'
+    'No matching _orig media backups with a processed media file were found.' = 'Keine passenden _orig-Mediensicherungen mit vorhandener bearbeiteter Mediendatei gefunden.'
+    'Found: 0' = 'Gefunden: 0'
+    'Found: {0}' = 'Gefunden: {0}'
+    'Deleted: 0' = 'Gelöscht: 0'
+    'Deleted: {0}' = 'Gelöscht: {0}'
+    'Preview: no files were deleted.' = 'Vorschau: Es wurden keine Dateien gelöscht.'
+    'Delete original media backup; keep processed media file: {0}' = 'Original-Mediensicherung löschen; bearbeitete Mediendatei bleibt erhalten: {0}'
+    'Deleting original media backups...' = 'Lösche Original-Mediensicherungen...'
+    '  Deleted: {0}' = '  Gelöscht: {0}'
+
     'Optimizes inefficient videos and large JPEG photos.' = 'Optimiert ineffizient komprimierte Videos und große JPEG-Fotos.'
     'Preserves supported file timestamps and verified capture dates.' = 'Erhält unterstützte Dateizeitstempel und geprüfte Aufnahmedaten.'
     'Missing dependencies: {0}' = 'Fehlende Abhängigkeiten: {0}'
