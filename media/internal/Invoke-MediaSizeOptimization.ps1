@@ -5,7 +5,7 @@
 .DESCRIPTION
     Defines Invoke-MediaSizeOptimization, which encodes MOV and MP4 video with
     720p H.265 and keeps the source unchanged unless the MP4 is smaller and its
-    embedded date/time metadata has been verified.
+    file-level and capture date/time metadata has been verified.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7, FFmpeg, ExifTool.
@@ -27,10 +27,11 @@
     720x1280, encodes H.265 with the libx265 encoder at the requested average
     video bitrate, and encodes audio at 96 kb/s. FFmpeg metadata is mapped and
     ExifTool copies all supported metadata. The operation fails safely if any
-    embedded date/time tag differs. Creation, last-write, and last-access
-    timestamps are restored. By default, the source is moved to a sibling _orig
-    backup with the source extension. With -ReplaceOriginal, the source is
-    removed only after the MP4 is ready.
+    file-level or capture date/time tag differs. Per-track creation and
+    modification timestamps are not compared. Creation, last-write, and
+    last-access timestamps are restored. By default, the source is moved to a
+    sibling _orig backup with the source extension. With -ReplaceOriginal, the
+    source is removed only after the MP4 is ready.
 
 .PARAMETER Video
     MOV or MP4 file to optimize.

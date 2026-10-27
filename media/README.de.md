@@ -45,8 +45,8 @@ Verfügbarkeit; es installiert keine Software und benötigt keine Administratorr
 Kodiert geeignete `.mov`- und `.mp4`-Dateien als 720p-H.265/HEVC-MP4 mit dem `libx265`-Encoder, einer durchschnittlichen
 Video-Bitrate von 1,9 Mb/s, dem Preset `medium` und 96 kb/s Audio. Querformat wird auf 1280x720 begrenzt, Hochformat auf
 720x1280. Für ein sechsminütiges Video ergibt das ungefähr 90 MB; die tatsächliche Größe hängt von Dauer und Inhalt ab.
-H.264-Dateien bis einschließlich 10 Mb/s sowie HEVC-, AV1- und VP9-Dateien werden übersprungen. H.264 mit hoher, aber
-unbekannter Bitrate wird vorsichtshalber übersprungen; eine passende `_orig`-Sicherung verhindert wiederholte
+H.264-Dateien bis einschließlich 1,9 Mb/s sowie HEVC-, AV1- und VP9-Dateien werden übersprungen. H.264 mit unbekannter
+Bitrate wird vorsichtshalber übersprungen; eine passende `_orig`-Sicherung verhindert wiederholte
 verlustbehaftete Kodierung. Andere Codecs werden neu kodiert. Ordner werden rekursiv durchsucht; ein Ergebnis wird nur
 übernommen, wenn es kleiner als die Quelldatei ist.
 
@@ -80,11 +80,14 @@ Das Skript unterstützt allgemeine Parameter wie `-Verbose`, `-Debug`, `-ErrorAc
 ## Sicherheit und Verhalten
 
 - FFmpeg übernimmt globale und Stream-Metadaten sowie Kapitel. ExifTool kopiert unterstützte Metadaten aus der
-  Quelldatei. Vor der Übernahme vergleicht das Skript alle von ExifTool gemeldeten eingebetteten Datums- und
-  Zeitangaben. Wenn Datumsmetadaten nicht kopiert werden können oder abweichen, bleibt die Quelldatei erhalten.
+  Quelldatei. Vor der Übernahme vergleicht das Skript Datei-, EXIF-/XMP- und Container-Aufnahmedaten. Erstellungs- und
+  Änderungszeiten
+  einzelner Tracks werden nicht verglichen, da sich die Ausgabestreams unterscheiden können. Wenn relevante
+  Datumsmetadaten nicht kopiert werden können oder abweichen, bleibt die Quelldatei erhalten.
 - Erstellungszeit, Änderungszeit und letzter Zugriff der Quelldatei werden auf der MP4-Datei wiederhergestellt.
-  Unterstützte eingebettete Datums- und Zeitangaben werden kopiert und geprüft. Windows erlaubt dem Skript nicht, die
-  NTFS-Änderungszeit festzulegen; dieser niedrigstufige Dateisystem-Zeitstempel kann daher nicht erhalten werden.
+  Unterstützte EXIF-/XMP- und Container-Aufnahmedaten werden kopiert und geprüft. Windows erlaubt dem Skript nicht, die
+  NTFS-
+  Änderungszeit festzulegen; dieser niedrigstufige Dateisystem-Zeitstempel kann daher nicht erhalten werden.
 - Das Original wird nur ersetzt, wenn die MP4-Datei kleiner ist. Vorhandene Ausgaben und Sicherungen bleiben erhalten
   und werden nicht überschrieben.
 - H.264-Dateien mit hoher Bitrate und passender vorhandener `_orig`-Sicherung werden übersprungen, um bei späteren

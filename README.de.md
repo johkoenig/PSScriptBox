@@ -48,9 +48,10 @@ Führe die Skripte in PowerShell aus. Bei deutscher Windows-Anzeigesprache ersch
 `media/Optimize-MediaSize.ps1` kodiert geeignete `.mov`- und `.mp4`-Videos als 720p-H.265/HEVC-MP4 mit einer
 durchschnittlichen Video-Bitrate von 1,9 Mb/s und 96 kb/s Audio. Querformat wird auf 1280x720 und Hochformat auf
 720x1280 begrenzt; ein sechsminütiges Video zielt auf ungefähr 90 MB, die tatsächliche Größe variiert jedoch. H.264 bis
-einschließlich 10 Mb/s sowie HEVC-, AV1- und VP9-Quelldateien werden übersprungen. Ergebnisse werden nur übernommen,
-wenn sie kleiner sind; unterstützte Dateizeitstempel und eingebettete Datums- und Zeitmetadaten werden vor dem Ersetzen
-geprüft. Standardmäßig wird das Original als `<Name>_orig` mit seiner ursprünglichen Erweiterung gesichert. Die
+einschließlich 1,9 Mb/s sowie HEVC-, AV1- und VP9-Quelldateien werden übersprungen. Ergebnisse werden nur übernommen,
+wenn sie kleiner sind; unterstützte Dateizeitstempel sowie eingebettete EXIF-/XMP- und Container-Aufnahmedaten werden
+vor dem Ersetzen geprüft. Erstellungs- und Änderungszeiten einzelner Tracks werden nicht verglichen. Standardmäßig wird
+das Original als `<Name>_orig` mit seiner ursprünglichen Erweiterung gesichert. Die
 Kodierung ist verlustbehaftet und kann keine unmerkliche Qualitätsänderung garantieren. FFmpeg (einschließlich FFprobe)
 mit `libx265` und ExifTool müssen über `PATH` verfügbar sein.
 

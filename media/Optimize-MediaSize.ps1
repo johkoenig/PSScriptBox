@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Processes one MOV or MP4 file or all such files in a specified folder and
-    its subfolders. H.264 video at or below 10 Mb/s and video using HEVC, AV1,
+    its subfolders. H.264 video at or below 1.9 Mb/s and video using HEVC, AV1,
     or VP9 is skipped. H.264 with unknown bitrate is also skipped
     conservatively. Other eligible videos are scaled to a maximum of 1280x720
     landscape or 720x1280 portrait and encoded as H.265/HEVC at an average
@@ -12,9 +12,10 @@
     90 MB for a six-minute video, though actual size varies with duration and
     content. Encoding is lossy, so visual similarity cannot be guaranteed.
     The MP4 is kept only when it is smaller than the source. FFmpeg maps
-    metadata and chapters, and ExifTool copies supported metadata. Every
-    embedded date/time tag reported by ExifTool is compared before
-    replacement; a mismatch leaves the source unchanged.
+    metadata and chapters, and ExifTool copies supported metadata. File-level
+    and capture date/time tags are compared before replacement; per-track
+    creation and modification timestamps are excluded because output streams
+    may differ.
 
     Creation, last-write, and last-access file timestamps are copied from the
     source. NTFS change time cannot be set through the file APIs used here.
@@ -278,8 +279,8 @@ for ($index = 0; $index -lt $videoFiles.Count; $index++) {
         }
         elseif ($codec -eq 'h264')
         {
-            $skipReason = Get-LocalizedText -Text 'H.264 bitrate {0:N1} Mb/s is at or below the {1:N0} Mb/s threshold.' -Arguments @(
-                ($videoBitrate / 1000000), 10
+            $skipReason = Get-LocalizedText -Text 'H.264 bitrate {0:N1} Mb/s is at or below the {1:N1} Mb/s threshold.' -Arguments @(
+                ($videoBitrate / 1000000), 1.9
             )
         }
         else

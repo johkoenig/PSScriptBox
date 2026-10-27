@@ -26,7 +26,7 @@
     'Already uses an efficient video codec ({0}).' = 'Verwendet bereits einen effizienten Video-Codec ({0}).'
     'An _orig backup already exists; skipping to prevent repeat re-encoding.' = 'Eine _orig-Sicherung ist bereits vorhanden; wird übersprungen, um eine erneute Kodierung zu vermeiden.'
     'H.264 bitrate is unavailable; skipping to avoid unnecessary re-encoding.' = 'H.264-Bitrate nicht verfügbar; wird übersprungen, um unnötige Neukodierung zu vermeiden.'
-    'H.264 bitrate {0:N1} Mb/s is at or below the {1:N0} Mb/s threshold.' = 'H.264-Bitrate {0:N1} Mb/s liegt auf oder unter dem Schwellenwert von {1:N0} Mb/s.'
+    'H.264 bitrate {0:N1} Mb/s is at or below the {1:N1} Mb/s threshold.' = 'H.264-Bitrate {0:N1} Mb/s liegt auf oder unter dem Schwellenwert von {1:N1} Mb/s.'
     'High-bitrate H.264 ({0:N1} Mb/s); converting to 720p H.265 at 1.9 Mb/s.' = 'H.264 mit hoher Bitrate ({0:N1} Mb/s); Umwandlung in 720p H.265 mit 1,9 Mb/s.'
     "Could not inspect '{0}':`n{1}" = "'{0}' konnte nicht untersucht werden:`n{1}"
     'Preview only; no files were changed.' = 'Nur Vorschau; es wurden keine Dateien geändert.'

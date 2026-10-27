@@ -16,10 +16,11 @@ BeforeAll {
 }
 
 Describe 'Test-MediaVideoCodecEfficient' {
-    It 'skips H.264 at or below 10 Mb/s and skips HEVC, AV1, and VP9' {
+    It 'skips H.264 at or below 1.9 Mb/s and skips HEVC, AV1, and VP9' {
         foreach ($codec in @('h264', 'H264'))
         {
-            Test-MediaVideoCodecEfficient -Codec $codec -VideoBitrate 10000000 | Should -BeTrue
+            Test-MediaVideoCodecEfficient -Codec $codec -VideoBitrate 1900000 | Should -BeTrue
+            Test-MediaVideoCodecEfficient -Codec $codec -VideoBitrate 1900001 | Should -BeFalse
             Test-MediaVideoCodecEfficient -Codec $codec -VideoBitrate 0 | Should -BeTrue
         }
         foreach ($codec in @('hevc', 'av1', 'vp9'))
@@ -28,8 +29,8 @@ Describe 'Test-MediaVideoCodecEfficient' {
         }
     }
 
-    It 're-encodes H.264 above 10 Mb/s and does not skip other codecs' {
-        Test-MediaVideoCodecEfficient -Codec 'h264' -VideoBitrate 10000001 | Should -BeFalse
+    It 're-encodes H.264 above 1.9 Mb/s and does not skip other codecs' {
+        Test-MediaVideoCodecEfficient -Codec 'h264' -VideoBitrate 1900001 | Should -BeFalse
         Test-MediaVideoCodecEfficient -Codec 'h264' -VideoBitrate 12546276 -HasOriginalBackup $true | Should -BeTrue
         foreach ($codec in @('mpeg4', 'mpeg2video', 'prores', 'theora'))
         {

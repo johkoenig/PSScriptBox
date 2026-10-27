@@ -20,7 +20,7 @@
     Tests whether a video codec should be skipped.
 
 .DESCRIPTION
-    Returns true for H.264 at or below 10 Mb/s, or for HEVC, AV1, and VP9 at
+    Returns true for H.264 at or below 1.9 Mb/s, or for HEVC, AV1, and VP9 at
     any bitrate. H.264 with unknown bitrate is skipped conservatively.
 
 .PARAMETER Codec
@@ -47,7 +47,7 @@ function Test-MediaVideoCodecEfficient
     $normalizedCodec = $Codec.Trim().ToLowerInvariant()
     if ($normalizedCodec -eq 'h264')
     {
-        return $HasOriginalBackup -or $VideoBitrate -le 10000000
+        return $HasOriginalBackup -or $VideoBitrate -le 1900000
     }
     return $normalizedCodec -in @('hevc', 'av1', 'vp9')
 }

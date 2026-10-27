@@ -3,8 +3,9 @@
     Reads date and time metadata from a media file.
 
 .DESCRIPTION
-    Defines Get-MediaDateMetadata, which uses ExifTool to return all supported
-    embedded date/time tags, excluding file-system timestamps.
+    Defines Get-MediaDateMetadata, which uses ExifTool to return supported
+    file-level and capture date/time tags, excluding file-system timestamps
+    and per-track creation/modification timestamps.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7 and ExifTool.
@@ -23,6 +24,8 @@
 .DESCRIPTION
     Requests ExifTool's complete Time tag group in grouped JSON form. File
     system timestamps are excluded because they are preserved separately.
+    Per-track creation and modification timestamps are excluded because output
+    streams may differ from the source.
 
 .PARAMETER Path
     Path to the media file.
@@ -37,7 +40,8 @@
     German message catalog keyed by the English source text.
 
 .OUTPUTS
-    Hashtable mapping grouped ExifTool date/time tag names to normalized values.
+    Hashtable mapping grouped ExifTool file-level and capture date/time tags
+    to normalized values.
 #>
 function Get-MediaDateMetadata
 {
@@ -90,7 +94,8 @@ function Get-MediaDateMetadata
     $metadata = @{ }
     foreach ($property in $records[0].PSObject.Properties)
     {
-        if ($property.Name -eq 'SourceFile')
+        if ($property.Name -eq 'SourceFile' -or
+                $property.Name -match '^Track\d+:(?:Media|Track)(?:Create|Modify)Date$')
         {
             continue
         }

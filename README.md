@@ -45,9 +45,10 @@ Run scripts from PowerShell. The scripts select German console messages on a Ger
 
 `media/Optimize-MediaSize.ps1` re-encodes eligible `.mov` and `.mp4` videos as 720p H.265/HEVC MP4 using a 1.9 Mb/s
 average video bitrate and 96 kb/s audio. Landscape output is limited to 1280x720 and portrait output to 720x1280; a
-six-minute video is targeted at roughly 90 MB, though actual size varies. H.264 at or below 10 Mb/s and HEVC, AV1, or
-VP9 sources are skipped. Results are kept only when smaller, with supported file timestamps and embedded date/time
-metadata verified before replacement. By default, the original is saved as `<Name>_orig` with its original extension.
+six-minute video is targeted at roughly 90 MB, though actual size varies. H.264 at or below 1.9 Mb/s and HEVC, AV1, or
+VP9 sources are skipped. Results are kept only when smaller, with supported file timestamps and embedded EXIF/XMP and
+container capture dates verified before replacement. Per-track creation and modification timestamps are excluded.
+By default, the original is saved as `<Name>_orig` with its original extension.
 Encoding is lossy and cannot guarantee imperceptible changes. FFmpeg (including FFprobe) with `libx265` and ExifTool
 must be available in `PATH`.
 
