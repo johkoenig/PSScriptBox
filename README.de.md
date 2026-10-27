@@ -61,10 +61,18 @@ FFprobe) mit `libx265`- und MJPEG-Encodern sowie ExifTool müssen über `PATH` v
 `media/Remove-MediaBackups.ps1` entfernt interaktiv `_orig`-Sicherungen nur, wenn die bearbeitete Datei vorhanden ist;
 eine MOV-Sicherung wird der MP4-Ausgabe zugeordnet.
 
+`media/Restore-MediaDate.ps1` stellt Datumsangaben in dieser Reihenfolge wieder her: Dateiname, EXIF
+`DateTimeOriginal`, `CreateDate`, dann `ModifyDate`. Das Skript benennt unterstützte Mediendateien nach
+`YY-MM-DD HH-mm-ss XXXX.ext` um, aktualisiert Erstellungs- und Änderungszeit sowie unterstützte eingebettete Daten
+nur dann, wenn sie vom ausgewählten Datum abweichen, und bietet mit `-WhatIf` eine Vorschau. Namen, die bereits dem
+Muster entsprechen, bleiben erhalten. ExifTool muss über `PATH` verfügbar sein; Windows erlaubt keine Änderung der
+niedrigstufigen NTFS-Änderungszeit.
+
 | Skript                    | Parameter und Schalter                                                            |
 |---------------------------|-----------------------------------------------------------------------------------|
 | `Optimize-MediaSize.ps1`  | `-InputPath <Pfad>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
 | `Remove-MediaBackups.ps1` | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
+| `Restore-MediaDate.ps1`   | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
 
 Die [Anleitung zu den Medienwerkzeugen](media/README.de.md) enthält Beispiele, Abhängigkeiten und Einschränkungen beim
 Erhalt von Datumsangaben.

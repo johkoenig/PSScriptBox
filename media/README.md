@@ -1,7 +1,8 @@
 > Deutsche Version: [README.de.md](README.de.md)
 
 This folder contains PowerShell utilities for reducing video and high-resolution JPEG photo sizes while preserving
-dates. Use Windows PowerShell 5.1 or PowerShell 7 from a regular user session.
+dates, and for restoring media dates from filenames or metadata. Use Windows PowerShell 5.1 or PowerShell 7 from a
+regular user session.
 
 ## Quick start
 
@@ -28,6 +29,18 @@ dates. Use Windows PowerShell 5.1 or PowerShell 7 from a regular user session.
 
    ```powershell
    .\Remove-MediaBackups.ps1 -InputPath 'C:\Media'
+   ```
+
+6. Preview restoring dates and renaming supported media files:
+
+   ```powershell
+   .\Restore-MediaDate.ps1 -InputPath 'C:\Media' -WhatIf
+   ```
+
+7. Restore dates and rename files after reviewing the preview:
+
+   ```powershell
+   .\Restore-MediaDate.ps1 -InputPath 'C:\Media'
    ```
 
 PowerShell execution policy may require a policy-approved way to run local scripts. Do not weaken system policy globally
@@ -110,10 +123,42 @@ Examples:
 .\Remove-MediaBackups.ps1 -InputPath 'C:\Media'
 ```
 
+### `Restore-MediaDate.ps1`
+
+Recursively processes `.jpg`, `.jpeg`, `.png`, `.mp4`, `.mov`, `.avi`, `.mkv`, `.gif`, `.heic`, `.webp`, `.3gp`, and
+`.m4v` files. It chooses the date in this order: a leading `YY-MM-DD HH-mm-ss` filename timestamp, EXIF
+`DateTimeOriginal`, general `CreateDate`, then `ModifyDate`. A malformed date-shaped filename is reported instead of
+falling back to metadata. Files are renamed to `YY-MM-DD HH-mm-ss XXXX.ext`, where `XXXX` is a random four-character
+uppercase alphanumeric code. Files whose names already match this full pattern keep their current name while their
+dates are restored. Existing names are not overwritten; another code is generated on collision.
+
+The script compares filesystem creation and last-write times and the legacy date tags before writing. Only values that
+differ from the selected date are changed; unchanged values are left untouched. It does not change last-access time.
+Because Windows does not permit the script to set NTFS change time, that low-level timestamp cannot be preserved.
+Files without a valid date are reported as failures; processing continues for other files.
+
+| Parameter / switch  | Description                                                      |
+|---------------------|------------------------------------------------------------------|
+| `-InputPath <path>` | Folder to search recursively. If omitted, prompts for a folder.  |
+| `-WhatIf`           | Shows date sources and proposed names without changing files.    |
+| `-Confirm`          | Prompts before renaming and changing each file's dates.          |
+| `-EnglishOutput`    | Forces English console output regardless of Windows UI language. |
+
+Examples:
+
+```powershell
+.\Restore-MediaDate.ps1
+.\Restore-MediaDate.ps1 -InputPath 'C:\Media' -WhatIf
+.\Restore-MediaDate.ps1 -InputPath 'C:\Media' -Confirm
+```
+
+ExifTool must be available in `PATH`. This script changes filenames and embedded dates; test with `-WhatIf` first and
+keep a backup of important files.
+
 ## Shared PowerShell parameters
 
-Both scripts support common parameters including `-Verbose`, `-Debug`, `-ErrorAction`, `-WarningAction`, `-WhatIf`, and
-`-Confirm`. `-WhatIf` and `-Confirm` are provided through `SupportsShouldProcess`.
+All scripts support common parameters including `-Verbose`, `-Debug`, `-ErrorAction`, and `-WarningAction`.
+`-WhatIf` and `-Confirm` are available on scripts that change files.
 
 ## Safety and behavior
 
@@ -143,6 +188,9 @@ Both scripts support common parameters including `-Verbose`, `-Debug`, `-ErrorAc
   `.jpeg`.
 - `Remove-MediaBackups.ps1` deletes only `_orig` backups with an existing processed counterpart in the same folder.
   MOV backups are matched to MP4 outputs. Use `-WhatIf` to review candidates before deletion.
+- `Restore-MediaDate.ps1` uses filename date, EXIF `DateTimeOriginal`, `CreateDate`, and then `ModifyDate`; it renames
+  every valid supported file and updates filesystem and embedded dates. Its random four-character suffix uses uppercase
+  letters and digits. Windows does not permit the script to set NTFS change time.
 - Do not use this tool on files that must remain byte-identical.
 - The project is licensed under the [MIT License](../LICENSE.md).
 - Contribution guidance is in [CONTRIBUTING.md](../CONTRIBUTING.md).

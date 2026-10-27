@@ -55,10 +55,17 @@ cannot guarantee imperceptible changes. FFmpeg (including FFprobe) with `libx265
 must be available in `PATH`. `media/Remove-MediaBackups.ps1` interactively removes `_orig` backups only when their
 processed counterpart exists; a MOV backup is matched to its MP4 output.
 
+`media/Restore-MediaDate.ps1` restores dates in this order: filename, EXIF `DateTimeOriginal`, `CreateDate`, then
+`ModifyDate`. It renames supported media to `YY-MM-DD HH-mm-ss XXXX.ext`, updates filesystem creation and last-write
+times plus supported embedded dates only when they differ from the selected date, and uses `-WhatIf` for preview.
+Names that already match the pattern are retained. ExifTool must be available in `PATH`; Windows does not permit
+setting the low-level NTFS change time.
+
 | Script                    | Parameters and switches                                                           |
 |---------------------------|-----------------------------------------------------------------------------------|
 | `Optimize-MediaSize.ps1`  | `-InputPath <path>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
 | `Remove-MediaBackups.ps1` | `-InputPath <folder>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
+| `Restore-MediaDate.ps1`   | `-InputPath <folder>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
 
 See the [Media tools guide](media/README.md) for examples, dependencies, and date-preservation limits.
 
