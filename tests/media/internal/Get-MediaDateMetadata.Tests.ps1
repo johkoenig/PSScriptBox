@@ -51,6 +51,28 @@ Describe 'Get-MediaDateMetadata' {
         }
     }
 
+    It 'excludes non-capture timestamps but keeps standard EXIF capture dates' {
+        Mock Invoke-MediaTool {
+            [pscustomobject]@{
+                ExitCode = 0
+                StdOut = ConvertTo-Json -InputObject @{
+                    'ExifIFD:DateTimeOriginal' = '2026:09:20 14:40:48'
+                    'ExifIFD:CreateDate' = '2026:09:20 14:40:48'
+                    'Samsung:TimeStamp' = '2026:09:20 11:10:48.201+02:00'
+                    'IFD0:ModifyDate' = '2026:09:20 20:28:06'
+                } -Compress
+                StdErr = ''
+            }
+        }
+
+        $result = Get-MediaDateMetadata -Path 'C:\Photos\photo.jpg' -ExifToolPath 'C:\Tools\exiftool.exe'
+
+        $result.ContainsKey('ExifIFD:DateTimeOriginal') | Should -BeTrue
+        $result.ContainsKey('ExifIFD:CreateDate') | Should -BeTrue
+        $result.ContainsKey('Samsung:TimeStamp') | Should -BeFalse
+        $result.ContainsKey('IFD0:ModifyDate') | Should -BeFalse
+    }
+
     It 'throws when ExifTool returns a nonzero exit code' {
         Mock Invoke-MediaTool {
             [pscustomobject]@{ ExitCode = 1; StdOut = ''; StdErr = 'read failed' }

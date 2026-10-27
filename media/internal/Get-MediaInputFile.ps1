@@ -3,8 +3,8 @@
     Provides video file discovery for the media optimizer.
 
 .DESCRIPTION
-    Defines Get-MediaInputFile, which resolves a supported video file or folder
-    of MOV and MP4 files into a sorted list and excludes original backups.
+    Defines Get-MediaInputFile, which resolves a supported video or JPEG file
+    or folder of MOV, MP4, JPG, and JPEG files into a sorted list.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7. Uses Get-LocalizedText.
@@ -17,15 +17,16 @@
 
 <#
 .SYNOPSIS
-    Gets supported video files from a path.
+    Gets supported media files from a path.
 
 .DESCRIPTION
-    Accepts one MOV or MP4 file or recursively discovers both formats in a
-    folder. Files ending in _orig are excluded. The function never prompts.
+    Accepts one MOV, MP4, JPG, or JPEG file, or recursively discovers these
+    formats in a folder. Files ending in _orig are excluded. The function
+    never prompts.
 
 .PARAMETER Path
-    Path to a MOV or MP4 file, or a folder. Surrounding quotation marks and
-    environment variables are resolved.
+    Path to a MOV, MP4, JPG, or JPEG file, or a folder. Surrounding quotation
+    marks and environment variables are resolved.
 
 .PARAMETER UiLanguage
     Language of error messages: 'de' selects German, anything else English.
@@ -61,7 +62,7 @@ function Get-MediaInputFile
     if ($item.PSIsContainer)
     {
         $files = @(
-        foreach ($filter in @('*.mov', '*.mp4'))
+        foreach ($filter in @('*.mov', '*.mp4', '*.jpg', '*.jpeg'))
         {
             Get-ChildItem -LiteralPath $item.FullName -File -Filter $filter -Recurse
         }
@@ -71,9 +72,9 @@ function Get-MediaInputFile
     }
     else
     {
-        if ($item.Extension -notin @('.mov', '.mp4'))
+        if ($item.Extension -notin @('.mov', '.mp4', '.jpg', '.jpeg'))
         {
-            throw (Get-LocalizedText @localization -Text 'The selected file is not a supported video file (.mov or .mp4).')
+            throw (Get-LocalizedText @localization -Text 'The selected file is not a supported media file (.mov, .mp4, .jpg, .jpeg).')
         }
         $files = if ($item.BaseName -match '_orig$')
         {

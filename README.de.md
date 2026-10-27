@@ -48,12 +48,16 @@ Führe die Skripte in PowerShell aus. Bei deutscher Windows-Anzeigesprache ersch
 `media/Optimize-MediaSize.ps1` kodiert geeignete `.mov`- und `.mp4`-Videos als 720p-H.265/HEVC-MP4 mit einer
 durchschnittlichen Video-Bitrate von 1,9 Mb/s und 96 kb/s Audio. Querformat wird auf 1280x720 und Hochformat auf
 720x1280 begrenzt; ein sechsminütiges Video zielt auf ungefähr 90 MB, die tatsächliche Größe variiert jedoch. H.264 bis
-einschließlich 1,9 Mb/s sowie HEVC-, AV1- und VP9-Quelldateien werden übersprungen. Ergebnisse werden nur übernommen,
-wenn sie kleiner sind; unterstützte Dateizeitstempel sowie eingebettete EXIF-/XMP- und Container-Aufnahmedaten werden
-vor dem Ersetzen geprüft. Erstellungs- und Änderungszeiten einzelner Tracks werden nicht verglichen. Standardmäßig wird
-das Original als `<Name>_orig` mit seiner ursprünglichen Erweiterung gesichert. Die
-Kodierung ist verlustbehaftet und kann keine unmerkliche Qualitätsänderung garantieren. FFmpeg (einschließlich FFprobe)
-mit `libx265` und ExifTool müssen über `PATH` verfügbar sein.
+einschließlich 1,9 Mb/s sowie HEVC-, AV1- und VP9-Quelldateien werden übersprungen.
+JPEG-Fotos über 6 MB werden proportional auf eine geschätzte Ausgabegröße von 5,5 MB verkleinert und mit hoher Qualität
+neu kodiert; die tatsächliche Größe hängt von den Bilddetails ab. Kleinere Fotos werden übersprungen.
+Ergebnisse werden nur übernommen, wenn sie kleiner sind; unterstützte Dateizeitstempel sowie eingebettete EXIF-/XMP-
+und Container-Aufnahmedaten werden vor dem Ersetzen geprüft. Erstellungs- und Änderungszeiten einzelner Tracks werden
+nicht verglichen. Der interne Samsung-Maker-Note-Zeitstempel `TimeStamp` und das nicht aufnahmerelevante EXIF-Feld
+`IFD0:ModifyDate` werden ebenfalls nicht verglichen.
+Standardmäßig wird das Original als `<Name>_orig` mit seiner ursprünglichen Erweiterung gesichert.
+Die Kodierung ist verlustbehaftet und kann keine unmerkliche Qualitätsänderung garantieren. FFmpeg (einschließlich
+FFprobe) mit `libx265`- und MJPEG-Encodern sowie ExifTool müssen über `PATH` verfügbar sein.
 
 | Skript                   | Parameter und Schalter                                                            |
 |--------------------------|-----------------------------------------------------------------------------------|

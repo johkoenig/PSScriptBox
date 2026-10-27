@@ -25,7 +25,8 @@
     Requests ExifTool's complete Time tag group in grouped JSON form. File
     system timestamps are excluded because they are preserved separately.
     Per-track creation and modification timestamps are excluded because output
-    streams may differ from the source.
+    streams may differ from the source. Samsung's maker-note TimeStamp and
+    IFD0:ModifyDate are excluded because neither is a reliable capture date.
 
 .PARAMETER Path
     Path to the media file.
@@ -95,7 +96,8 @@ function Get-MediaDateMetadata
     foreach ($property in $records[0].PSObject.Properties)
     {
         if ($property.Name -eq 'SourceFile' -or
-                $property.Name -match '^Track\d+:(?:Media|Track)(?:Create|Modify)Date$')
+                $property.Name -match '^Track\d+:(?:Media|Track)(?:Create|Modify)Date$' -or
+                $property.Name -in @('Samsung:TimeStamp', 'IFD0:ModifyDate'))
         {
             continue
         }
