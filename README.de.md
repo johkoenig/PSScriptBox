@@ -49,7 +49,7 @@ Führe die Skripte in PowerShell aus. Bei deutscher Windows-Anzeigesprache ersch
 durchschnittlichen Video-Bitrate von 1,9 Mb/s und 96 kb/s Audio. Querformat wird auf 1280x720 und Hochformat auf
 720x1280 begrenzt; ein sechsminütiges Video zielt auf ungefähr 90 MB, die tatsächliche Größe variiert jedoch. H.264 bis
 einschließlich 1,9 Mb/s sowie HEVC-, AV1- und VP9-Quelldateien werden übersprungen.
-JPEG-Fotos über 6 MB werden proportional auf eine geschätzte Ausgabegröße von 5,5 MB verkleinert und mit hoher Qualität
+JPEG-Fotos über 6 MB werden proportional auf eine geschätzte Ausgabegröße von 5 MB verkleinert und mit hoher Qualität
 neu kodiert; die tatsächliche Größe hängt von den Bilddetails ab. Kleinere Fotos werden übersprungen.
 Ergebnisse werden nur übernommen, wenn sie kleiner sind; unterstützte Dateizeitstempel sowie eingebettete EXIF-/XMP-
 und Container-Aufnahmedaten werden vor dem Ersetzen geprüft. Erstellungs- und Änderungszeiten einzelner Tracks werden

@@ -83,7 +83,7 @@ function Invoke-MediaPhotoOptimization
         [Parameter(Mandatory)][string] $ExifToolPath,
         [Parameter(Mandatory)][bool] $ReplaceOriginal,
         [ValidateRange(1, [long]::MaxValue)][long] $TargetSizeBytes = 6MB,
-        [ValidateRange(1, [long]::MaxValue)][long] $EstimatedOutputSizeBytes = [long](5.5 * 1MB),
+        [ValidateRange(1, [long]::MaxValue)][long] $EstimatedOutputSizeBytes = [long](5 * 1MB),
         [ValidateRange(2, 31)][int] $JpegQuality = 2,
         [hashtable] $OriginalTimestamps,
         [string] $UiLanguage = 'en',

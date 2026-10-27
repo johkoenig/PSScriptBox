@@ -34,7 +34,7 @@
     'Number of files: {0}' = 'Anzahl der Dateien: {0}'
     'Video encoder: H.265 (HEVC/libx265), maximum 720p, target 1.9 Mb/s; preset medium' = 'Video-Encoder: H.265 (HEVC/libx265), maximal 720p, Ziel 1,9 Mb/s; Preset medium'
     'Audio bitrate: 96 kb/s' = 'Audio-Bitrate: 96 kb/s'
-    'Photo profile: 6 MB threshold, estimated 5.5 MB output, proportional pixel scaling, high JPEG quality' = 'Fotoprofil: Schwelle 6 MB, geschätzte Ausgabe 5,5 MB, proportionale Pixelskalierung, hohe JPEG-Qualität'
+    'Photo profile: 6 MB threshold, estimated 5 MB output, proportional pixel scaling, high JPEG quality' = 'Fotoprofil: Schwelle 6 MB, geschätzte Ausgabe 5 MB, proportionale Pixelskalierung, hohe JPEG-Qualität'
     'FFprobe failed to read JPEG dimensions for {0} (exit code {1}): {2}' = 'FFprobe konnte die JPEG-Abmessungen von {0} nicht lesen (Exitcode {1}): {2}'
     'FFprobe returned invalid JPEG dimensions for {0}: {1}' = 'FFprobe lieferte ungültige JPEG-Abmessungen für {0}: {1}'
     'Estimated JPEG dimensions: {0} x {1} -> {2} x {3} pixels (target {4:N1} MB).' = 'Geschätzte JPEG-Abmessungen: {0} x {1} -> {2} x {3} Pixel (Ziel {4:N1} MB).'

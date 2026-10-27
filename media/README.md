@@ -62,9 +62,10 @@ conservatively, and a matching `_orig` backup prevents repeated lossy encoding. 
 
 JPEG photos over 6 MB are resized according to their source file size and pixel dimensions, then re-encoded with
 FFmpeg's high-quality MJPEG setting. The estimated output pixel count is the source pixel count multiplied by
-`5.5 MB / source size`; width and height are scaled by the square root of that ratio. Actual output size varies with
-image detail and compression, so 5.5 MB is an estimate, not a hard limit. Photos at or below 6 MB are skipped. Folder
-searches are recursive, and a result is accepted only when smaller than its source.
+`5 MB / source size`; width and height are scaled by the square root of that ratio. Actual output size varies with
+image detail and compression, so 5 MB is an estimate, not a hard limit. Photos at or below 6 MB are skipped and omitted
+from the end-of-run success, skipped, and failure counts and lists. Folder searches are recursive, and a result is
+accepted only when smaller than its source.
 
 | Parameter / switch  | Description                                                                                         |
 |---------------------|-----------------------------------------------------------------------------------------------------|
@@ -124,9 +125,9 @@ Both scripts support common parameters including `-Verbose`, `-Debug`, `-ErrorAc
 - The source's creation, last-write, and last-access file timestamps are restored on the optimized file. ExifTool copies
   and verifies embedded dates. Windows does not permit the script to set NTFS change time, so that low-level file-system
   timestamp cannot be preserved.
-- JPEG photos at or below 6 MB are skipped. Larger photos are proportionally downscaled toward an estimated 5.5 MB
-  output and encoded at high quality (FFmpeg MJPEG quality-scale value 2). Resizing is lossy; actual output size varies
-  with image detail and the estimate is not a guaranteed limit.
+- JPEG photos at or below 6 MB are skipped and omitted from the end-of-run summary. Larger photos are proportionally
+  downscaled toward an estimated 5 MB output and encoded at high quality (FFmpeg MJPEG quality-scale value 2).
+  Resizing is lossy; actual output size varies with image detail and the estimate is not a guaranteed limit.
 - JPEG EXIF orientation is preserved without rotating the source pixels. The optimized JPEG retains its original
   `.jpg` or `.jpeg` extension.
 - An original is not replaced unless its optimized result is smaller. Existing backups are preserved, not overwritten.

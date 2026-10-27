@@ -88,6 +88,29 @@ Describe 'Invoke-MediaPhotoOptimization' {
         }
     }
 
+    It 'targets an estimated 5 MB output by default' {
+        $stream = [System.IO.File]::Open($script:PhotoPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Write)
+        try
+        {
+            $stream.SetLength(7MB)
+        }
+        finally
+        {
+            $stream.Dispose()
+        }
+
+        $result = Invoke-MediaPhotoOptimization -Photo (Get-Item -LiteralPath $script:PhotoPath) `
+            -FFmpegPath 'ffmpeg.exe' -FFprobePath 'ffprobe.exe' -ExifToolPath 'exiftool.exe' `
+            -ReplaceOriginal $false
+
+        $result.Success | Should -BeTrue
+        Should -Invoke Invoke-MediaTool -Times 1 -Exactly -ParameterFilter {
+            $filterIndex = [array]::IndexOf($Arguments, '-vf')
+            $filterIndex -ge 0 -and
+                    $Arguments[$filterIndex + 1] -eq 'scale=5070:3380:force_original_aspect_ratio=decrease:force_divisible_by=2'
+        }
+    }
+
     It 'replaces a JPEG without retaining a backup when ReplaceOriginal is enabled' {
         $result = Invoke-MediaPhotoOptimization -Photo (Get-Item -LiteralPath $script:PhotoPath) `
             -FFmpegPath 'ffmpeg.exe' -FFprobePath 'ffprobe.exe' -ExifToolPath 'exiftool.exe' `

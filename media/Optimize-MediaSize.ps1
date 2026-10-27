@@ -6,7 +6,7 @@
     Processes MOV, MP4, JPG, and JPEG files from a path or recursively from a
     folder. Video behavior uses the existing 720p H.265 profile and codec
     skip rules. JPEG photos larger than 6 MB are scaled proportionally to an
-    estimated 5.5 MB output size and re-encoded at high quality. Smaller photos
+    estimated 5 MB output size and re-encoded at high quality. Smaller photos
     are skipped.
 
     Videos and photos are kept only when the result is smaller. FFmpeg and
@@ -190,7 +190,7 @@ if ($videoFiles.Count -gt 0)
 }
 if ($photoFiles.Count -gt 0)
 {
-    Write-Host (Get-LocalizedText 'Photo profile: 6 MB threshold, estimated 5.5 MB output, proportional pixel scaling, high JPEG quality')
+    Write-Host (Get-LocalizedText 'Photo profile: 6 MB threshold, estimated 5 MB output, proportional pixel scaling, high JPEG quality')
 }
 if ($ReplaceOriginal)
 {
@@ -220,7 +220,7 @@ $reporter = {
 
 $results = @()
 $photoTargetSizeBytes = 6MB
-$photoEstimatedOutputSizeBytes = [long](5.5 * 1MB)
+$photoEstimatedOutputSizeBytes = [long](5 * 1MB)
 $photoJpegQuality = 2
 $videoIndex = 0
 $photoIndex = 0
@@ -267,14 +267,6 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
                 ($photo.Length / 1MB), ($photoTargetSizeBytes / 1MB)
             )
             Write-Host $skipReason -ForegroundColor DarkYellow
-            $results += [pscustomobject]@{
-                Success = $false
-                Skipped = $true
-                FilePath = $photo.FullName
-                FailureReason = $skipReason
-                OriginalBytes = [long]0
-                ResultBytes = [long]0
-            }
             continue
         }
 

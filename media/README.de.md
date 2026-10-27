@@ -65,10 +65,11 @@ Kodierung. Andere Codecs werden neu kodiert.
 JPEG-Fotos über 6 MB werden anhand ihrer Quelldateigröße und Pixelabmessungen verkleinert und mit der hohen
 MJPEG-Qualität
 von FFmpeg neu kodiert. Die geschätzte Ausgabe-Pixelzahl entspricht der Quell-Pixelzahl multipliziert mit
-`5,5 MB / Quelldateigröße`; Breite und Höhe werden mit der Quadratwurzel dieses Verhältnisses skaliert. Die tatsächliche
-Ausgabegröße hängt von Bilddetails und Kompression ab; 5,5 MB sind ein Schätzwert, keine feste Obergrenze. Fotos bis
-einschließlich 6 MB werden übersprungen. Ordner werden rekursiv durchsucht; ein Ergebnis wird nur übernommen, wenn es
-kleiner als die Quelldatei ist.
+`5 MB / Quelldateigröße`; Breite und Höhe werden mit der Quadratwurzel dieses Verhältnisses skaliert. Die tatsächliche
+Ausgabegröße hängt von Bilddetails und Kompression ab; 5 MB sind ein Schätzwert, keine feste Obergrenze. Fotos bis
+einschließlich 6 MB werden übersprungen und weder in den abschließenden Zählungen für erfolgreiche, übersprungene und
+fehlgeschlagene Dateien noch in den Listen aufgeführt. Ordner werden rekursiv durchsucht; ein Ergebnis wird nur
+übernommen, wenn es kleiner als die Quelldatei ist.
 
 | Parameter / Schalter | Beschreibung                                                                                                    |
 |----------------------|-----------------------------------------------------------------------------------------------------------------|
@@ -130,9 +131,10 @@ und `-Confirm`. `-WhatIf` und `-Confirm` werden über `SupportsShouldProcess` be
 - Erstellungszeit, Änderungszeit und letzter Zugriff der Quelldatei werden auf der optimierten Datei wiederhergestellt.
   Windows erlaubt dem Skript nicht, die NTFS-Änderungszeit festzulegen; dieser niedrigstufige Dateisystem-Zeitstempel
   kann daher nicht erhalten werden.
-- JPEG-Fotos bis einschließlich 6 MB werden übersprungen. Größere Fotos werden proportional auf eine geschätzte
-  Ausgabegröße von 5,5 MB verkleinert und mit hoher Qualität kodiert (FFmpeg-MJPEG-Qualitätswert 2). Die Skalierung ist
-  verlustbehaftet; die tatsächliche Ausgabegröße variiert mit den Bilddetails und der Kompression.
+- JPEG-Fotos bis einschließlich 6 MB werden übersprungen und nicht in der abschließenden Zusammenfassung aufgeführt.
+  Größere Fotos werden proportional auf eine geschätzte Ausgabegröße von 5 MB verkleinert und mit hoher Qualität
+  kodiert (FFmpeg-MJPEG-Qualitätswert 2). Die Skalierung ist verlustbehaftet; die tatsächliche Ausgabegröße variiert
+  mit den Bilddetails und der Kompression.
 - Die EXIF-Ausrichtung bleibt erhalten, ohne die Pixel der Quelldatei zu drehen. Die optimierte Datei behält die
   ursprüngliche Erweiterung `.jpg` oder `.jpeg`.
 - Ein Original wird nur ersetzt, wenn das optimierte Ergebnis kleiner ist. Vorhandene Sicherungen bleiben erhalten und
