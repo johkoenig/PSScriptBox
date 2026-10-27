@@ -11,8 +11,12 @@ and removal do not check out branches or modify working-tree files.
 .PARAMETER EnglishOutput
 Forces English console output regardless of the Windows UI language.
 
+.PARAMETER WhatIf
+Shows obsolete branches that would be removed without deleting them.
+
 .EXAMPLE
 .\Remove-ObsoleteGitBranches.ps1
+Removes obsolete branches without prompting.
 
 .EXAMPLE
 .\Remove-ObsoleteGitBranches.ps1 -WhatIf
@@ -26,9 +30,10 @@ Contributors:
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 scriptbox contributors
 
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+[CmdletBinding()]
 param(
-    [switch]$EnglishOutput
+    [switch]$EnglishOutput,
+    [switch]$WhatIf
 )
 
 Set-StrictMode -Version Latest
@@ -72,12 +77,12 @@ foreach ($headerLine in $headerLines)
     Write-Host $headerLine -ForegroundColor Cyan
 }
 Write-Host (Get-LocalizedText -Text '  Removes obsolete local branches without changing the working tree.' -Language $script:Language -Messages $script:Messages) -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text '  Supports preview and confirmation for each deletion.' -Language $script:Language -Messages $script:Messages) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text '  Supports preview; removal runs without confirmation.' -Language $script:Language -Messages $script:Messages) -ForegroundColor Cyan
 Write-Host ''
 
 $failedBranches = [System.Collections.Generic.List[object]]::new()
 $removedCount = 0
-$notRemovedCount = 0
+$previewedCount = 0
 $branchCount = 0
 $candidateCount = 0
 
@@ -125,29 +130,28 @@ try
         Write-Host ((Get-LocalizedText -Text '--- Branch {0}/{1}: {2} ---' -Language $script:Language -Messages $script:Messages) -f ($index + 1), $candidateCount, $branch.Name) -ForegroundColor Cyan
         Write-Host ((Get-LocalizedText -Text 'Reasons: {0}' -Language $script:Language -Messages $script:Messages) -f ($branch.Reasons -join '; '))
 
-        $action = (Get-LocalizedText -Text 'Remove obsolete local branch: {0}' -Language $script:Language -Messages $script:Messages) -f $branch.Name
-        if ( $PSCmdlet.ShouldProcess($branch.Name, $action))
+        if ($WhatIf)
         {
-            try
-            {
-                $null = Remove-GitBranch -Repository $repositoryRoot -Name $branch.Name -Ref $branch.Ref -ExpectedObjectId $branch.ObjectId -Language $script:Language -Messages $script:Messages
-                $removedCount++
-                Write-Host ((Get-LocalizedText -Text 'Removed: {0}' -Language $script:Language -Messages $script:Messages) -f $branch.Name) -ForegroundColor Green
-            }
-            catch
-            {
-                $reason = $_.Exception.Message
-                $failedBranches.Add([pscustomobject]@{
-                    Name = $branch.Name
-                    Reason = $reason
-                })
-                $message = Get-LocalizedText -Text "Could not remove branch '{0}': {1}" -Language $script:Language -Messages $script:Messages
-                Write-Warning ($message -f $branch.Name, $reason)
-            }
+            $previewedCount++
+            Write-Host ((Get-LocalizedText -Text 'Would remove: {0}' -Language $script:Language -Messages $script:Messages) -f $branch.Name) -ForegroundColor Yellow
+            continue
         }
-        else
+
+        try
         {
-            $notRemovedCount++
+            $null = Remove-GitBranch -Repository $repositoryRoot -Name $branch.Name -Ref $branch.Ref -ExpectedObjectId $branch.ObjectId -Language $script:Language -Messages $script:Messages
+            $removedCount++
+            Write-Host ((Get-LocalizedText -Text 'Removed: {0}' -Language $script:Language -Messages $script:Messages) -f $branch.Name) -ForegroundColor Green
+        }
+        catch
+        {
+            $reason = $_.Exception.Message
+            $failedBranches.Add([pscustomobject]@{
+                Name = $branch.Name
+                Reason = $reason
+            })
+            $message = Get-LocalizedText -Text "Could not remove branch '{0}': {1}" -Language $script:Language -Messages $script:Messages
+            Write-Warning ($message -f $branch.Name, $reason)
         }
     }
 
@@ -155,7 +159,7 @@ try
     Write-Host (Get-LocalizedText -Text '=== Summary ===' -Language $script:Language -Messages $script:Messages) -ForegroundColor Cyan
     Write-Host ((Get-LocalizedText -Text 'Repository: {0}' -Language $script:Language -Messages $script:Messages) -f $repositoryRoot)
     Write-Host ((Get-LocalizedText -Text 'Branches checked: {0}; obsolete candidates: {1}' -Language $script:Language -Messages $script:Messages) -f $branchCount, $candidateCount)
-    Write-Host ((Get-LocalizedText -Text 'Removed: {0}, not removed: {1}, failed: {2}' -Language $script:Language -Messages $script:Messages) -f $removedCount, $notRemovedCount, $failedBranches.Count)
+    Write-Host ((Get-LocalizedText -Text 'Removed: {0}, previewed: {1}, failed: {2}' -Language $script:Language -Messages $script:Messages) -f $removedCount, $previewedCount, $failedBranches.Count)
     Write-Host (Get-LocalizedText -Text 'Failed branches:' -Language $script:Language -Messages $script:Messages)
 
     if ($failedBranches.Count -eq 0)

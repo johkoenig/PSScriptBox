@@ -1,40 +1,72 @@
-﻿# .SYNOPSIS
-# Removes a local Git branch after verifying its current commit.
-#
-# .DESCRIPTION
-# Confirms that the branch still points to the commit observed during analysis
-# before deleting its local reference. It does not check out branches or alter
-# working-tree files.
-#
-# .PARAMETER Repository
-# Repository path passed to Git's -C option.
-#
-# .PARAMETER Name
-# Short name of the local branch to remove.
-#
-# .PARAMETER Ref
-# Full local branch reference observed during analysis.
-#
-# .PARAMETER ExpectedObjectId
-# Commit identifier observed during analysis.
-#
-# .PARAMETER Language
-# 'de' selects German error text; any other value selects English.
-#
-# .PARAMETER Messages
-# German message catalog keyed by the English source text.
-#
-# .OUTPUTS
-# System.Management.Automation.PSCustomObject describing the removed branch.
-#
-# .NOTES
-# Dependencies: Git and common\internal\Get-LocalizedText.ps1 loaded by the caller.
-# Contributors:
-# - Johannes Koenig <dev@jokoenig.de>
+﻿<#
+.SYNOPSIS
+Removes a local Git branch after verifying its current commit.
+
+.DESCRIPTION
+Confirms that the branch still points to the commit observed during analysis
+before deleting its local reference. It does not check out branches or alter
+working-tree files.
+
+.PARAMETER Repository
+Repository path passed to Git's -C option.
+
+.PARAMETER Name
+Short name of the local branch to remove.
+
+.PARAMETER Ref
+Full local branch reference observed during analysis.
+
+.PARAMETER ExpectedObjectId
+Commit identifier observed during analysis.
+
+.PARAMETER Language
+'de' selects German error text; any other value selects English.
+
+.PARAMETER Messages
+German message catalog keyed by the English source text.
+
+.OUTPUTS
+System.Management.Automation.PSCustomObject describing the removed branch.
+
+.NOTES
+Dependencies: Git and common\internal\Get-LocalizedText.ps1 loaded by the caller.
+Contributors:
+- Johannes Koenig <dev@jokoenig.de>
+#>
 
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 scriptbox contributors
 
+<#
+.SYNOPSIS
+Removes a local Git branch after verifying its current commit.
+
+.DESCRIPTION
+Confirms that the branch still points to the commit observed during analysis
+before deleting its local reference. It does not check out branches or alter
+working-tree files.
+
+.PARAMETER Repository
+Repository path passed to Git's -C option.
+
+.PARAMETER Name
+Short name of the local branch to remove.
+
+.PARAMETER Ref
+Full local branch reference observed during analysis.
+
+.PARAMETER ExpectedObjectId
+Commit identifier observed during analysis.
+
+.PARAMETER Language
+'de' selects German error text; any other value selects English.
+
+.PARAMETER Messages
+German message catalog keyed by the English source text.
+
+.OUTPUTS
+System.Management.Automation.PSCustomObject describing the removed branch.
+#>
 function Remove-GitBranch
 {
     [CmdletBinding()]

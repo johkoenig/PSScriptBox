@@ -1,19 +1,29 @@
-# Git configuration tool
+# Git tools
 
 > Deutsche Version: [README.de.md](README.de.md)
 
-`Initialize-GitConfiguration.ps1` initializes the Git author identity (and optionally common standard settings) in a repository's local `.git/config` or in the user's global configuration. It never stores a name or email in the script and does not overwrite existing values in the target scope.
+This folder contains two Git utilities. `Initialize-GitConfiguration.ps1` initializes the Git author identity (and
+optionally common standard settings) in a repository's local `.git/config` or in the user's global configuration.
+`Remove-ObsoleteGitBranches.ps1` cleans up obsolete local branches without changing working-tree files. The
+configuration script never stores a name or email and does not overwrite existing values in the target scope.
 
 ## Quick start
 
-1. Change into a directory inside the Git repository you want to configure.
-2. Run the script:
+To preview obsolete branches, change into the repository and run:
+
+```powershell
+.\Remove-ObsoleteGitBranches.ps1 -WhatIf
+```
+
+Run it without `-WhatIf` to remove all candidates immediately, without confirmation. To configure Git identity and
+standard settings, run:
 
 ```powershell
 .\Initialize-GitConfiguration.ps1
 ```
 
-3. For each identity value, the script shows a numbered list of discovered choices plus a custom entry. An existing Git setting is listed first, so pressing Enter (default: choice 1) keeps it:
+For each identity value, the configuration script shows a numbered list of discovered choices plus a custom entry. An
+existing Git setting is listed first, so pressing Enter (default: choice 1) keeps it:
 
 - **Name:** existing Git settings (local, global, system), the Active Directory or Windows display name, or a custom value.
 - **Email:** existing Git settings, the Active Directory `mail` attribute (domain-joined computers), the user principal name (Active Directory / Entra ID), the signed-in Microsoft account, or a custom value.
@@ -29,22 +39,19 @@ Git must be installed and available on `PATH`. No administrator privileges are n
 Run this script from any directory inside the repository whose local branches you want to clean up. It protects the
 local `main` branch and the currently checked-out branch. A local branch is an obsolete candidate if **any** of these
 conditions is true: it is not ahead of local `main`, it is not ahead of its available upstream, or it is fully merged
-into the currently checked-out branch. The script previews and confirms removals, and checks that a branch has not moved
-since analysis before deleting it.
+into the currently checked-out branch. The script previews candidates with `-WhatIf`; otherwise, it deletes them
+immediately without confirmation. Before each deletion, it checks that the branch has not moved since analysis.
 
-| Parameter / switch | Description                                                                  |
-|--------------------|------------------------------------------------------------------------------|
-| `-WhatIf`          | Lists the branch removals that would be attempted without deleting branches. |
-| `-Confirm`         | Prompts before each branch removal.                                          |
-| `-Confirm:$false`  | Suppresses removal prompts.                                                  |
-| `-EnglishOutput`   | Forces English console output regardless of the Windows UI language.         |
+| Parameter / switch | Description                                                          |
+|--------------------|----------------------------------------------------------------------|
+| `-WhatIf`          | Lists obsolete branches that would be removed without deleting them. |
+| `-EnglishOutput`   | Forces English console output regardless of the Windows UI language. |
 
 Examples:
 
 ```powershell
 .\Remove-ObsoleteGitBranches.ps1
 .\Remove-ObsoleteGitBranches.ps1 -WhatIf
-.\Remove-ObsoleteGitBranches.ps1 -Confirm:$false
 ```
 
 The script uses the current local refs and does not fetch from remotes. If a branch has no available upstream ref, the
@@ -90,7 +97,9 @@ Before each prompt the script prints a detailed explanation of the setting and s
 
 ## Shared PowerShell parameters
 
-The script supports the common parameters `-Verbose`, `-Debug`, `-ErrorAction` and `-WarningAction`. It does not implement `-WhatIf` or `-Confirm`.
+Both scripts support the common parameters `-Verbose`, `-Debug`, `-ErrorAction`, and `-WarningAction`.
+`Initialize-GitConfiguration.ps1` does not implement `-WhatIf` or `-Confirm`. `Remove-ObsoleteGitBranches.ps1` provides
+`-WhatIf` as a preview switch; otherwise, obsolete branches are removed immediately, without confirmation.
 
 ## Safety and behavior
 

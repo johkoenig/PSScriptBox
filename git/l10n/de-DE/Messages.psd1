@@ -63,7 +63,7 @@
     'Branch changed after analysis; refusing to remove it: {0}' = 'Branch wurde nach der Analyse geändert und wird nicht entfernt: {0}'
     'Git for Windows was not found on PATH.' = 'Git for Windows wurde nicht in PATH gefunden.'
     '  Removes obsolete local branches without changing the working tree.' = '  Entfernt veraltete lokale Branches, ohne den Arbeitsbereich zu ändern.'
-    '  Supports preview and confirmation for each deletion.' = '  Unterstützt Vorschau und Bestätigung für jede Löschung.'
+    '  Supports preview; removal runs without confirmation.' = '  Unterstützt eine Vorschau; das Entfernen erfolgt ohne Rückfrage.'
     '=== Obsolete Git branches: processing started ===' = '=== Entfernen veralteter Git-Branches: Verarbeitung gestartet ==='
     'Repository: {0}' = 'Repository: {0}'
     'Current branch: {0}' = 'Aktueller Branch: {0}'
@@ -72,12 +72,12 @@
     'Nothing to remove; no obsolete local branches were found.' = 'Nichts zu entfernen; es wurden keine veralteten lokalen Branches gefunden.'
     '--- Branch {0}/{1}: {2} ---' = '--- Branch {0}/{1}: {2} ---'
     'Reasons: {0}' = 'Gründe: {0}'
-    'Remove obsolete local branch: {0}' = 'Veralteten lokalen Branch entfernen: {0}'
+    'Would remove: {0}' = 'Würde entfernt: {0}'
     'Removed: {0}' = 'Entfernt: {0}'
     "Could not remove branch '{0}': {1}" = "Branch '{0}' konnte nicht entfernt werden: {1}"
     '=== Summary ===' = '=== Zusammenfassung ==='
     'Branches checked: {0}; obsolete candidates: {1}' = 'Geprüfte Branches: {0}; veraltete Kandidaten: {1}'
-    'Removed: {0}, not removed: {1}, failed: {2}' = 'Entfernt: {0}, nicht entfernt: {1}, fehlgeschlagen: {2}'
+    'Removed: {0}, previewed: {1}, failed: {2}' = 'Entfernt: {0}, in Vorschau angezeigt: {1}, fehlgeschlagen: {2}'
     'Failed branches:' = 'Fehlerhafte Branches:'
     'Fatal error: {0}' = 'Schwerwiegender Fehler: {0}'
 }

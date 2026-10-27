@@ -44,6 +44,8 @@ BeforeAll {
 Describe 'Remove-GitBranch' {
     It 'removes the expected branch without changing the current branch or uncommitted files' {
         $fixture = New-BranchRemovalRepository
+        $modifiedPath = Join-Path $fixture.Repository 'base.txt'
+        [System.IO.File]::WriteAllText($modifiedPath, 'keep this unstaged change')
         $untrackedPath = Join-Path $fixture.Repository 'uncommitted.txt'
         [System.IO.File]::WriteAllText($untrackedPath, 'keep this file')
 
@@ -52,6 +54,7 @@ Describe 'Remove-GitBranch' {
         $result.Name | Should -Be 'candidate'
         (Invoke-GitCommand -Repository $fixture.Repository -Arguments @('branch', '--list', 'candidate') | Out-String).Trim() | Should -BeNullOrEmpty
         (Invoke-GitCommand -Repository $fixture.Repository -Arguments @('branch', '--show-current') | Select-Object -First 1).Trim() | Should -Be 'main'
+        [System.IO.File]::ReadAllText($modifiedPath) | Should -Be 'keep this unstaged change'
         [System.IO.File]::ReadAllText($untrackedPath) | Should -Be 'keep this file'
     }
 

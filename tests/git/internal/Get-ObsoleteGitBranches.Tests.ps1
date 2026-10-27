@@ -91,6 +91,8 @@ BeforeAll {
 Describe 'Get-ObsoleteGitBranches' {
     It 'detects each obsolescence rule, protects main and current, and leaves working-tree changes untouched' {
         $repository = New-BranchRulesRepository
+        $modifiedPath = Join-Path $repository 'base.txt'
+        [System.IO.File]::WriteAllText($modifiedPath, 'keep this unstaged change')
         $untrackedPath = Join-Path $repository 'uncommitted.txt'
         [System.IO.File]::WriteAllText($untrackedPath, 'keep this file')
 
@@ -114,6 +116,7 @@ Describe 'Get-ObsoleteGitBranches' {
         $branchMap['merged-current'].Reasons | Should -Contain 'Fully merged into the current branch'
         $branchMap['ahead-only'].IsObsolete | Should -BeFalse
 
+        [System.IO.File]::ReadAllText($modifiedPath) | Should -Be 'keep this unstaged change'
         [System.IO.File]::ReadAllText($untrackedPath) | Should -Be 'keep this file'
         (Invoke-TestGit -Repository $repository -Arguments @('branch', '--show-current') | Select-Object -First 1).Trim() | Should -Be 'current'
     }

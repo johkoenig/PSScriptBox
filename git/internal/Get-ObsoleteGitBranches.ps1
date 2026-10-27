@@ -1,34 +1,60 @@
-﻿# .SYNOPSIS
-# Finds local Git branches that meet an obsolescence rule.
-#
-# .DESCRIPTION
-# Compares local branches with the local main branch, configured upstreams, and
-# the current commit without changing the repository or working tree.
-#
-# .PARAMETER Repository
-# Repository path passed to Git's -C option.
-#
-# .PARAMETER MainBranch
-# Name of the local main branch used for comparison and protection.
-#
-# .PARAMETER Language
-# 'de' selects German error text; any other value selects English.
-#
-# .PARAMETER Messages
-# German message catalog keyed by the English source text.
-#
-# .OUTPUTS
-# System.Management.Automation.PSCustomObject containing branch assessments and
-# the current branch reference.
-#
-# .NOTES
-# Dependencies: Git and common\internal\Get-LocalizedText.ps1 loaded by the caller.
-# Contributors:
-# - Johannes Koenig <dev@jokoenig.de>
+﻿<#
+.SYNOPSIS
+Finds local Git branches that meet an obsolescence rule.
+
+.DESCRIPTION
+Compares local branches with the local main branch, configured upstreams, and
+the current commit without changing the repository or working tree.
+
+.PARAMETER Repository
+Repository path passed to Git's -C option.
+
+.PARAMETER MainBranch
+Name of the local main branch used for comparison and protection.
+
+.PARAMETER Language
+'de' selects German error text; any other value selects English.
+
+.PARAMETER Messages
+German message catalog keyed by the English source text.
+
+.OUTPUTS
+System.Management.Automation.PSCustomObject containing branch assessments and
+the current branch reference.
+
+.NOTES
+Dependencies: Git and common\internal\Get-LocalizedText.ps1 loaded by the caller.
+Contributors:
+- Johannes Koenig <dev@jokoenig.de>
+#>
 
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 scriptbox contributors
 
+<#
+.SYNOPSIS
+Finds local Git branches that meet an obsolescence rule.
+
+.DESCRIPTION
+Compares local branches with the local main branch, configured upstreams, and
+the current commit without changing the repository or working tree.
+
+.PARAMETER Repository
+Repository path passed to Git's -C option.
+
+.PARAMETER MainBranch
+Name of the local main branch used for comparison and protection.
+
+.PARAMETER Language
+'de' selects German error text; any other value selects English.
+
+.PARAMETER Messages
+German message catalog keyed by the English source text.
+
+.OUTPUTS
+System.Management.Automation.PSCustomObject containing branch assessments and
+the current branch reference.
+#>
 function Get-ObsoleteGitBranches
 {
     [CmdletBinding()]
@@ -54,7 +80,7 @@ function Get-ObsoleteGitBranches
         $fields = $line.Split([char]9)
         if ($fields.Count -ne 3 -or -not $fields[0].StartsWith('refs/heads/'))
         {
-            $message = Get-LocalizedText -Text "Git returned invalid branch data: '{0}'" -Language $script:Language -Messages $script:Messages
+            $message = Get-LocalizedText -Text "Git returned invalid branch data: '{0}'" -Language $Language -Messages $Messages
             throw ($message -f $line)
         }
 
@@ -69,7 +95,7 @@ function Get-ObsoleteGitBranches
     $mainRef = "refs/heads/$MainBranch"
     if (-not ($branches | Where-Object { $_.Ref -eq $mainRef }))
     {
-        $message = Get-LocalizedText -Text "The main branch '{0}' was not found in this repository." -Language $script:Language -Messages $script:Messages
+        $message = Get-LocalizedText -Text "The main branch '{0}' was not found in this repository." -Language $Language -Messages $Messages
         throw ($message -f $MainBranch)
     }
 
@@ -117,13 +143,13 @@ function Get-ObsoleteGitBranches
 
             if ($aheadOfMain -notmatch '^\d+$')
             {
-                $message = Get-LocalizedText -Text "Git returned an invalid commit count for '{0}': '{1}'" -Language $script:Language -Messages $script:Messages
+                $message = Get-LocalizedText -Text "Git returned an invalid commit count for '{0}': '{1}'" -Language $Language -Messages $Messages
                 throw ($message -f $branch.Name, $aheadOfMain)
             }
 
             if ([long]$aheadOfMain -eq 0)
             {
-                $reasons.Add((Get-LocalizedText -Text 'Not ahead of main' -Language $script:Language -Messages $script:Messages))
+                $reasons.Add((Get-LocalizedText -Text 'Not ahead of main' -Language $Language -Messages $Messages))
             }
 
             if ($branch.Upstream -and $allRefs.Contains($branch.Upstream))
@@ -136,19 +162,19 @@ function Get-ObsoleteGitBranches
 
                 if ($aheadOfUpstream -notmatch '^\d+$')
                 {
-                    $message = Get-LocalizedText -Text "Git returned an invalid commit count for '{0}': '{1}'" -Language $script:Language -Messages $script:Messages
+                    $message = Get-LocalizedText -Text "Git returned an invalid commit count for '{0}': '{1}'" -Language $Language -Messages $Messages
                     throw ($message -f $branch.Name, $aheadOfUpstream)
                 }
 
                 if ([long]$aheadOfUpstream -eq 0)
                 {
-                    $reasons.Add((Get-LocalizedText -Text 'Not ahead of upstream' -Language $script:Language -Messages $script:Messages))
+                    $reasons.Add((Get-LocalizedText -Text 'Not ahead of upstream' -Language $Language -Messages $Messages))
                 }
             }
 
             if ( $mergedRefs.Contains($branch.Ref))
             {
-                $reasons.Add((Get-LocalizedText -Text 'Fully merged into the current branch' -Language $script:Language -Messages $script:Messages))
+                $reasons.Add((Get-LocalizedText -Text 'Fully merged into the current branch' -Language $Language -Messages $Messages))
             }
         }
 

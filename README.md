@@ -45,17 +45,18 @@ Run scripts from PowerShell. The scripts select German console messages on a Ger
 
 The GitHub Actions workflow runs `tests/Invoke-Tests.ps1` with Windows PowerShell 5.1 and PowerShell 7 for pull requests targeting `main`. To run the same test suite locally, use `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5 or later is required.
 
-## Git configuration
+## Git tools
 
 `git/Initialize-GitConfiguration.ps1` sets the Git author identity (local or global) by offering discovered names and emails (existing Git settings, Active Directory / Windows account data, Microsoft account) or a custom value, and confirms recommended standard settings one by one. Existing values are the defaults and nothing is stored in the script.
 
 `git/Remove-ObsoleteGitBranches.ps1` removes obsolete local branches from the repository at the current location. It
-protects `main` and the current branch, and never modifies working-tree files.
+protects `main` and the current branch, and never modifies working-tree files. Without `-WhatIf`, it removes candidates
+immediately without prompting; `-WhatIf` previews them.
 
 | Script                            | Parameters and switches                                                                                   |
 |-----------------------------------|-----------------------------------------------------------------------------------------------------------|
 | `Initialize-GitConfiguration.ps1` | `-RepositoryPath <path>`, `-Scope <Local\|Global>`, `-Name <name>`, `-Email <address>`, `-EnglishOutput`. |
-| `Remove-ObsoleteGitBranches.ps1`  | `-WhatIf`, `-Confirm`, `-EnglishOutput`.                                                                  |
+| `Remove-ObsoleteGitBranches.ps1`  | `-WhatIf`, `-EnglishOutput`.                                                                              |
 
 An obsolete-branch candidate is not ahead of local `main`, not ahead of its available upstream, or fully merged into the
 currently checked-out branch. The cleanup uses local refs only and supports `-WhatIf` for preview.
