@@ -82,10 +82,6 @@ niedrigstufigen NTFS-Änderungszeit.
 Die [Anleitung zu den Medienwerkzeugen](media/README.de.md) enthält Beispiele, Abhängigkeiten und Einschränkungen beim
 Erhalt von Datumsangaben.
 
-## Tests
-
-Der GitHub-Actions-Workflow führt `tests/Invoke-Tests.ps1` bei Pull Requests mit Ziel `main` unter Windows PowerShell 5.1 und PowerShell 7 aus. Dieselbe Testsuite lässt sich lokal im Repository-Stamm mit `.\tests\Invoke-Tests.ps1` starten; erforderlich ist Pester 5 oder höher.
-
 ## Git-Werkzeuge
 
 `git/Initialize-GitConfiguration.ps1` legt die Git-Autor-Identität (lokal oder global) fest, indem es gefundene Namen und E-Mail-Adressen (vorhandene Git-Einstellungen, Active-Directory-/Windows-Kontodaten, Microsoft-Konto) oder einen eigenen Wert zur Auswahl anbietet und empfohlene Standardeinstellungen einzeln bestätigen lässt. Vorhandene Werte sind jeweils der Standard; im Skript werden keine Identitätsdaten gespeichert.
@@ -122,9 +118,11 @@ Bereinigung für jeden Hauptordner separat.
 
 Details und Beispiele stehen in der [Nextcloud-Anleitung](nextcloud/README.de.md).
 
-## Offene Punkte
+## Tests
 
-Geplante Arbeiten stehen in [open-issues.md](open-issues.md) (englisch).
+Der GitHub-Actions-Workflow führt `tests/Invoke-Tests.ps1` bei Pull Requests mit Ziel `main` unter Windows PowerShell
+5.1 und PowerShell 7 aus. Dieselbe Testsuite lässt sich lokal im Repository-Stamm mit `.\tests\Invoke-Tests.ps1`
+starten; erforderlich ist Pester 5 oder höher.
 
 ## Lizenz
 

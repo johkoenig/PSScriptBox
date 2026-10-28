@@ -72,10 +72,6 @@ setting the low-level NTFS change time.
 
 See the [Media tools guide](media/README.md) for examples, dependencies, and date-preservation limits.
 
-## Testing
-
-The GitHub Actions workflow runs `tests/Invoke-Tests.ps1` with Windows PowerShell 5.1 and PowerShell 7 for pull requests targeting `main`. To run the same test suite locally, use `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5 or later is required.
-
 ## Git tools
 
 `git/Initialize-GitConfiguration.ps1` sets the Git author identity (local or global) by offering discovered names and emails (existing Git settings, Active Directory / Windows account data, Microsoft account) or a custom value, and confirms recommended standard settings one by one. Existing values are the defaults and nothing is stored in the script.
@@ -110,9 +106,11 @@ deletion, the user confirms that synchronization is complete and approves cleanu
 
 See the [Nextcloud tool guide](nextcloud/README.md) for details and examples.
 
-## Open issues
+## Testing
 
-Planned work is listed in [open-issues.md](open-issues.md).
+The GitHub Actions workflow runs `tests/Invoke-Tests.ps1` with Windows PowerShell 5.1 and PowerShell 7 for pull requests
+targeting `main`. To run the same test suite locally, use `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5
+or later is required.
 
 ## License
 

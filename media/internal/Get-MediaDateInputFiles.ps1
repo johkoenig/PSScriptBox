@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Defines Get-MediaDateInputFiles, which recursively discovers the media
-    formats supported by the legacy camera-roll date fixer.
+    formats supported for date restoration.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7. Uses Get-LocalizedText.
@@ -20,8 +20,7 @@
     Gets supported media files under a folder.
 
 .DESCRIPTION
-    Recursively discovers files supported by Fix-CameraRollFiles.ps1. Hidden
-    files are not included, matching the legacy file discovery behavior.
+    Recursively discovers supported media files. Hidden files are not included.
 
 .PARAMETER RootPath
     Folder to search recursively.
