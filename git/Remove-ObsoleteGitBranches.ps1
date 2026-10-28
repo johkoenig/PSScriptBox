@@ -30,6 +30,11 @@ Contributors:
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 scriptbox contributors
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingWriteHost',
+        '',
+        Justification = 'This user-facing script provides localized, color-coded console output.'
+)]
 [CmdletBinding()]
 param(
     [switch]$EnglishOutput,

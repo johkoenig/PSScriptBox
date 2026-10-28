@@ -50,6 +50,11 @@
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingWriteHost',
+        '',
+        Justification = 'This user-facing script provides localized, color-coded console output.'
+)]
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'None')]
 param(
     [string] $NextcloudPath,
