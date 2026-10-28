@@ -113,7 +113,7 @@ Write-Host ''
 try {
     # --- Resolve paths and folders -----------------------------------------
     if ([string]::IsNullOrWhiteSpace($NextcloudPath)) {
-        $profilePath = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
+        $profilePath = [Environment]::GetFolderPath('UserProfile')
         $defaultPath = if ($profilePath) { Join-Path $profilePath 'Nextcloud' } else { $null }
         if ($defaultPath -and (Test-Path -LiteralPath $defaultPath -PathType Container)) {
             $NextcloudPath = $defaultPath

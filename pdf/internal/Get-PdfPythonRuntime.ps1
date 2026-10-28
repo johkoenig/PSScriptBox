@@ -109,9 +109,9 @@ function Get-PdfPythonRuntime {
     param(
         [string] $PreferredPath,
         [string[]] $UserRoots = @(
-            [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile),
-            [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData),
-            [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
+        [Environment]::GetFolderPath('UserProfile'),
+        [Environment]::GetFolderPath('LocalApplicationData'),
+        [Environment]::GetFolderPath('ApplicationData')
         )
     )
 
