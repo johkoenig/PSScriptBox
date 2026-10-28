@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for pdf\internal\Get-PdfTextLayerStatus.ps1.
@@ -20,7 +20,7 @@ BeforeAll {
     . (Join-Path $script:RepoRoot 'pdf\internal\Invoke-PythonCommand.ps1')
     . (Join-Path $script:RepoRoot 'pdf\internal\Get-PdfTextLayerStatus.ps1')
 
-    $script:PythonPath = 'C:\scriptbox-python\python.exe'
+    $script:PythonPath = 'C:\PSScriptBox-python\python.exe'
     $script:PdfPath = Join-Path $TestDrive 'sample.pdf'
     New-Item -ItemType File -Path $script:PdfPath -Force | Out-Null
     $script:Pdf = Get-Item -LiteralPath $script:PdfPath

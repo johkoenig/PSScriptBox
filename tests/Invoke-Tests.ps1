@@ -1,8 +1,8 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
-    Runs the scriptbox test suite with Pester.
+    Runs the PSScriptBox test suite with Pester.
 
 .DESCRIPTION
     Checks that Pester 5 or later is available and runs the static checks,
@@ -77,7 +77,7 @@ if ($Coverage) {
             Where-Object { $_.FullName -match '\\internal\\' -and $_.FullName -notmatch '\\(\.git|tests)\\' } |
             ForEach-Object { $_.FullName })
     # Keeps the JaCoCo report out of the repository (Pester's default is coverage.xml in the working directory).
-    $config.CodeCoverage.OutputPath = Join-Path ([System.IO.Path]::GetTempPath()) 'scriptbox-coverage.xml'
+    $config.CodeCoverage.OutputPath = Join-Path ([System.IO.Path]::GetTempPath()) 'PSScriptBox-coverage.xml'
 }
 
 Invoke-Pester -Configuration $config

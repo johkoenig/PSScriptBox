@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for pdf\internal\Get-ExecutablePath.ps1.
@@ -18,7 +18,7 @@ BeforeAll {
 
 Describe 'Get-ExecutablePath' {
     It 'returns $null for an unknown command' {
-        Get-ExecutablePath -Name 'scriptbox-no-such-command-xyz' | Should -BeNullOrEmpty
+        Get-ExecutablePath -Name 'PSScriptBox-no-such-command-xyz' | Should -BeNullOrEmpty
     }
 
     It 'returns a full path for an existing command' {

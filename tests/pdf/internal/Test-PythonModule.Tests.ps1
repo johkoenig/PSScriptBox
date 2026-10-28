@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for pdf\internal\Test-PythonModule.ps1.
@@ -30,7 +30,7 @@ BeforeAll {
 
 Describe 'Test-PythonModule' {
     It 'returns $false when the interpreter cannot be started' {
-        Test-PythonModule -PythonPath 'C:\scriptbox-no-such\python.exe' -ModuleName 'os' | Should -BeFalse
+        Test-PythonModule -PythonPath 'C:\PSScriptBox-no-such\python.exe' -ModuleName 'os' | Should -BeFalse
     }
 
     It 'returns $true for an importable standard module' {
@@ -40,6 +40,6 @@ Describe 'Test-PythonModule' {
 
     It 'returns $false for a module that does not exist' {
         if (-not $script:PythonUsable) { Set-ItResult -Skipped -Because 'Python is not available'; return }
-        Test-PythonModule -PythonPath $script:PythonPath -ModuleName 'scriptbox_no_such_module_xyz' | Should -BeFalse
+        Test-PythonModule -PythonPath $script:PythonPath -ModuleName 'PSScriptBox_no_such_module_xyz' | Should -BeFalse
     }
 }

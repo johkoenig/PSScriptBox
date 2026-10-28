@@ -13,7 +13,7 @@
 #>
 
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 
@@ -86,10 +86,10 @@ function Copy-FileToStaging
     [System.IO.Directory]::CreateDirectory($DestinationDirectory) | Out-Null
     $sourcePath = Join-Path $SourceDirectory $FileName
     $destinationPath = Join-Path $DestinationDirectory $FileName
-    $temporaryFileName = '.scriptbox-copy-{0}.part' -f [guid]::NewGuid().ToString('N')
+    $temporaryFileName = '.PSScriptBox-copy-{0}.part' -f [guid]::NewGuid().ToString('N')
     $temporaryPath = Join-Path $DestinationDirectory $temporaryFileName
     $replacementBackupPath = Join-Path $DestinationDirectory (
-    '.scriptbox-replaced-{0}.part' -f [guid]::NewGuid().ToString('N')
+    '.PSScriptBox-replaced-{0}.part' -f [guid]::NewGuid().ToString('N')
     )
     $source = Get-Item -LiteralPath $sourcePath -ErrorAction Stop
     if ($source.Length -ne $FileLength)

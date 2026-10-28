@@ -11,7 +11,7 @@
 #>
 
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 
@@ -35,15 +35,17 @@ function Get-AccountNameFormat {
     param([Parameter(Mandatory)][int] $Format)
 
     try {
-        if (-not ('Scriptbox.AccountNames' -as [type])) {
-            Add-Type -Namespace 'Scriptbox' -Name 'AccountNames' -MemberDefinition @'
+        if (-not ('PSScriptBox.AccountNames' -as [type]))
+        {
+            Add-Type -Namespace 'PSScriptBox' -Name 'AccountNames' -MemberDefinition @'
 [System.Runtime.InteropServices.DllImport("secur32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
 public static extern bool GetUserNameEx(int nameFormat, System.Text.StringBuilder userName, ref uint size);
 '@
         }
         $builder = [System.Text.StringBuilder]::new(512)
         [uint32] $size = 512
-        if ([Scriptbox.AccountNames]::GetUserNameEx($Format, $builder, [ref] $size)) {
+        if ( [PSScriptBox.AccountNames]::GetUserNameEx($Format, $builder, [ref]$size))
+        {
             return $builder.ToString().Trim()
         }
     }

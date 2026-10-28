@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/scriptbox.iml" filepath="$PROJECT_DIR$/.idea/scriptbox.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/PSScriptBox.iml" filepath="$PROJECT_DIR$/.idea/PSScriptBox.iml" />
     </modules>
   </component>
 </project>

@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for git\internal\Get-LocalAccountFullName.ps1.
@@ -18,7 +18,7 @@ BeforeAll {
 
 Describe 'Get-LocalAccountFullName' {
     It 'returns an empty string when the account does not exist' {
-        Get-LocalAccountFullName -UserName 'scriptbox-no-such-account' -MachineName ([Environment]::MachineName) |
+        Get-LocalAccountFullName -UserName 'PSScriptBox-no-such-account' -MachineName ([Environment]::MachineName) |
             Should -Be ''
     }
 

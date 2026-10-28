@@ -37,7 +37,7 @@ Shows matching MOV files without deleting them.
 #>
 
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 

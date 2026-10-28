@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for pdf\internal\Invoke-Tesseract.ps1.
@@ -33,6 +33,6 @@ Describe 'Invoke-Tesseract' {
     }
 
     It 'throws when the executable does not exist' {
-        { Invoke-Tesseract -TesseractPath 'C:\scriptbox-no-such\tesseract.exe' -Arguments '--version' } | Should -Throw
+        { Invoke-Tesseract -TesseractPath 'C:\PSScriptBox-no-such\tesseract.exe' -Arguments '--version' } | Should -Throw
     }
 }

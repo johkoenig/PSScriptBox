@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for pdf\internal\Invoke-SetupProcess.ps1.
@@ -22,9 +22,9 @@ BeforeAll {
 Describe 'Invoke-SetupProcess' {
     It 'returns exit code 0 and the captured standard output' {
         $hostPath = (Get-Process -Id $PID).Path
-        $result = Invoke-SetupProcess -FilePath $hostPath -Arguments @('-NoProfile', '-Command', "[Console]::Out.Write('scriptbox-ok')")
+        $result = Invoke-SetupProcess -FilePath $hostPath -Arguments @('-NoProfile', '-Command', "[Console]::Out.Write('PSScriptBox-ok')")
         $result.ExitCode | Should -Be 0
-        $result.StdOut | Should -Match 'scriptbox-ok'
+        $result.StdOut | Should -Match 'PSScriptBox-ok'
     }
 
     It 'returns the non-zero exit code of the process' {
@@ -35,8 +35,8 @@ Describe 'Invoke-SetupProcess' {
 
     It 'captures standard error separately from standard output' {
         $hostPath = (Get-Process -Id $PID).Path
-        $result = Invoke-SetupProcess -FilePath $hostPath -Arguments @('-NoProfile', '-Command', "[Console]::Error.Write('scriptbox-err')")
-        $result.StdErr | Should -Match 'scriptbox-err'
+        $result = Invoke-SetupProcess -FilePath $hostPath -Arguments @('-NoProfile', '-Command', "[Console]::Error.Write('PSScriptBox-err')")
+        $result.StdErr | Should -Match 'PSScriptBox-err'
         $result.StdOut | Should -BeNullOrEmpty
     }
 

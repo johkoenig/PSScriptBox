@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for pdf\internal\Get-PdfPythonRuntime.ps1.
@@ -30,7 +30,7 @@ Describe 'Invoke-PdfPythonProbe' {
     }
 
     It 'returns -1 and the error message when the executable does not exist' {
-        $result = Invoke-PdfPythonProbe -FilePath 'C:\scriptbox-missing\python.exe' -Arguments @('-c', 'print(1)')
+        $result = Invoke-PdfPythonProbe -FilePath 'C:\PSScriptBox-missing\python.exe' -Arguments @('-c', 'print(1)')
         $result.ExitCode | Should -Be -1
         $result.StdErr | Should -Not -BeNullOrEmpty
     }
@@ -74,7 +74,7 @@ Describe 'Get-PdfPythonRuntime' {
     }
 
     It 'returns $null for a preferred path that does not exist' {
-        Get-PdfPythonRuntime -PreferredPath 'C:\scriptbox-missing\python.exe' | Should -BeNullOrEmpty
+        Get-PdfPythonRuntime -PreferredPath 'C:\PSScriptBox-missing\python.exe' | Should -BeNullOrEmpty
     }
 
     It 'reports the explicit path discovery for a valid preferred interpreter' {
@@ -93,7 +93,7 @@ Describe 'Get-PdfPythonRuntime' {
 
     It 'classifies an interpreter outside the given user roots as Machine scope' {
         if (-not $script:Python) { Set-ItResult -Skipped -Because 'no python.exe available'; return }
-        $runtime = Get-PdfPythonRuntime -PreferredPath $script:Python.Source -UserRoots @('C:\scriptbox-no-such-root')
+        $runtime = Get-PdfPythonRuntime -PreferredPath $script:Python.Source -UserRoots @('C:\PSScriptBox-no-such-root')
         $runtime.Scope | Should -Be 'Machine'
     }
 }

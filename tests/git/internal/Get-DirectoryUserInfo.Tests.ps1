@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for git\internal\Get-DirectoryUserInfo.ps1.
@@ -24,7 +24,7 @@ Describe 'Get-DirectoryUserInfo' {
     }
 
     It 'returns empty values when the directory cannot be reached' {
-        $result = Get-DirectoryUserInfo -UserName 'ann' -UserDomainName 'scriptbox-test.invalid' -MachineName 'PC01'
+        $result = Get-DirectoryUserInfo -UserName 'ann' -UserDomainName 'PSScriptBox-test.invalid' -MachineName 'PC01'
         $result.DisplayName | Should -Be ''
         $result.Mail | Should -Be ''
     }
