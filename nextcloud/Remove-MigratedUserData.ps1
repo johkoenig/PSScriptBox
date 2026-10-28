@@ -182,14 +182,14 @@ try {
             $destinationHashes[$hash].Add($destinationFilePath)
         }
 
-        $matches = [System.Collections.Generic.List[object]]::new()
+        $matchedFiles = [System.Collections.Generic.List[object]]::new()
         $totalBytes = [long]0
         if ($destinationHashes.Count -gt 0) {
             foreach ($file in $sourceInventory.Files) {
                 $sourceFilePath = Join-Path $sourcePath $file.RelativePath
                 $sourceHash = Get-FileSha256 -Path $sourceFilePath
                 if ($destinationHashes.ContainsKey($sourceHash)) {
-                    $matches.Add([pscustomobject]@{
+                    $matchedFiles.Add([pscustomobject]@{
                         RelativePath = $file.RelativePath
                         Length = [long]$file.Length
                         Hash = $sourceHash
@@ -203,7 +203,7 @@ try {
             Folder = $folder
             SourcePath = $sourcePath
             DestinationPath = $destinationPath
-            Matches = @($matches.ToArray())
+            Matches = @($matchedFiles.ToArray())
             MatchingDirectories = @($matchingDirectories.ToArray())
             TotalBytes = $totalBytes
         })
