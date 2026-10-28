@@ -62,7 +62,8 @@
       - pikepdf (used to detect encryption and digital signatures)
       - Ghostscript
 
-    Use .\Initialize-PdfProcessor.ps1 to check and install the required software.
+    This script checks its dependencies and prints installation guidance when
+    a required executable or Python module is missing.
     The output is a standard PDF version 1.5, not a PDF/A archive.
 #>
 
@@ -71,6 +72,11 @@
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingWriteHost',
+        '',
+        Justification = 'This user-facing script provides localized, color-coded console output.'
+)]
 [CmdletBinding()]
 param(
 # Optional path to a PDF file or a folder containing PDFs.
@@ -99,6 +105,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-PdfPythonRuntime.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-ExecutablePath.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-GhostscriptExecutablePath.ps1')
 . (Join-Path $PSScriptRoot 'internal\Test-PythonModule.ps1')
@@ -152,6 +159,7 @@ else
 }
 Write-Host ''
 
+$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}'
 $pythonRuntime = Get-PdfPythonRuntime
 $ghostscriptPath = Get-GhostscriptExecutablePath
 $missing = [System.Collections.Generic.List[string]]::new()
@@ -169,9 +177,26 @@ if (-not $ghostscriptPath)
 }
 if ($missing.Count -gt 0)
 {
-    Write-Host "`n$( Get-LocalizedText 'Missing dependencies:' )" -ForegroundColor Yellow
-    $missing | ForEach-Object { Write-Host "  - $_" }
-    Write-Host "`n$( Get-LocalizedText 'Run Initialize-PdfProcessor.ps1 to install the missing dependencies.' )"
+    foreach ($dependency in $missing)
+    {
+        $guidance = if ($dependency -eq (Get-LocalizedText 'Python (py.exe or python.exe)'))
+        {
+            Get-LocalizedText 'Install Python from https://www.python.org/downloads/.'
+        }
+        elseif ($dependency -eq (Get-LocalizedText 'pikepdf (Python module)'))
+        {
+            Get-LocalizedText -Text 'Install pikepdf with the selected interpreter: "{0}" -m pip install pikepdf.' `
+                -Arguments @($pythonRuntime.Path)
+        }
+        else
+        {
+            Get-LocalizedText 'Install Ghostscript with Chocolatey: choco install ghostscript -y, or download from https://ghostscript.com/releases/gsdnld.html.'
+        }
+        $report = Get-MissingDependencyReport -Dependency $dependency -Guidance $guidance `
+            -MessageTemplate $missingDependencyTemplate
+        Write-Host $report.Message -ForegroundColor Yellow
+        Write-Host "  $( $report.Guidance )"
+    }
     exit 1
 }
 

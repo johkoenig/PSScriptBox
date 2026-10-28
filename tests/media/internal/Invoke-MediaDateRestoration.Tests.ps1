@@ -17,7 +17,7 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\ConvertTo-QuotedArgument.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\media\internal\Invoke-MediaTool.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateUpdateArguments.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateUpdateArgument.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\media\internal\Invoke-MediaDateRestoration.ps1')
 }
 

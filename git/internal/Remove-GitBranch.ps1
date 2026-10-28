@@ -64,12 +64,19 @@ Commit identifier observed during analysis.
 .PARAMETER Messages
 German message catalog keyed by the English source text.
 
+.PARAMETER WhatIf
+Simulates branch removal without changing the repository.
+
+.PARAMETER Confirm
+Prompts before removing the branch.
+
 .OUTPUTS
-System.Management.Automation.PSCustomObject describing the removed branch.
+System.Management.Automation.PSCustomObject with Name, Ref, and Status
+('Removed', 'WhatIf', or 'Declined').
 #>
 function Remove-GitBranch
 {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory)]
         [string]$Repository,
@@ -100,6 +107,24 @@ function Remove-GitBranch
         throw ($message -f $Name)
     }
 
+    $action = Get-LocalizedText -Text 'Remove local Git branch: {0}' `
+        -Arguments @($Name) -Language $Language -Messages $Messages
+    if (-not $PSCmdlet.ShouldProcess($Name, $action))
+    {
+        return [pscustomobject]@{
+            Name = $Name
+            Ref = $Ref
+            Status = if ($WhatIfPreference)
+            {
+                'WhatIf'
+            }
+            else
+            {
+                'Declined'
+            }
+        }
+    }
+
     $null = Invoke-GitCommand -Repository $Repository -Arguments @(
         'branch',
         '-D',
@@ -110,5 +135,6 @@ function Remove-GitBranch
     [pscustomobject]@{
         Name = $Name
         Ref = $Ref
+        Status = 'Removed'
     }
 }

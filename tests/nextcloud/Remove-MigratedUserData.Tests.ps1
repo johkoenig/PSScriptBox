@@ -3,8 +3,8 @@
 <#
 .SYNOPSIS
     Placeholder for nextcloud\Remove-MigratedUserData.ps1. The script's top-level
-    flow is not unit tested; Remove-EmptyMatchingDirectories is covered by
-    tests\nextcloud\internal\Remove-EmptyMatchingDirectories.Tests.ps1.
+    flow is not unit tested; Remove-EmptyMatchingDirectory is covered by
+    tests\nextcloud\internal\Remove-EmptyMatchingDirectory.Tests.ps1.
 
 .NOTES
     Dependencies: Pester 5 or later. Run through tests\Invoke-Tests.ps1.

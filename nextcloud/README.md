@@ -48,13 +48,13 @@ not stored locally. Remaining files are copied in chunks with retries and a prog
 same-directory `.part` file, verifies the source and staged hashes, then moves or atomically replaces the final file
 only after the copy completes.
 
-| Parameter / switch | Description |
-| --- | --- |
+| Parameter / switch      | Description                                                                                                                |
+|-------------------------|----------------------------------------------------------------------------------------------------------------------------|
 | `-NextcloudPath <path>` | Existing synchronization directory. If omitted, uses `%USERPROFILE%\Nextcloud` when present; otherwise prompts for a path. |
-| `-Folders <names>` | Selects from `Desktop`, `Documents`, `Pictures`, `Music`, and `Videos`. Defaults to all five. |
-| `-WhatIf` | Previews planned copy actions without changing files. |
-| `-Confirm` | Uses PowerShell confirmation prompts for changes. The script also prompts interactively without this switch. |
-| `-EnglishOutput` | Forces English console output regardless of the Windows UI language. |
+| `-Folders <names>`      | Selects from `Desktop`, `Documents`, `Pictures`, `Music`, and `Videos`. Defaults to all five.                              |
+| `-WhatIf`               | Previews planned copy actions without changing files.                                                                      |
+| `-Confirm`              | Prompts before copying each selected folder. The required sync-paused acknowledgement remains interactive.                 |
+| `-EnglishOutput`        | Forces English console output regardless of the Windows UI language.                                                       |
 
 Examples:
 
@@ -65,17 +65,20 @@ Examples:
 
 ### `Remove-MigratedUserData.ps1`
 
-Removes local files whose SHA-256 hash matches a file in the corresponding Nextcloud destination folder, and deletes empty local subfolders when the corresponding Nextcloud subfolder exists. The script first asks you to confirm that synchronization is complete, shows the matching file count, total size, and corresponding subfolder count for each main folder, and requests separate approval per folder.
+Removes local files whose SHA-256 hash matches a file in the corresponding Nextcloud destination folder, and deletes
+empty local subfolders when the corresponding Nextcloud subfolder exists. The script first asks you to confirm that
+synchronization is complete, then shows the matching file count, total size, and corresponding subfolder count for each
+main folder. By default, removal proceeds without per-folder approval; use `-Confirm` to opt in to those prompts.
 
 The synchronization acknowledgement is a user confirmation; the cleanup script cannot independently verify the server state. Immediately before each file deletion, it rechecks the local hash against the matching destination files discovered earlier. Changed, missing, or no-longer-identical files are retained locally. It removes only matching local files and empty subfolders whose corresponding Nextcloud subfolder exists; selected main folders, non-matching files, and excluded system artifacts are retained. Symbolic links and junctions are not traversed. Nextcloud virtual files are included; hashing them downloads their content from the server if it is not stored locally.
 
-| Parameter / switch | Description |
-| --- | --- |
-| `-NextcloudPath <path>` | Existing synchronization directory. If omitted, uses `%USERPROFILE%\Nextcloud` when present; otherwise prompts for a path. |
-| `-Folders <names>` | Selects from `Desktop`, `Documents`, `Pictures`, `Music`, and `Videos`. Defaults to all five. |
-| `-WhatIf` | Previews planned deletions without changing files. |
-| `-Confirm` | Uses PowerShell confirmation prompts for changes. The script also prompts interactively without this switch. |
-| `-EnglishOutput` | Forces English console output regardless of the Windows UI language. |
+| Parameter / switch      | Description                                                                                                                                      |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-NextcloudPath <path>` | Existing synchronization directory. If omitted, uses `%USERPROFILE%\Nextcloud` when present; otherwise prompts for a path.                       |
+| `-Folders <names>`      | Selects from `Desktop`, `Documents`, `Pictures`, `Music`, and `Videos`. Defaults to all five.                                                    |
+| `-WhatIf`               | Previews planned deletions without changing files.                                                                                               |
+| `-Confirm`              | Prompts before removing matching files and subfolders from each selected folder. The required sync-complete acknowledgement remains interactive. |
+| `-EnglishOutput`        | Forces English console output regardless of the Windows UI language.                                                                             |
 
 Examples:
 
@@ -84,7 +87,7 @@ Examples:
 .\Remove-MigratedUserData.ps1 -NextcloudPath 'D:\Nextcloud' -Folders Documents,Pictures
 ```
 
-The second command deletes only after the review and confirmation prompts.
+The second command deletes after the required synchronization acknowledgement; add `-Confirm` for per-folder prompts.
 
 ## Shared PowerShell parameters
 

@@ -53,9 +53,12 @@ $ErrorActionPreference = 'Stop'
 $pester = Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version -ge [version]'5.0' } |
     Sort-Object Version -Descending | Select-Object -First 1
 if ($null -eq $pester) {
-    Write-Host 'Pester 5 or later is required but was not found.' -ForegroundColor Red
-    Write-Host 'Install it once in a user shell (no administrator rights needed):' -ForegroundColor Yellow
-    Write-Host '    Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser' -ForegroundColor Yellow
+    $message = @(
+        'Pester 5 or later is required but was not found.'
+        'Install it once in a user shell (no administrator rights needed):'
+        '    Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser'
+    ) -join [System.Environment]::NewLine
+    Write-Error -Message $message -ErrorAction Continue
     exit 1
 }
 Import-Module -Name $pester.Path -MinimumVersion 5.0 -Force

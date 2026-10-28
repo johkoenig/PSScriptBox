@@ -16,6 +16,12 @@
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
+.PARAMETER Confirm
+Prompts before deleting each eligible backup.
+
+.PARAMETER WhatIf
+Shows eligible backups without deleting them.
+
 .EXAMPLE
     .\Remove-MediaBackups.ps1
     Prompts for a folder.
@@ -26,7 +32,11 @@
 
 .EXAMPLE
     .\Remove-MediaBackups.ps1 -InputPath 'C:\Media'
-    Prompts for confirmation before deleting each matching _orig file.
+    Removes eligible backups without prompting.
+
+.EXAMPLE
+    .\Remove-MediaBackups.ps1 -InputPath 'C:\Media' -Confirm
+    Prompts before deleting each eligible backup.
 
 .NOTES
     Dependencies: PowerShell 5.1 or later. No additional programs or modules
@@ -38,7 +48,12 @@
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingWriteHost',
+        '',
+        Justification = 'This user-facing script provides localized, color-coded console output.'
+)]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [string] $InputPath,
 

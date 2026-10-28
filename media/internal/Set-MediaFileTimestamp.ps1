@@ -3,11 +3,12 @@
     Sets the file-system timestamps of a media file.
 
 .DESCRIPTION
-    Defines Set-MediaFileTimestamps, which restores creation, last-write, and
+    Defines Set-MediaFileTimestamp, which restores creation, last-write, and
     last-access timestamps using UTC values captured from the source file.
 
 .NOTES
-    Dependencies: Windows PowerShell 5.1 or PowerShell 7.
+    Dependencies: Windows PowerShell 5.1 or PowerShell 7 and
+    common\internal\Get-LocalizedText.ps1 loaded by the caller.
 #>
 
 # SPDX-License-Identifier: MIT
@@ -35,18 +36,33 @@
 .PARAMETER LastAccessTimeUtc
     Original last-access timestamp in UTC.
 
+.PARAMETER UiLanguage
+    Language of confirmation text: 'de' selects German, anything else English.
+
+.PARAMETER Messages
+    German message catalog keyed by the English source text.
+
 .OUTPUTS
-    None.
+None.
 #>
-function Set-MediaFileTimestamps
+function Set-MediaFileTimestamp
 {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory)][string] $Path,
         [Parameter(Mandatory)][datetime] $CreationTimeUtc,
         [Parameter(Mandatory)][datetime] $LastWriteTimeUtc,
-        [Parameter(Mandatory)][datetime] $LastAccessTimeUtc
+        [Parameter(Mandatory)][datetime] $LastAccessTimeUtc,
+        [string] $UiLanguage = 'en',
+        [hashtable] $Messages = @{ }
     )
+
+    $action = Get-LocalizedText -Text 'Restore source file timestamps' `
+        -Language $UiLanguage -Messages $Messages
+    if (-not $PSCmdlet.ShouldProcess($Path, $action))
+    {
+        return
+    }
 
     $resolvedPath = (Resolve-Path -LiteralPath $Path -ErrorAction Stop).ProviderPath
     [System.IO.File]::SetCreationTimeUtc($resolvedPath, $CreationTimeUtc)

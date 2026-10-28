@@ -13,7 +13,7 @@
     - Email: existing Git settings, the Active Directory mail attribute, the
       user principal name, the signed-in Microsoft account, or a custom value.
     Afterwards every recommended standard option (default branch, line endings,
-    pull/push behavior, sign-off helpers) is confirmed individually; the
+    pull/push behavior, sign-off helpers) is selected individually; the
     default is the existing value, or the recommendation when none is set.
     No personal information is stored in this script; every value is
     discovered at run time or supplied by the user.
@@ -35,9 +35,15 @@
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
+.PARAMETER Confirm
+Prompts before each Git configuration write.
+
+.PARAMETER WhatIf
+Previews Git configuration writes without changing settings.
+
 .EXAMPLE
     .\Initialize-GitConfiguration.ps1
-    Offers identity choices and confirms recommended settings for the
+    Offers identity choices and selects recommended settings for the
     repository in the current directory.
 
 .EXAMPLE
@@ -45,11 +51,12 @@
     Configures the global identity and settings for the current user.
 
 .EXAMPLE
-    .\Initialize-GitConfiguration.ps1 -RepositoryPath 'C:\src\project' -Name 'Jane Doe' -Email 'jane@example.com'
+    .\Initialize-GitConfiguration.ps1 -RepositoryPath 'C:\src\project' -Name 'Jane Doe' -Email 'jane@example.com' -WhatIf
     Sets the identity for the specified repository without identity prompts.
 
 .NOTES
-    Dependencies: Windows PowerShell 5.1 or later and Git for Windows.
+    Dependencies: Windows PowerShell 5.1 or later and Git for Windows. If Git
+    is missing, the script reports installation guidance and exits.
     Active Directory lookups run only on domain-joined computers and fail
     silently when no directory is reachable. Git has no setting that adds a
     Signed-off-by trailer to every commit; the recommended settings include
@@ -61,7 +68,12 @@
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 
-[CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingWriteHost',
+        '',
+        Justification = 'This user-facing script provides localized, color-coded console output.'
+)]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [string] $RepositoryPath = (Get-Location).Path,
 
@@ -86,6 +98,7 @@ $script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
 }
 else { @{} }
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-GitCommand.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-GitConfigValue.ps1')
 . (Join-Path $PSScriptRoot 'internal\Set-GitConfigValue.ps1')
@@ -94,13 +107,22 @@ else { @{} }
 . (Join-Path $PSScriptRoot 'internal\Get-LocalAccountFullName.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MicrosoftAccountName.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-IdentitySourceEntry.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-IdentityCandidates.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-IdentityCandidate.ps1')
 . (Join-Path $PSScriptRoot 'internal\Test-IdentityValue.ps1')
 . (Join-Path $PSScriptRoot 'internal\Select-IdentityValue.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-RecommendedGitSettings.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-RecommendedGitSetting.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-RecommendedSettingOption.ps1')
 . (Join-Path $PSScriptRoot 'internal\Resolve-RecommendedSettingAnswer.ps1')
-. (Join-Path $PSScriptRoot 'internal\Set-RecommendedGitSettings.ps1')
+. (Join-Path $PSScriptRoot 'internal\Set-RecommendedGitSetting.ps1')
+
+$shouldProcessParameters = @{ }
+foreach ($parameterName in @('Confirm', 'WhatIf'))
+{
+    if ( $PSBoundParameters.ContainsKey($parameterName))
+    {
+        $shouldProcessParameters[$parameterName] = $PSBoundParameters[$parameterName]
+    }
+}
 
 # --- Banner ---------------------------------------------------------------
 $headerLines = @(
@@ -118,7 +140,19 @@ Write-Host ''
 foreach ($headerLine in $headerLines) {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText '  Sets the Git author identity and confirms recommended standard settings.') -ForegroundColor Cyan
+
+$gitCommand = Get-Command -Name 'git.exe' -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
+if ($null -eq $gitCommand)
+{
+    $report = Get-MissingDependencyReport -Dependency 'Git for Windows' `
+        -Guidance (Get-LocalizedText 'Install Git for Windows from https://git-scm.com/download/win, or run: choco install git.install -y.') `
+        -MessageTemplate (Get-LocalizedText -Text 'Missing dependency: {0}')
+    Write-Host $report.Message -ForegroundColor Yellow
+    Write-Host "  $( $report.Guidance )"
+    exit 1
+}
+Write-Host (Get-LocalizedText '  Sets the Git author identity and configures recommended standard settings.') -ForegroundColor Cyan
 Write-Host ''
 
 try {
@@ -148,7 +182,7 @@ try {
                 -UserName ([Environment]::UserName) -UserDomainName ([Environment]::UserDomainName) `
                 -MachineName ([Environment]::MachineName) -DirectoryInfo $directory `
                 -Language $script:OutputLanguage -Messages $script:GermanMessages
-            $candidates = @(Get-IdentityCandidates -Key $key -Entries $entries `
+            $candidates = @(Get-IdentityCandidate -Key $key -Entries $entries `
                     -Language $script:OutputLanguage -Messages $script:GermanMessages)
             $customPrompt = Get-LocalizedText $(if ($key -eq 'user.name') { 'Enter the Git author name' } else { 'Enter the Git author email' })
             $invalidMessage = Get-LocalizedText $(if ($key -eq 'user.name') { 'Git author name cannot be empty.' } else { 'Enter a non-empty, valid email address.' })
@@ -178,13 +212,27 @@ try {
             Write-Host (Get-LocalizedText -Text 'Preserving existing {0}: {1}' -Arguments @($key, $current))
             continue
         }
-        Set-GitConfigValue -Key $key -Value $value -Scope $Scope -Repository $repositoryRoot -Language $script:OutputLanguage -Messages $script:GermanMessages
-        Write-Host (Get-LocalizedText -Text 'Configured {0}: {1}' -Arguments @($key, $value)) -ForegroundColor Green
+        $configured = Set-GitConfigValue -Key $key -Value $value -Scope $Scope `
+            -Repository $repositoryRoot -Language $script:OutputLanguage -Messages $script:GermanMessages `
+            @shouldProcessParameters
+        if ($configured)
+        {
+            Write-Host (Get-LocalizedText -Text 'Configured {0}: {1}' -Arguments @($key, $value)) -ForegroundColor Green
+        }
+        elseif ($WhatIfPreference)
+        {
+            Write-Host (Get-LocalizedText -Text 'Would configure {0}: {1}' -Arguments @($key, $value)) -ForegroundColor Yellow
+        }
+        else
+        {
+            Write-Host (Get-LocalizedText -Text 'Configuration was not approved: {0}' -Arguments @($key, $value)) -ForegroundColor DarkYellow
+        }
     }
 
     # --- Recommended standard settings ----------------------------------------
     Write-Host (Get-LocalizedText -Text 'Confirm recommended Git settings ({0} scope). Enter keeps the default, - skips.' -Arguments @($Scope)) -ForegroundColor Cyan
-    foreach ($setting in Get-RecommendedGitSettings) {
+foreach ($setting in Get-RecommendedGitSetting)
+{
         $current = Get-GitConfigValue -Key $setting.Key -Scope $Scope -Repository $repositoryRoot -Language $script:OutputLanguage -Messages $script:GermanMessages
         $default = if ($current) { $current } else { $setting.Value }
         $options = @(Get-RecommendedSettingOption -Options $setting.Options -Current $current `
@@ -208,11 +256,18 @@ try {
         } while ($choice.Kind -eq 'Invalid')
 
         $change = [pscustomobject]@{ Key = $setting.Key; Value = $choice.Value }
-        foreach ($result in Set-RecommendedGitSettings -Changes @($change) -Scope $Scope -Repository $repositoryRoot `
-                -Language $script:OutputLanguage -Messages $script:GermanMessages) {
+        foreach ($result in Set-RecommendedGitSetting -Changes @($change) -Scope $Scope -Repository $repositoryRoot `
+                -Language $script:OutputLanguage -Messages $script:GermanMessages @shouldProcessParameters)
+        {
             switch ($result.Status) {
                 'Preserved' { Write-Host (Get-LocalizedText -Text 'Preserving existing {0}: {1}' -Arguments @($result.Key, $result.Current)) }
                 'Configured' { Write-Host (Get-LocalizedText -Text 'Configured {0}: {1}' -Arguments @($result.Key, $result.Value)) -ForegroundColor Green }
+                'WouldConfigure' {
+                    Write-Host (Get-LocalizedText -Text 'Would configure {0}: {1}' -Arguments @($result.Key, $result.Value)) -ForegroundColor Yellow
+                }
+                'Declined' {
+                    Write-Host (Get-LocalizedText -Text 'Configuration was not approved: {0}' -Arguments @($result.Key, $result.Value)) -ForegroundColor DarkYellow
+                }
             }
         }
     }

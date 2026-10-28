@@ -3,7 +3,7 @@
     Provides the catalog of recommended Git standard settings.
 
 .DESCRIPTION
-    Defines Get-RecommendedGitSettings. The catalog lists each setting with its
+    Defines Get-RecommendedGitSetting. The catalog lists each setting with its
     recommended value, an English explanation, and the selectable options.
 
 .NOTES
@@ -28,7 +28,8 @@
 .OUTPUTS
     System.Collections.Hashtable[]. The catalog entries in display order.
 #>
-function Get-RecommendedGitSettings {
+function Get-RecommendedGitSetting
+{
     [CmdletBinding()]
     param()
 

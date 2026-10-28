@@ -15,8 +15,8 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\media\internal\Invoke-MediaTool.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateMetadata.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Set-MediaFileTimestamps.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateTag.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Set-MediaFileTimestamp.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\media\internal\Invoke-MediaSizeOptimization.ps1')
 }
 
@@ -28,7 +28,7 @@ Describe 'Invoke-MediaSizeOptimization' {
         [System.IO.File]::WriteAllBytes($script:VideoPath,[byte[]]::new(100))
         $script:Metadata = @{ 'QuickTime:CreateDate' = '"2021:05:06 12:00:00"' }
 
-        Mock Get-MediaDateMetadata { $script:Metadata }
+        Mock Get-MediaDateTag { $script:Metadata }
         Mock Invoke-MediaTool {
             if ($Arguments -contains '-c:v')
             {
@@ -40,7 +40,7 @@ Describe 'Invoke-MediaSizeOptimization' {
 
     It 'backs up the source and writes a smaller MP4 with preserved timestamps' {
         $timestamp = [datetime]::SpecifyKind([datetime]::new(2021, 5, 6, 12, 30, 0), [System.DateTimeKind]::Utc)
-        Set-MediaFileTimestamps -Path $script:VideoPath -CreationTimeUtc $timestamp `
+        Set-MediaFileTimestamp -Path $script:VideoPath -CreationTimeUtc $timestamp `
             -LastWriteTimeUtc $timestamp -LastAccessTimeUtc $timestamp
         $sourceTimes = Get-Item -LiteralPath $script:VideoPath
         $expectedCreation = $sourceTimes.CreationTimeUtc
@@ -76,7 +76,7 @@ Describe 'Invoke-MediaSizeOptimization' {
         $mp4Path = Join-Path $script:Folder 'source.mp4'
         [System.IO.File]::WriteAllBytes($mp4Path,[byte[]]::new(100))
         $timestamp = [datetime]::SpecifyKind([datetime]::new(2021, 5, 6, 12, 30, 0), [System.DateTimeKind]::Utc)
-        Set-MediaFileTimestamps -Path $mp4Path -CreationTimeUtc $timestamp `
+        Set-MediaFileTimestamp -Path $mp4Path -CreationTimeUtc $timestamp `
             -LastWriteTimeUtc $timestamp -LastAccessTimeUtc $timestamp
         $sourceTimes = Get-Item -LiteralPath $mp4Path
         $expectedCreation = $sourceTimes.CreationTimeUtc
@@ -115,7 +115,7 @@ Describe 'Invoke-MediaSizeOptimization' {
     It 'restores timestamps captured before source probing' {
         $timestamp = [datetime]::SpecifyKind([datetime]::new(2021, 5, 6, 12, 30, 0), [System.DateTimeKind]::Utc)
         $laterAccess = $timestamp.AddDays(10)
-        Set-MediaFileTimestamps -Path $script:VideoPath -CreationTimeUtc $timestamp `
+        Set-MediaFileTimestamp -Path $script:VideoPath -CreationTimeUtc $timestamp `
             -LastWriteTimeUtc $timestamp -LastAccessTimeUtc $laterAccess
         $sourceTimestamps = @{
             CreationTimeUtc = $timestamp
@@ -165,7 +165,7 @@ Describe 'Invoke-MediaSizeOptimization' {
     }
 
     It 'leaves the source unchanged when date metadata differs' {
-        Mock Get-MediaDateMetadata {
+        Mock Get-MediaDateTag {
             if ($Path -eq $script:VideoPath)
             {
                 return @{ 'QuickTime:CreateDate' = '"2021:05:06 12:00:00"' }

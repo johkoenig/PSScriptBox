@@ -2,7 +2,7 @@
 # Copyright (c) 2026 scriptbox contributors
 <#
 .SYNOPSIS
-    Unit tests for nextcloud\internal\Remove-EmptyMatchingDirectories.ps1.
+    Unit tests for nextcloud\internal\Remove-EmptyMatchingDirectory.ps1.
 
 .DESCRIPTION
     Verifies that only empty folders with an existing Nextcloud counterpart are
@@ -15,7 +15,8 @@
 #>
 
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Remove-EmptyMatchingDirectories.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Remove-EmptyMatchingDirectory.ps1')
 
     function New-Tree {
         param([string] $Root, [string[]] $Directory)
@@ -25,7 +26,7 @@ BeforeAll {
     }
 }
 
-Describe 'Remove-EmptyMatchingDirectories' {
+Describe 'Remove-EmptyMatchingDirectory' {
     BeforeEach {
         $script:Local = Join-Path $TestDrive ([guid]::NewGuid().ToString())
         $script:Cloud = Join-Path $TestDrive ([guid]::NewGuid().ToString())
@@ -36,17 +37,28 @@ Describe 'Remove-EmptyMatchingDirectories' {
         New-Tree -Root $script:Local -Directory 'empty'
         New-Tree -Root $script:Cloud -Directory 'empty'
 
-        $result = Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('empty')
+        $result = Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('empty')
 
         Test-Path -LiteralPath (Join-Path $script:Local 'empty') | Should -BeFalse
         $result.DeletedCount | Should -Be 1
         @($result.FailedDirectories).Count | Should -Be 0
     }
 
+    It 'keeps an eligible folder when WhatIf is requested' {
+        New-Tree -Root $script:Local -Directory 'empty'
+        New-Tree -Root $script:Cloud -Directory 'empty'
+
+        $result = Remove-EmptyMatchingDirectory -SourcePath $script:Local `
+            -DestinationPath $script:Cloud -RelativeDirectories @('empty') -WhatIf
+
+        Test-Path -LiteralPath (Join-Path $script:Local 'empty') | Should -BeTrue
+        $result.DeletedCount | Should -Be 0
+    }
+
     It 'keeps the main folder itself' {
         New-Tree -Root $script:Local -Directory 'empty'
         New-Tree -Root $script:Cloud -Directory 'empty'
-        Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('empty') | Out-Null
+        Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('empty') | Out-Null
         Test-Path -LiteralPath $script:Local -PathType Container | Should -BeTrue
     }
 
@@ -55,7 +67,7 @@ Describe 'Remove-EmptyMatchingDirectories' {
         New-Tree -Root $script:Cloud -Directory 'full'
         [System.IO.File]::WriteAllText((Join-Path $script:Local 'full\keep.txt'), 'data')
 
-        $result = Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('full')
+        $result = Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('full')
 
         Test-Path -LiteralPath (Join-Path $script:Local 'full\keep.txt') | Should -BeTrue
         $result.DeletedCount | Should -Be 0
@@ -64,7 +76,7 @@ Describe 'Remove-EmptyMatchingDirectories' {
     It 'keeps an empty subfolder that has no Nextcloud counterpart' {
         New-Tree -Root $script:Local -Directory 'local-only'
 
-        $result = Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('local-only')
+        $result = Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('local-only')
 
         Test-Path -LiteralPath (Join-Path $script:Local 'local-only') | Should -BeTrue
         $result.DeletedCount | Should -Be 0
@@ -74,7 +86,7 @@ Describe 'Remove-EmptyMatchingDirectories' {
         New-Tree -Root $script:Local -Directory 'name'
         [System.IO.File]::WriteAllText((Join-Path $script:Cloud 'name'), 'file')
 
-        $result = Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('name')
+        $result = Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('name')
 
         Test-Path -LiteralPath (Join-Path $script:Local 'name') | Should -BeTrue
         $result.DeletedCount | Should -Be 0
@@ -83,7 +95,7 @@ Describe 'Remove-EmptyMatchingDirectories' {
     It 'skips a listed folder that is missing in the source' {
         New-Tree -Root $script:Cloud -Directory 'gone'
 
-        $result = Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('gone')
+        $result = Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('gone')
 
         $result.DeletedCount | Should -Be 0
         @($result.FailedDirectories).Count | Should -Be 0
@@ -93,7 +105,7 @@ Describe 'Remove-EmptyMatchingDirectories' {
         New-Tree -Root $script:Local -Directory 'a\b'
         New-Tree -Root $script:Cloud -Directory 'a\b'
 
-        $result = Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('a', 'a\b')
+        $result = Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('a', 'a\b')
 
         Test-Path -LiteralPath (Join-Path $script:Local 'a') | Should -BeFalse
         $result.DeletedCount | Should -Be 2
@@ -108,7 +120,7 @@ Describe 'Remove-EmptyMatchingDirectories' {
         if (-not (Test-Path -LiteralPath $junction)) { Set-ItResult -Skipped -Because 'junction could not be created'; return }
         New-Tree -Root $script:Cloud -Directory 'link'
 
-        Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('link') | Out-Null
+        Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('link') | Out-Null
 
         Test-Path -LiteralPath (Join-Path $target 'precious.txt') | Should -BeTrue
     }
@@ -121,7 +133,7 @@ Describe 'Remove-EmptyMatchingDirectories' {
         cmd /c mklink /J "$junction" "$target" | Out-Null
         if (-not (Test-Path -LiteralPath $junction)) { Set-ItResult -Skipped -Because 'junction could not be created'; return }
 
-        $result = Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('link')
+        $result = Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('link')
 
         Test-Path -LiteralPath (Join-Path $script:Local 'link') | Should -BeTrue
         $result.DeletedCount | Should -Be 0
@@ -131,7 +143,7 @@ Describe 'Remove-EmptyMatchingDirectories' {
         New-Tree -Root $script:Local -Directory 'empty'
         New-Tree -Root $script:Cloud -Directory 'empty'
 
-        $result = Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @()
+        $result = Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @()
 
         Test-Path -LiteralPath (Join-Path $script:Local 'empty') | Should -BeTrue
         $result.DeletedCount | Should -Be 0
@@ -142,7 +154,7 @@ Describe 'Remove-EmptyMatchingDirectories' {
         New-Tree -Root $script:Cloud -Directory 'locked'
         Mock Remove-Item { throw 'simulated lock' }
 
-        $result = Remove-EmptyMatchingDirectories -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('locked')
+        $result = Remove-EmptyMatchingDirectory -SourcePath $script:Local -DestinationPath $script:Cloud -RelativeDirectories @('locked')
 
         $result.DeletedCount | Should -Be 0
         @($result.FailedDirectories).Count | Should -Be 1

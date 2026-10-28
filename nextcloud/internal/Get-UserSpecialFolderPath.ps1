@@ -3,8 +3,8 @@
     Provides the special user folder path lookup for the Nextcloud scripts.
 
 .DESCRIPTION
-    Defines Get-UserSpecialFolderPaths. Has no dependencies on other helpers.
-    The Windows lookup is isolated here so that Get-UserFolders can be tested
+    Defines Get-UserSpecialFolderPath. Has no dependencies on other helpers.
+    The Windows lookup is isolated here so that Get-UserFolder can be tested
     with explicit path values.
 
 .NOTES
@@ -29,7 +29,8 @@
 .OUTPUTS
     System.Collections.Hashtable. Folder name to absolute path.
 #>
-function Get-UserSpecialFolderPaths {
+function Get-UserSpecialFolderPath
+{
     [CmdletBinding()]
     param()
 

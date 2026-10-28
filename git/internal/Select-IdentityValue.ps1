@@ -26,7 +26,7 @@
     existing setting when one exists.
 
 .PARAMETER Candidates
-    Candidates with Value and Source properties, as returned by Get-IdentityCandidates.
+    Candidates with Value and Source properties, as returned by Get-IdentityCandidate.
 
 .PARAMETER Answer
     The typed selection.

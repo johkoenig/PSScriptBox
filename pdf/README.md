@@ -7,13 +7,10 @@ This folder contains PowerShell utilities for preparing and processing PDF files
 ## Quick start
 
 1. Open PowerShell in this folder.
-2. Run the dependency setup:
-
-   ```powershell
-   .\Initialize-PdfProcessor.ps1
-   ```
-
-3. Follow any instructions for missing Tesseract language data. The setup script does not download `.traineddata` files.
+2. Run the PDF script you need. Scripts that rely on external tools check them
+   and print installation guidance if anything is missing.
+3. Follow any instructions for missing Tesseract language data; scripts do not
+   download `.traineddata` files.
 4. Add OCR to scans and reduce PDF size as separate steps:
 
    ```powershell
@@ -25,34 +22,16 @@ PowerShell execution policy may require a policy-approved way to run local scrip
 
 ## Dependency setup
 
-`Initialize-PdfProcessor.ps1` requires Chocolatey to be installed separately. It checks Chocolatey, Python, OCRmyPDF, pikepdf, Tesseract, and Ghostscript individually.
-
-- Missing machine-wide programs are installed through Chocolatey.
-- The setup prefers a working Python interpreter in the current user's profile; otherwise it selects a working machine-wide interpreter.
-- `py.exe` is only used to discover a concrete `python.exe` path. Scripts then invoke that interpreter directly.
-- Missing Python packages are installed into the selected interpreter. A machine-wide interpreter requires administrator privileges.
-- Before opening the UAC prompt, setup lists the planned operations and waits for Enter. Any non-empty response cancels.
-- Tesseract language data is inspected but never downloaded. The OCR defaults are `deu+eng+fra+ita+spa`; `deu` and `eng`
-  are required, and the other languages are optional.
+Each PDF script that needs external executables or Python modules checks them
+before processing files. Missing dependencies are reported individually with
+Chocolatey commands, direct download links, or a pip command that names the
+selected Python interpreter. Scripts do not install dependencies or request
+administrator rights. Tesseract language data is not downloaded: the OCR
+defaults are `deu+eng+fra+ita+spa`; `deu` and `eng` are required, and the other
+languages are optional. The backup and restore scripts use built-in PowerShell
+features and need no additional software.
 
 ## Scripts and switches
-
-### `Initialize-PdfProcessor.ps1`
-
-Checks dependencies, installs missing software, and reports missing Tesseract language data.
-
-| Switch | Description |
-| --- | --- |
-| `-EnglishOutput` | Forces English console output regardless of Windows UI language. |
-
-The hidden `-ElevatedChild` and `-RuntimePythonPath` parameters are internal implementation details and are not intended for direct use.
-
-Examples:
-
-```powershell
-.\Initialize-PdfProcessor.ps1
-.\Initialize-PdfProcessor.ps1 -EnglishOutput
-```
 
 ### `ConvertTo-SearchablePdf.ps1`
 
@@ -136,18 +115,19 @@ Examples:
 
 Finds `_orig.pdf` backups for which the corresponding processed PDF exists in the same folder. Each deletion is subject to PowerShell's confirmation behavior.
 
-| Parameter / switch | Description |
-| --- | --- |
-| `-InputPath <folder>` | Folder to search recursively. If omitted, prompts for a path. |
-| `-WhatIf` | Lists planned deletions without deleting files. |
-| `-Confirm` | Prompts before each deletion. This is enabled by default because deletion is a high-impact action; `-Confirm:$false` suppresses prompts. |
-| `-EnglishOutput` | Forces English console output regardless of Windows UI language. |
+| Parameter / switch    | Description                                                                      |
+|-----------------------|----------------------------------------------------------------------------------|
+| `-InputPath <folder>` | Folder to search recursively. If omitted, prompts for a path.                    |
+| `-WhatIf`             | Lists planned deletions without deleting files.                                  |
+| `-Confirm`            | Prompts before each deletion. Deletion proceeds without confirmation by default. |
+| `-EnglishOutput`      | Forces English console output regardless of Windows UI language.                 |
 
 Examples:
 
 ```powershell
 .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
-.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm:$false
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs'
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm
 .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -EnglishOutput
 ```
 
@@ -155,21 +135,21 @@ Examples:
 
 Finds `_orig.pdf` backups whose corresponding processed PDFs exist in the same folder. For each approved pair, it
 atomically replaces the processed PDF with the original backup, removing the processed file and consuming the `_orig`
-backup. Confirmation is enabled by default; review the target folder carefully before proceeding.
+backup. Restoration proceeds without confirmation by default; use `-Confirm` to opt in to per-file prompts.
 
-| Parameter / switch    | Description                                                            |
-|-----------------------|------------------------------------------------------------------------|
-| `-InputPath <folder>` | Folder to search recursively. If omitted, prompts for a path.          |
-| `-WhatIf`             | Lists planned restorations without changing files.                     |
-| `-Confirm`            | Prompts before each restoration; `-Confirm:$false` suppresses prompts. |
-| `-EnglishOutput`      | Forces English console output regardless of Windows UI language.       |
+| Parameter / switch    | Description                                                               |
+|-----------------------|---------------------------------------------------------------------------|
+| `-InputPath <folder>` | Folder to search recursively. If omitted, prompts for a path.             |
+| `-WhatIf`             | Lists planned restorations without changing files.                        |
+| `-Confirm`            | Prompts before each restoration. No confirmation is requested by default. |
+| `-EnglishOutput`      | Forces English console output regardless of Windows UI language.          |
 
 Examples:
 
 ```powershell
 .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -WhatIf
 .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs'
-.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm:$false -EnglishOutput
+.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm -EnglishOutput
 ```
 
 ## Shared PowerShell parameters

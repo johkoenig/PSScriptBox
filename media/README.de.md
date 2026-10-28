@@ -14,11 +14,12 @@ Dateinamen oder Metadaten. Verwende Windows PowerShell 5.1 oder PowerShell 7 in 
    .\Remove-LivePhotos.ps1 -InputPath 'C:\Medien' -WhatIf
    ```
 
-3. Lösche nach Prüfung der Kandidaten die passenden MOV-Videos; das Skript fragt vor jeder Löschung nach:
+3. Lösche nach Prüfung der Kandidaten die passenden MOV-Videos; standardmäßig erfolgt keine Rückfrage:
 
    ```powershell
    .\Remove-LivePhotos.ps1 -InputPath 'C:\Medien'
    ```
+   Mit `-Confirm` wird vor jeder Löschung nachgefragt.
 
 4. Zeige eine Vorschau der Video- und JPEG-Dateien in einem Ordner an:
 
@@ -38,11 +39,12 @@ Dateinamen oder Metadaten. Verwende Windows PowerShell 5.1 oder PowerShell 7 in 
    .\Remove-MediaBackups.ps1 -InputPath 'C:\Medien' -WhatIf
    ```
 
-7. Lösche nach Prüfung der Liste geeignete Sicherungen; das Skript fragt vor jeder Löschung nach:
+7. Lösche nach Prüfung der Liste geeignete Sicherungen; standardmäßig erfolgt keine Rückfrage:
 
    ```powershell
    .\Remove-MediaBackups.ps1 -InputPath 'C:\Medien'
    ```
+   Mit `-Confirm` wird vor jeder Löschung nachgefragt.
 
 8. Zeige eine Vorschau zur Wiederherstellung der Datumsangaben und Umbenennung unterstützter Mediendateien an:
 
@@ -74,7 +76,8 @@ choco install ffmpeg exiftool -y
 ```
 
 FFmpeg muss `libx265` und MJPEG enthalten. Alle Programme müssen über `PATH` auffindbar sein. Das Skript prüft nur ihre
-Verfügbarkeit; es installiert keine Software und benötigt keine Administratorrechte.
+Verfügbarkeit; es installiert keine Software und benötigt keine Administratorrechte. Fehlende Programme werden einzeln
+mit Chocolatey-Befehlen oder einem Download-Link gemeldet.
 
 ## Skripte und Schalter
 
@@ -123,7 +126,8 @@ Datei wird als Problem gemeldet.
 Findet rekursiv `_orig`-Sicherungen für MOV-, MP4-, JPG- und JPEG-Dateien. Eine Sicherung ist nur geeignet, wenn die
 bearbeitete Datei im selben Ordner vorhanden ist. Eine MOV-Sicherung wie `clip_orig.mov` wird der optimierten Datei
 `clip.mp4` zugeordnet; andere unterstützte Sicherungen werden mit derselben Erweiterung abgeglichen. `-WhatIf` zeigt
-eine Vorschau an; standardmäßig fragt das Skript vor jeder Löschung nach.
+eine Vorschau an; standardmäßig werden geeignete Sicherungen ohne Rückfrage gelöscht. Mit `-Confirm` werden Rückfragen
+pro Datei aktiviert.
 
 | Parameter / Schalter | Beschreibung                                                                                     |
 |----------------------|--------------------------------------------------------------------------------------------------|
@@ -144,7 +148,8 @@ Beispiele:
 
 Findet rekursiv `.mov`-Videos mit einem gleichnamigen `.jpg`-Foto im selben Ordner, löscht anschließend das Video und
 behält das Foto. Das entspricht dem Zuordnungsmuster des alten Skripts; `.jpeg`-Dateien gelten nicht als Treffer.
-Standardmäßig fragt das Skript vor jeder Löschung nach; mit `-WhatIf` lässt sich eine Vorschau anzeigen.
+Standardmäßig werden passende Videos ohne Rückfrage gelöscht; mit `-Confirm` werden Rückfragen pro Datei aktiviert
+und `-WhatIf` zeigt eine Vorschau an.
 
 | Parameter / Schalter | Beschreibung                                                                   |
 |----------------------|--------------------------------------------------------------------------------|

@@ -2,7 +2,7 @@
 # Copyright (c) 2026 scriptbox contributors
 <#
 .SYNOPSIS
-    Unit tests for git\internal\Get-IdentityCandidates.ps1.
+    Unit tests for git\internal\Get-IdentityCandidate.ps1.
 
 .DESCRIPTION
     Uses plain source entries, so no Git or directory access is needed.
@@ -14,7 +14,7 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\git\internal\Test-IdentityValue.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\git\internal\Get-IdentityCandidates.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\git\internal\Get-IdentityCandidate.ps1')
     $script:Catalog = @{
         'Existing Git setting ({0})' = 'Vorhandene Git-Einstellung ({0})'
         'Windows display name'       = 'Windows-Anzeigename'
@@ -26,9 +26,9 @@ BeforeAll {
     }
 }
 
-Describe 'Get-IdentityCandidates' {
+Describe 'Get-IdentityCandidate' {
     It 'returns an empty array when there are no entries' {
-        @(Get-IdentityCandidates -Key 'user.name').Count | Should -Be 0
+        @(Get-IdentityCandidate -Key 'user.name').Count | Should -Be 0
     }
 
     It 'trims values and drops empty and null values' {
@@ -37,7 +37,7 @@ Describe 'Get-IdentityCandidates' {
             New-Entry -Value '   ' -Source 'Active Directory display name'
             New-Entry -Value $null -Source 'Existing Git setting ({0})' -SourceArguments @('Global')
         )
-        $candidates = @(Get-IdentityCandidates -Key 'user.name' -Entries $entries)
+        $candidates = @(Get-IdentityCandidate -Key 'user.name' -Entries $entries)
         $candidates.Count | Should -Be 1
         $candidates[0].Value | Should -Be 'Ann Lee'
     }
@@ -47,14 +47,14 @@ Describe 'Get-IdentityCandidates' {
             New-Entry -Value 'ann@contoso.test' -Source 'Active Directory email'
             New-Entry -Value 'ANN@contoso.test' -Source 'Microsoft account'
         )
-        $candidates = @(Get-IdentityCandidates -Key 'user.email' -Entries $entries)
+        $candidates = @(Get-IdentityCandidate -Key 'user.email' -Entries $entries)
         $candidates.Count | Should -Be 1
         $candidates[0].Value | Should -Be 'ann@contoso.test'
     }
 
     It 'drops email values that are not valid addresses' {
         $entries = @(New-Entry -Value 'not-an-email' -Source 'User principal name')
-        @(Get-IdentityCandidates -Key 'user.email' -Entries $entries).Count | Should -Be 0
+        @(Get-IdentityCandidate -Key 'user.email' -Entries $entries).Count | Should -Be 0
     }
 
     It 'keeps the order of the entries' {
@@ -62,13 +62,13 @@ Describe 'Get-IdentityCandidates' {
             New-Entry -Value 'Bea' -Source 'Windows display name'
             New-Entry -Value 'Ann' -Source 'Windows display name'
         )
-        $candidates = @(Get-IdentityCandidates -Key 'user.name' -Entries $entries)
+        $candidates = @(Get-IdentityCandidate -Key 'user.name' -Entries $entries)
         ($candidates | ForEach-Object { $_.Value }) -join ',' | Should -Be 'Bea,Ann'
     }
 
     It 'localizes the source label with the English text by default' {
         $entries = @(New-Entry -Value 'Ann' -Source 'Existing Git setting ({0})' -SourceArguments @('Local'))
-        $candidates = @(Get-IdentityCandidates -Key 'user.name' -Entries $entries)
+        $candidates = @(Get-IdentityCandidate -Key 'user.name' -Entries $entries)
         $candidates[0].Source | Should -Be 'Existing Git setting (Local)'
     }
 
@@ -77,7 +77,7 @@ Describe 'Get-IdentityCandidates' {
             New-Entry -Value 'Ann' -Source 'Existing Git setting ({0})' -SourceArguments @('Local')
             New-Entry -Value 'Bea' -Source 'Windows display name'
         )
-        $candidates = @(Get-IdentityCandidates -Key 'user.name' -Entries $entries -Language 'de' -Messages $script:Catalog)
+        $candidates = @(Get-IdentityCandidate -Key 'user.name' -Entries $entries -Language 'de' -Messages $script:Catalog)
         $candidates[0].Source | Should -Be 'Vorhandene Git-Einstellung (Local)'
         $candidates[1].Source | Should -Be 'Windows-Anzeigename'
     }

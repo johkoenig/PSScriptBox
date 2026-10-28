@@ -48,13 +48,13 @@ bei Bedarf vom Server geladen. Die übrigen Dateien werden in Blöcken mit Wiede
 Übertragung wird ein Fortschrittsbalken angezeigt. Jede Datei wird zunächst in eine `.part`-Datei im selben Ordner
 kopiert. Quell- und Zwischendatei werden per Hash geprüft, bevor die fertige Datei verschoben oder atomar ersetzt wird.
 
-| Parameter / Schalter | Beschreibung |
-| --- | --- |
+| Parameter / Schalter    | Beschreibung                                                                                                                                        |
+|-------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | `-NextcloudPath <Pfad>` | Vorhandener Synchronisierungsordner. Ohne Angabe wird `%USERPROFILE%\Nextcloud` verwendet, falls vorhanden; andernfalls erscheint eine Pfadabfrage. |
-| `-Folders <Namen>` | Auswahl aus `Desktop`, `Documents`, `Pictures`, `Music` und `Videos`. Standardmäßig alle fünf. |
-| `-WhatIf` | Zeigt geplante Kopieraktionen an, ohne Dateien zu ändern. |
-| `-Confirm` | Verwendet die PowerShell-Bestätigungsabfrage für Änderungen. Ohne diesen Schalter fragt das Skript ebenfalls interaktiv nach. |
-| `-EnglishOutput` | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
+| `-Folders <Namen>`      | Auswahl aus `Desktop`, `Documents`, `Pictures`, `Music` und `Videos`. Standardmäßig alle fünf.                                                      |
+| `-WhatIf`               | Zeigt geplante Kopieraktionen an, ohne Dateien zu ändern.                                                                                           |
+| `-Confirm`              | Fragt vor dem Kopieren jedes ausgewählten Ordners nach. Die erforderliche Bestätigung der pausierten Synchronisierung bleibt interaktiv.            |
+| `-EnglishOutput`        | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.                                                                       |
 
 Beispiele:
 
@@ -65,17 +65,21 @@ Beispiele:
 
 ### `Remove-MigratedUserData.ps1`
 
-Entfernt lokale Dateien, deren SHA-256-Hash mit dem einer Datei im zugeordneten Nextcloud-Zielordner übereinstimmt, und löscht leere lokale Unterordner, wenn der entsprechende Nextcloud-Unterordner existiert. Das Skript fragt zuerst nach der abgeschlossenen Synchronisierung, zeigt für jeden Hauptordner die Anzahl und Gesamtgröße der passenden Dateien sowie die Anzahl der entsprechenden Unterordner und verlangt eine separate Bestätigung pro Ordner.
+Entfernt lokale Dateien, deren SHA-256-Hash mit dem einer Datei im zugeordneten Nextcloud-Zielordner übereinstimmt, und
+löscht leere lokale Unterordner, wenn der entsprechende Nextcloud-Unterordner existiert. Das Skript fragt zuerst nach
+der abgeschlossenen Synchronisierung und zeigt für jeden Hauptordner die Anzahl und Gesamtgröße der passenden Dateien
+sowie die Anzahl der entsprechenden Unterordner. Standardmäßig erfolgt keine Bestätigung pro Ordner; mit `-Confirm`
+lassen sich diese Rückfragen aktivieren.
 
 Die Bestätigung der Synchronisierung ist eine Nutzeraussage; das Löschskript kann den Serverzustand nicht selbst prüfen. Vor jeder einzelnen Dateilöschung vergleicht es den lokalen Hash erneut mit allen zuvor gefundenen passenden Zieldateien. Geänderte, fehlende oder nicht mehr inhaltsgleiche Dateien bleiben lokal erhalten. Gelöscht werden nur passende lokale Dateien und leere Unterordner, für die ein gleichnamiger Nextcloud-Unterordner existiert. Die ausgewählten Hauptordner, nicht passende Dateien und ausgeschlossene Systemartefakte bleiben bestehen. Symbolische Links und Junctions werden nicht durchlaufen. Nextcloud-Platzhalter (virtuelle Dateien) werden berücksichtigt; für den Hash-Vergleich werden sie bei Bedarf vom Server geladen.
 
-| Parameter / Schalter | Beschreibung |
-| --- | --- |
-| `-NextcloudPath <Pfad>` | Vorhandener Synchronisierungsordner. Ohne Angabe wird `%USERPROFILE%\Nextcloud` verwendet, falls vorhanden; andernfalls erscheint eine Pfadabfrage. |
-| `-Folders <Namen>` | Auswahl aus `Desktop`, `Documents`, `Pictures`, `Music` und `Videos`. Standardmäßig alle fünf. |
-| `-WhatIf` | Zeigt geplante Löschungen an, ohne Dateien zu ändern. |
-| `-Confirm` | Verwendet die PowerShell-Bestätigungsabfrage für Änderungen. Ohne diesen Schalter fragt das Skript ebenfalls interaktiv nach. |
-| `-EnglishOutput` | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
+| Parameter / Schalter    | Beschreibung                                                                                                                                                                     |
+|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-NextcloudPath <Pfad>` | Vorhandener Synchronisierungsordner. Ohne Angabe wird `%USERPROFILE%\Nextcloud` verwendet, falls vorhanden; andernfalls erscheint eine Pfadabfrage.                              |
+| `-Folders <Namen>`      | Auswahl aus `Desktop`, `Documents`, `Pictures`, `Music` und `Videos`. Standardmäßig alle fünf.                                                                                   |
+| `-WhatIf`               | Zeigt geplante Löschungen an, ohne Dateien zu ändern.                                                                                                                            |
+| `-Confirm`              | Fragt vor dem Entfernen passender Dateien und Unterordner jedes ausgewählten Ordners nach. Die erforderliche Bestätigung der abgeschlossenen Synchronisierung bleibt interaktiv. |
+| `-EnglishOutput`        | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.                                                                                                    |
 
 Beispiele:
 
@@ -84,7 +88,8 @@ Beispiele:
 .\Remove-MigratedUserData.ps1 -NextcloudPath 'D:\Nextcloud' -Folders Documents,Pictures
 ```
 
-Der zweite Befehl löscht erst nach der Prüfung und Bestätigung.
+Der zweite Befehl löscht nach der erforderlichen Bestätigung der abgeschlossenen Synchronisierung; mit `-Confirm` werden
+zusätzlich Rückfragen pro Ordner aktiviert.
 
 ## Gemeinsame PowerShell-Parameter
 

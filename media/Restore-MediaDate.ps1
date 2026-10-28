@@ -15,17 +15,28 @@
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
+.PARAMETER Confirm
+Prompts before renaming a file or changing its dates.
+
+.PARAMETER WhatIf
+Previews proposed names and date updates without changing files.
+
 .EXAMPLE
     .\Restore-MediaDate.ps1 -InputPath 'C:\Photos' -WhatIf
     Previews date sources and proposed filenames without changing files.
 
 .EXAMPLE
     .\Restore-MediaDate.ps1 -InputPath 'C:\Photos'
-    Processes supported media files and prompts before each change.
+    Processes supported media files without confirmation prompts.
+
+.EXAMPLE
+    .\Restore-MediaDate.ps1 -InputPath 'C:\Photos' -Confirm
+    Prompts before each file is changed.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7 and ExifTool.
-    ExifTool must be available in PATH. The script does not install software.
+    ExifTool must be available in PATH. If it is missing, the script prints
+    installation guidance. The script does not install software.
 #>
 
 # SPDX-License-Identifier: MIT
@@ -33,7 +44,12 @@
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingWriteHost',
+        '',
+        Justification = 'This user-facing script provides localized, color-coded console output.'
+)]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [string] $InputPath,
 
@@ -44,11 +60,12 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\ConvertTo-QuotedArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaTool.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-MediaDateInputFiles.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-MediaDateInputFile.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MediaDateSource.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-MediaDateUpdateArguments.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-MediaDateUpdateArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\New-MediaDateCode.ps1')
 . (Join-Path $PSScriptRoot 'internal\New-MediaDateFileName.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaDateRestoration.ps1')
@@ -91,12 +108,16 @@ Write-Host (Get-LocalizedText 'Restores media dates from filenames and metadata.
 Write-Host (Get-LocalizedText 'Renames files to YY-MM-DD HH-mm-ss XXXX.ext.') -ForegroundColor Cyan
 Write-Host ''
 
+$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}'
 $exifToolCommand = Get-Command -Name 'exiftool.exe', 'exiftool' -ErrorAction SilentlyContinue |
         Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
 if ($null -eq $exifToolCommand)
 {
-    Write-Host (Get-LocalizedText 'Missing dependency: ExifTool.') -ForegroundColor Red
-    Write-Host (Get-LocalizedText 'Install ExifTool from https://exiftool.org/ and make it available in PATH.') -ForegroundColor Yellow
+    $report = Get-MissingDependencyReport -Dependency 'ExifTool' `
+        -Guidance (Get-LocalizedText 'Install ExifTool with Chocolatey: choco install exiftool -y, or download from https://exiftool.org/.') `
+        -MessageTemplate $missingDependencyTemplate
+    Write-Host $report.Message -ForegroundColor Yellow
+    Write-Host "  $( $report.Guidance )"
     exit 1
 }
 
@@ -115,7 +136,7 @@ if ( [string]::IsNullOrWhiteSpace($InputPath))
 $InputPath = [Environment]::ExpandEnvironmentVariables($InputPath.Trim().Trim('"'))
 try
 {
-    $inputSelection = Get-MediaDateInputFiles -RootPath $InputPath `
+    $inputSelection = Get-MediaDateInputFile -RootPath $InputPath `
         -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
 }
 catch

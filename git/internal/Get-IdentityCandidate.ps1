@@ -3,7 +3,7 @@
     Filters identity sources into unique candidates for the Git configuration script.
 
 .DESCRIPTION
-    Defines Get-IdentityCandidates. The function trims and validates the source
+    Defines Get-IdentityCandidate. The function trims and validates the source
     values, removes case-insensitive duplicates while keeping the first
     occurrence, and localizes the source labels.
 
@@ -41,7 +41,8 @@
 .OUTPUTS
     PSCustomObject[] with Value and Source properties. Empty when no entry is valid.
 #>
-function Get-IdentityCandidates {
+function Get-IdentityCandidate
+{
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][ValidateSet('user.name', 'user.email')][string] $Key,

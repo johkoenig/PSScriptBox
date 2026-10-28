@@ -65,7 +65,6 @@ function Invoke-MediaDateRestoration
         Rename-Item -LiteralPath $File.FullName -NewName $targetName -ErrorAction Stop
     }
 
-    $dateValue = $DateTime.ToString('yyyy-MM-dd HH:mm:ss', [System.Globalization.CultureInfo]::InvariantCulture)
     $updateFailure = $null
     $timestampFailures = @()
     $warningMessages = @()
@@ -73,7 +72,7 @@ function Invoke-MediaDateRestoration
     try
     {
         $dateArguments = @(
-            Get-MediaDateUpdateArguments -Path $TargetPath -DateTime $DateTime `
+            Get-MediaDateUpdateArgument -Path $TargetPath -DateTime $DateTime `
                 -ExifToolPath $ExifToolPath -UiLanguage $UiLanguage -Messages $Messages
         )
         if ($dateArguments.Count -gt 0)

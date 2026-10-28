@@ -7,13 +7,10 @@ Dieser Ordner enthält PowerShell-Werkzeuge zum Einrichten und Verarbeiten von P
 ## Schnellstart
 
 1. Öffne PowerShell in diesem Ordner.
-2. Starte die Einrichtung der Abhängigkeiten:
-
-   ```powershell
-   .\Initialize-PdfProcessor.ps1
-   ```
-
-3. Beachte Hinweise zu fehlenden Tesseract-Sprachdaten. Das Setup lädt keine `.traineddata`-Dateien herunter.
+2. Starte das gewünschte PDF-Skript. Skripte mit externen Werkzeugen prüfen
+   diese und geben bei fehlenden Programmen Installationshinweise aus.
+3. Beachte Hinweise zu fehlenden Tesseract-Sprachdaten; Skripte laden keine
+   `.traineddata`-Dateien herunter.
 4. Führe OCR für Scans und Größenreduzierung als getrennte Schritte aus:
 
    ```powershell
@@ -25,34 +22,17 @@ Die PowerShell-Ausführungsrichtlinie kann eine genehmigte Vorgehensweise zum Au
 
 ## Abhängigkeiten einrichten
 
-`Initialize-PdfProcessor.ps1` setzt eine separat installierte Chocolatey-Installation voraus. Es prüft Chocolatey, Python, OCRmyPDF, pikepdf, Tesseract und Ghostscript einzeln.
-
-- Fehlende systemweite Programme werden über Chocolatey installiert.
-- Das Setup bevorzugt einen funktionierenden Python-Interpreter im Profil des aktuellen Benutzers; andernfalls wählt es einen funktionierenden systemweiten Interpreter.
-- `py.exe` dient nur dazu, einen konkreten `python.exe`-Pfad zu ermitteln. Die Skripte starten anschließend diesen Interpreter direkt.
-- Fehlende Python-Pakete werden in der ausgewählten Python-Installation installiert. Für einen systemweiten Interpreter sind Administratorrechte erforderlich.
-- Vor dem UAC-Dialog listet das Setup die geplanten Aktionen auf und wartet auf Enter. Jede nicht leere Eingabe bricht ab.
-- Tesseract-Sprachdaten werden geprüft, aber nicht heruntergeladen. Die OCR-Standardsprachen sind `deu+eng+fra+ita+spa`;
-  `deu` und `eng` sind erforderlich, die übrigen Sprachen sind optional.
+PDF-Skripte mit externen Programmen prüfen ihre erforderlichen Programme und
+Python-Module vor der Verarbeitung. Fehlende Abhängigkeiten werden einzeln mit
+Chocolatey-Befehlen, direkten Download-Links oder einem pip-Befehl für den
+ausgewählten Python-Interpreter gemeldet. Die Skripte installieren keine
+Abhängigkeiten und fordern keine Administratorrechte an. Tesseract-Sprachdaten
+werden nicht heruntergeladen: Standard sind `deu+eng+fra+ita+spa`; `deu` und
+`eng` sind erforderlich, die übrigen Sprachen optional. Die Sicherungs- und
+Wiederherstellungsskripte nutzen integrierte PowerShell-Funktionen und benötigen
+keine zusätzliche Software.
 
 ## Skripte und Schalter
-
-### `Initialize-PdfProcessor.ps1`
-
-Prüft Abhängigkeiten, installiert fehlende Software und meldet fehlende Tesseract-Sprachdaten.
-
-| Parameter / Schalter | Beschreibung |
-| --- | --- |
-| `-EnglishOutput` | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
-
-Die ausgeblendeten Parameter `-ElevatedChild` und `-RuntimePythonPath` sind interne Implementierungsdetails und nicht zur direkten Verwendung vorgesehen.
-
-Beispiele:
-
-```powershell
-.\Initialize-PdfProcessor.ps1
-.\Initialize-PdfProcessor.ps1 -EnglishOutput
-```
 
 ### `ConvertTo-SearchablePdf.ps1`
 
@@ -140,18 +120,19 @@ Beispiele:
 
 Findet `_orig.pdf`-Sicherungen, zu denen die bearbeitete PDF im selben Ordner vorhanden ist. Jede Löschung unterliegt dem Bestätigungsverhalten von PowerShell.
 
-| Parameter / Schalter | Beschreibung |
-| --- | --- |
-| `-InputPath <Ordner>` | Rekursiv zu durchsuchender Ordner. Ohne Angabe wird der Pfad abgefragt. |
-| `-WhatIf` | Zeigt geplante Löschungen an, ohne Dateien zu löschen. |
-| `-Confirm` | Fragt vor jeder Löschung nach. Dies ist wegen der hohen Auswirkung standardmäßig aktiv; `-Confirm:$false` unterdrückt Rückfragen. |
-| `-EnglishOutput` | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
+| Parameter / Schalter  | Beschreibung                                                                               |
+|-----------------------|--------------------------------------------------------------------------------------------|
+| `-InputPath <Ordner>` | Rekursiv zu durchsuchender Ordner. Ohne Angabe wird der Pfad abgefragt.                    |
+| `-WhatIf`             | Zeigt geplante Löschungen an, ohne Dateien zu löschen.                                     |
+| `-Confirm`            | Fragt vor jeder Löschung nach. Ohne diesen Schalter erfolgt standardmäßig keine Rückfrage. |
+| `-EnglishOutput`      | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.              |
 
 Beispiele:
 
 ```powershell
 .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
-.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm:$false
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs'
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm
 .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -EnglishOutput
 ```
 
@@ -159,22 +140,22 @@ Beispiele:
 
 Findet `_orig.pdf`-Sicherungen, zu denen die bearbeitete PDF im selben Ordner vorhanden ist. Für jedes bestätigte Paar
 wird die bearbeitete PDF atomar durch das Original ersetzt; die bearbeitete Datei wird dadurch
-entfernt und die `_orig`-Sicherung aufgebraucht. Die Bestätigung ist standardmäßig aktiv; prüfe den Zielordner
-sorgfältig, bevor du fortfährst.
+entfernt und die `_orig`-Sicherung aufgebraucht. Standardmäßig erfolgt keine Rückfrage; mit `-Confirm` lassen sich
+Rückfragen pro Datei aktivieren.
 
-| Parameter / Schalter  | Beschreibung                                                                      |
-|-----------------------|-----------------------------------------------------------------------------------|
-| `-InputPath <Ordner>` | Rekursiv zu durchsuchender Ordner. Ohne Angabe wird der Pfad abgefragt.           |
-| `-WhatIf`             | Zeigt geplante Wiederherstellungen an, ohne Dateien zu ändern.                    |
-| `-Confirm`            | Fragt vor jeder Wiederherstellung nach; `-Confirm:$false` unterdrückt Rückfragen. |
-| `-EnglishOutput`      | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.     |
+| Parameter / Schalter  | Beschreibung                                                                                        |
+|-----------------------|-----------------------------------------------------------------------------------------------------|
+| `-InputPath <Ordner>` | Rekursiv zu durchsuchender Ordner. Ohne Angabe wird der Pfad abgefragt.                             |
+| `-WhatIf`             | Zeigt geplante Wiederherstellungen an, ohne Dateien zu ändern.                                      |
+| `-Confirm`            | Fragt vor jeder Wiederherstellung nach. Ohne diesen Schalter erfolgt standardmäßig keine Rückfrage. |
+| `-EnglishOutput`      | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.                       |
 
 Beispiele:
 
 ```powershell
 .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -WhatIf
 .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs'
-.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm:$false -EnglishOutput
+.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm -EnglishOutput
 ```
 
 ## Gemeinsame PowerShell-Parameter

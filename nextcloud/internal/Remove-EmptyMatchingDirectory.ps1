@@ -3,10 +3,12 @@
     Provides the empty-folder cleanup helper for the Nextcloud scripts.
 
 .DESCRIPTION
-    Defines Remove-EmptyMatchingDirectories. Has no dependencies on other helpers.
+    Defines Remove-EmptyMatchingDirectory. Uses Get-LocalizedText for the
+    optional ShouldProcess confirmation message.
 
 .NOTES
-    Dependencies: Windows PowerShell 5.1 or PowerShell 7.
+    Dependencies: Windows PowerShell 5.1 or PowerShell 7 and
+    common\internal\Get-LocalizedText.ps1 loaded by the caller.
 #>
 
 # SPDX-License-Identifier: MIT
@@ -35,16 +37,25 @@
 .PARAMETER RelativeDirectories
     Relative paths of subfolders found in both inventories.
 
+.PARAMETER UiLanguage
+Language of user-facing confirmation text: 'de' selects German, anything else English.
+
+.PARAMETER Messages
+German message catalog keyed by the English source text.
+
 .OUTPUTS
-    PSCustomObject with DeletedCount (number of deleted folders) and
-    FailedDirectories (objects with RelativePath and Message for each failure).
+PSCustomObject with DeletedCount (number of deleted folders) and
+FailedDirectories (objects with RelativePath and Message for each failure).
 #>
-function Remove-EmptyMatchingDirectories {
-    [CmdletBinding()]
+function Remove-EmptyMatchingDirectory
+{
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string] $SourcePath,
         [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string] $DestinationPath,
-        [Parameter(Mandatory)][AllowEmptyCollection()][string[]] $RelativeDirectories
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]] $RelativeDirectories,
+        [string] $UiLanguage = 'en',
+        [hashtable] $Messages = @{ }
     )
 
     $deletedCount = 0
@@ -65,8 +76,13 @@ function Remove-EmptyMatchingDirectories {
             }
             $entries = [System.IO.Directory]::GetFileSystemEntries($sourceDirectoryPath)
             if ($entries.Length -eq 0) {
-                Remove-Item -LiteralPath $sourceDirectoryPath -Force -ErrorAction Stop
-                $deletedCount++
+                $action = Get-LocalizedText -Text 'Remove empty matching directory: {0}' `
+                    -Arguments @($relativeDirectory) -Language $UiLanguage -Messages $Messages
+                if ( $PSCmdlet.ShouldProcess($sourceDirectoryPath, $action))
+                {
+                    Remove-Item -LiteralPath $sourceDirectoryPath -Force -ErrorAction Stop
+                    $deletedCount++
+                }
             }
         }
         catch {

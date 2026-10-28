@@ -2,7 +2,7 @@
 # Copyright (c) 2026 scriptbox contributors
 <#
 .SYNOPSIS
-    Unit tests for pdf\internal\Get-TesseractLanguages.ps1.
+    Unit tests for pdf\internal\Get-TesseractLanguage.ps1.
 
 .DESCRIPTION
     Mocks Invoke-Tesseract so the --list-langs output is controlled. Tesseract
@@ -15,10 +15,10 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Invoke-Tesseract.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Get-TesseractLanguages.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Get-TesseractLanguage.ps1')
 }
 
-Describe 'Get-TesseractLanguages' {
+Describe 'Get-TesseractLanguage' {
     It 'parses language codes and the tessdata folder from the header' {
         Mock Invoke-Tesseract {
             [pscustomobject]@{
@@ -27,7 +27,7 @@ Describe 'Get-TesseractLanguages' {
                 StdErr   = ''
             }
         }
-        $result = Get-TesseractLanguages -TesseractPath 'C:\Tess\tesseract.exe'
+        $result = Get-TesseractLanguage -TesseractPath 'C:\Tess\tesseract.exe'
         $result.Languages | Should -Be @('eng', 'deu')
         $result.TessdataPath | Should -Be 'C:\Tess\tessdata'
     }
@@ -36,7 +36,7 @@ Describe 'Get-TesseractLanguages' {
         Mock Invoke-Tesseract {
             [pscustomobject]@{ ExitCode = 0; StdOut = "eng`r`n"; StdErr = '' }
         }
-        $result = Get-TesseractLanguages -TesseractPath 'C:\Tess\tesseract.exe'
+        $result = Get-TesseractLanguage -TesseractPath 'C:\Tess\tesseract.exe'
         $result.Languages | Should -Be @('eng')
         $result.TessdataPath | Should -Be (Join-Path 'C:\Tess' 'tessdata')
     }
@@ -45,7 +45,7 @@ Describe 'Get-TesseractLanguages' {
         Mock Invoke-Tesseract {
             [pscustomobject]@{ ExitCode = 1; StdOut = ''; StdErr = 'boom' }
         }
-        { Get-TesseractLanguages -TesseractPath 'C:\Tess\tesseract.exe' } |
+        { Get-TesseractLanguage -TesseractPath 'C:\Tess\tesseract.exe' } |
             Should -Throw 'Tesseract --list-langs failed: boom'
     }
 
@@ -53,7 +53,7 @@ Describe 'Get-TesseractLanguages' {
         Mock Invoke-Tesseract {
             [pscustomobject]@{ ExitCode = 0; StdOut = "eng`r`n"; StdErr = '' }
         }
-        Get-TesseractLanguages -TesseractPath 'C:\Tess\tesseract.exe' | Out-Null
+        Get-TesseractLanguage -TesseractPath 'C:\Tess\tesseract.exe' | Out-Null
         Should -Invoke Invoke-Tesseract -Times 1 -ParameterFilter { $Arguments -eq '--list-langs' }
     }
 }

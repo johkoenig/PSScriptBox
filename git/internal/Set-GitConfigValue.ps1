@@ -8,7 +8,8 @@
 
 .NOTES
     Dependencies: Git for Windows (git.exe) on PATH, Windows PowerShell 5.1 or
-    PowerShell 7, and git\internal\Invoke-GitCommand.ps1 loaded by the caller.
+    PowerShell 7, and git\internal\Invoke-GitCommand.ps1 and
+    common\internal\Get-LocalizedText.ps1 loaded by the caller.
 #>
 
 # SPDX-License-Identifier: MIT
@@ -42,10 +43,11 @@
     German message catalog keyed by the English source text.
 
 .OUTPUTS
-    None.
+    System.Boolean. True when the value was written; false when WhatIf or a
+    declined confirmation prevented the write.
 #>
 function Set-GitConfigValue {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory)][string] $Key,
         [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string] $Value,
@@ -55,8 +57,16 @@ function Set-GitConfigValue {
         [hashtable] $Messages = @{}
     )
 
+    $action = Get-LocalizedText -Text 'Set Git configuration value {0} to {1}' `
+        -Arguments @($Key, $Value) -Language $Language -Messages $Messages
+    if (-not $PSCmdlet.ShouldProcess("$Scope $Key", $action))
+    {
+        return $false
+    }
+
     $repositoryArgument = if ($Scope -eq 'Local') { $Repository } else { '' }
     Invoke-GitCommand -Repository $repositoryArgument `
         -Arguments @('config', ('--' + $Scope.ToLowerInvariant()), $Key, $Value) `
         -Language $Language -Messages $Messages | Out-Null
+    return $true
 }

@@ -3,7 +3,7 @@
     Writes confirmed recommended Git settings to the target scope.
 
 .DESCRIPTION
-    Defines Set-RecommendedGitSettings. For each change the function reads the
+    Defines Set-RecommendedGitSetting. For each change the function reads the
     current value and either skips it, keeps it when it is unchanged, or writes
     the new value. The console messages are produced by the calling script.
 
@@ -41,11 +41,12 @@
     Message catalog hashtable passed to the git helpers.
 
 .OUTPUTS
-    PSCustomObject[] with Key, Status ('Skipped', 'Preserved', or 'Configured'),
-    Value, and Current properties.
+    PSCustomObject[] with Key, Status ('Skipped', 'Preserved', 'Configured',
+    'WouldConfigure', or 'Declined'), Value, and Current properties.
 #>
-function Set-RecommendedGitSettings {
-    [CmdletBinding()]
+function Set-RecommendedGitSetting
+{
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [AllowEmptyCollection()][object[]] $Changes = @(),
         [Parameter(Mandatory)][ValidateSet('Local', 'Global')][string] $Scope,
@@ -64,8 +65,23 @@ function Set-RecommendedGitSettings {
             $status = 'Preserved'
         }
         else {
-            Set-GitConfigValue -Key $change.Key -Value $change.Value -Scope $Scope -Repository $Repository -Language $Language -Messages $Messages
-            $status = 'Configured'
+            $action = Get-LocalizedText -Text 'Set Git configuration value {0} to {1}' `
+                -Arguments @($change.Key, $change.Value) -Language $Language -Messages $Messages
+            if ( $PSCmdlet.ShouldProcess("$Scope $( $change.Key )", $action))
+            {
+                Set-GitConfigValue -Key $change.Key -Value $change.Value -Scope $Scope `
+                    -Repository $Repository -Language $Language -Messages $Messages `
+                    -Confirm:$false -WhatIf:$false | Out-Null
+                $status = 'Configured'
+            }
+            elseif ($WhatIfPreference)
+            {
+                $status = 'WouldConfigure'
+            }
+            else
+            {
+                $status = 'Declined'
+            }
         }
         $results.Add([pscustomobject]@{
                 Key     = $change.Key

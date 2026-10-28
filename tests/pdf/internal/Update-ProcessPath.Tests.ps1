@@ -33,4 +33,12 @@ Describe 'Update-ProcessPath' {
         $env:Path | Should -Not -Match 'C:\\old'
         $env:Path | Should -Match 'C:\\new-machine'
     }
+
+    It 'keeps the process PATH unchanged when WhatIf is requested' {
+        $env:Path = 'C:\before'
+
+        Update-ProcessPath -MachinePath 'C:\new-machine' -UserPath 'C:\new-user' -WhatIf
+
+        $env:Path | Should -Be 'C:\before'
+    }
 }

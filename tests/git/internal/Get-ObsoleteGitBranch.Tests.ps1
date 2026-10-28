@@ -17,7 +17,7 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\git\internal\Invoke-GitCommand.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\git\internal\Get-ObsoleteGitBranches.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\git\internal\Get-ObsoleteGitBranch.ps1')
 
     $script:Language = 'en-US'
     $script:Messages = @{ }
@@ -88,7 +88,7 @@ BeforeAll {
     }
 }
 
-Describe 'Get-ObsoleteGitBranches' {
+Describe 'Get-ObsoleteGitBranch' {
     It 'detects each obsolescence rule, protects main and current, and leaves working-tree changes untouched' {
         $repository = New-BranchRulesRepository
         $modifiedPath = Join-Path $repository 'base.txt'
@@ -96,7 +96,7 @@ Describe 'Get-ObsoleteGitBranches' {
         $untrackedPath = Join-Path $repository 'uncommitted.txt'
         [System.IO.File]::WriteAllText($untrackedPath, 'keep this file')
 
-        $state = Get-ObsoleteGitBranches -Repository $repository
+        $state = Get-ObsoleteGitBranch -Repository $repository
         $branchMap = @{ }
         foreach ($branch in $state.Branches)
         {
@@ -126,7 +126,7 @@ Describe 'Get-ObsoleteGitBranches' {
         $null = New-Item -ItemType Directory -Path $repository
         $null = Invoke-GitCommand -Repository $repository -Arguments @('init', '--quiet')
 
-        { Get-ObsoleteGitBranches -Repository $repository } |
+        { Get-ObsoleteGitBranch -Repository $repository } |
                 Should -Throw -ExpectedMessage "The main branch 'main' was not found*"
     }
 }

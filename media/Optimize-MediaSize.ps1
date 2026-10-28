@@ -49,7 +49,8 @@
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7, FFmpeg with the
     libx265 and MJPEG encoders, FFprobe, and ExifTool. These tools must be
-    available in PATH. The script does not install software or require
+    available in PATH. Missing dependencies are reported individually with
+    installation guidance. The script does not install software or require
     administrator rights.
 #>
 
@@ -58,6 +59,11 @@
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingWriteHost',
+        '',
+        Justification = 'This user-facing script provides localized, color-coded console output.'
+)]
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [string] $InputPath,
@@ -70,13 +76,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\ConvertTo-QuotedArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MediaInputFile.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaTool.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MediaVideoInfo.ps1')
 . (Join-Path $PSScriptRoot 'internal\Test-MediaVideoCodecEfficient.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-MediaDateMetadata.ps1')
-. (Join-Path $PSScriptRoot 'internal\Set-MediaFileTimestamps.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-MediaDateTag.ps1')
+. (Join-Path $PSScriptRoot 'internal\Set-MediaFileTimestamp.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaSizeOptimization.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaPhotoOptimization.ps1')
 
@@ -118,6 +125,7 @@ Write-Host (Get-LocalizedText 'Optimizes inefficient videos and large JPEG photo
 Write-Host (Get-LocalizedText 'Preserves supported file timestamps and verified capture dates.') -ForegroundColor Cyan
 Write-Host ''
 
+$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}'
 $ffmpegCommand = Get-Command -Name 'ffmpeg.exe', 'ffmpeg' -ErrorAction SilentlyContinue |
         Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
 $ffprobeCommand = Get-Command -Name 'ffprobe.exe', 'ffprobe' -ErrorAction SilentlyContinue |
@@ -139,8 +147,21 @@ if ($null -eq $exifToolCommand)
 }
 if ($missingDependencies.Count -gt 0)
 {
-    Write-Host (Get-LocalizedText -Text 'Missing dependencies: {0}' -Arguments @(($missingDependencies -join ', '))) -ForegroundColor Yellow
-    Write-Host (Get-LocalizedText 'Install FFmpeg with libx265 and MJPEG encoders, plus ExifTool; with Chocolatey run: choco install ffmpeg exiftool -y')
+    foreach ($dependency in $missingDependencies)
+    {
+        $guidance = if ($dependency -eq 'ExifTool')
+        {
+            Get-LocalizedText 'Install ExifTool with Chocolatey: choco install exiftool -y, or download from https://exiftool.org/.'
+        }
+        else
+        {
+            Get-LocalizedText 'Install FFmpeg (including FFprobe) with Chocolatey: choco install ffmpeg -y.'
+        }
+        $report = Get-MissingDependencyReport -Dependency $dependency -Guidance $guidance `
+            -MessageTemplate $missingDependencyTemplate
+        Write-Host $report.Message -ForegroundColor Yellow
+        Write-Host "  $( $report.Guidance )"
+    }
     exit 1
 }
 
@@ -332,7 +353,8 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
         }
         $videoInfo = Get-MediaVideoInfo -Path $video.FullName -FFprobePath $ffprobeCommand.Source `
             -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
-        Set-MediaFileTimestamps -Path $video.FullName @videoTimestamps
+        Set-MediaFileTimestamp -Path $video.FullName @videoTimestamps `
+            -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages -Confirm:$false -WhatIf:$false
     }
     catch
     {
@@ -341,7 +363,8 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
         {
             try
             {
-                Set-MediaFileTimestamps -Path $video.FullName @videoTimestamps
+                Set-MediaFileTimestamp -Path $video.FullName @videoTimestamps `
+                    -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages -Confirm:$false -WhatIf:$false
             }
             catch
             {

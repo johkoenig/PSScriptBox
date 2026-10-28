@@ -14,6 +14,9 @@ Forces English console output regardless of the Windows UI language.
 .PARAMETER WhatIf
 Shows obsolete branches that would be removed without deleting them.
 
+.PARAMETER Confirm
+Prompts before removing each obsolete branch.
+
 .EXAMPLE
 .\Remove-ObsoleteGitBranches.ps1
 Removes obsolete branches without prompting.
@@ -21,8 +24,12 @@ Removes obsolete branches without prompting.
 .EXAMPLE
 .\Remove-ObsoleteGitBranches.ps1 -WhatIf
 
+.EXAMPLE
+.\Remove-ObsoleteGitBranches.ps1 -Confirm
+
 .NOTES
-Dependencies: Git for Windows.
+Dependencies: Git for Windows. If Git is missing, the script reports
+installation guidance and exits.
 Contributors:
 - Johannes Koenig <dev@jokoenig.de>
 #>
@@ -30,19 +37,33 @@ Contributors:
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 scriptbox contributors
 
-[CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingWriteHost',
+        '',
+        Justification = 'This user-facing script provides localized, color-coded console output.'
+)]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
-    [switch]$EnglishOutput,
-    [switch]$WhatIf
+    [switch]$EnglishOutput
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'internal\Invoke-GitCommand.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-ObsoleteGitBranches.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-ObsoleteGitBranch.ps1')
 . (Join-Path $PSScriptRoot 'internal\Remove-GitBranch.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
+
+$shouldProcessParameters = @{ }
+foreach ($parameterName in @('Confirm', 'WhatIf'))
+{
+    if ( $PSBoundParameters.ContainsKey($parameterName))
+    {
+        $shouldProcessParameters[$parameterName] = $PSBoundParameters[$parameterName]
+    }
+}
 
 $script:Language = if (-not $EnglishOutput -and [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -eq 'de')
 {
@@ -80,9 +101,24 @@ Write-Host (Get-LocalizedText -Text '  Removes obsolete local branches without c
 Write-Host (Get-LocalizedText -Text '  Supports preview; removal runs without confirmation.' -Language $script:Language -Messages $script:Messages) -ForegroundColor Cyan
 Write-Host ''
 
+$gitCommand = Get-Command -Name 'git.exe' -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
+if ($null -eq $gitCommand)
+{
+    $report = Get-MissingDependencyReport -Dependency 'Git for Windows' `
+        -Guidance (Get-LocalizedText -Text 'Install Git for Windows from https://git-scm.com/download/win, or run: choco install git.install -y.' `
+            -Language $script:Language -Messages $script:Messages) `
+        -MessageTemplate (Get-LocalizedText -Text 'Missing dependency: {0}' `
+            -Language $script:Language -Messages $script:Messages)
+    Write-Host $report.Message -ForegroundColor Yellow
+    Write-Host "  $( $report.Guidance )"
+    exit 1
+}
+
 $failedBranches = [System.Collections.Generic.List[object]]::new()
 $removedCount = 0
 $previewedCount = 0
+$skippedCount = 0
 $branchCount = 0
 $candidateCount = 0
 
@@ -90,18 +126,13 @@ try
 {
     Write-Host (Get-LocalizedText -Text '=== Obsolete Git branches: processing started ===' -Language $script:Language -Messages $script:Messages) -ForegroundColor Cyan
 
-    if (-not (Get-Command -Name git.exe -ErrorAction SilentlyContinue))
-    {
-        throw (Get-LocalizedText -Text 'Git for Windows was not found on PATH.' -Language $script:Language -Messages $script:Messages)
-    }
-
     $invocationPath = (Get-Location).Path
     $repositoryRoot = (Invoke-GitCommand -Repository $invocationPath -Arguments @(
         'rev-parse',
         '--show-toplevel'
     ) -Language $script:Language -Messages $script:Messages | Select-Object -First 1).Trim()
 
-    $branchState = Get-ObsoleteGitBranches -Repository $repositoryRoot -MainBranch 'main' -Language $script:Language -Messages $script:Messages
+    $branchState = Get-ObsoleteGitBranch -Repository $repositoryRoot -MainBranch 'main' -Language $script:Language -Messages $script:Messages
     $branchCount = $branchState.Branches.Count
     $candidateBranches = @($branchState.Branches | Where-Object { $_.IsObsolete })
     $candidateCount = $candidateBranches.Count
@@ -130,18 +161,29 @@ try
         Write-Host ((Get-LocalizedText -Text '--- Branch {0}/{1}: {2} ---' -Language $script:Language -Messages $script:Messages) -f ($index + 1), $candidateCount, $branch.Name) -ForegroundColor Cyan
         Write-Host ((Get-LocalizedText -Text 'Reasons: {0}' -Language $script:Language -Messages $script:Messages) -f ($branch.Reasons -join '; '))
 
-        if ($WhatIf)
-        {
-            $previewedCount++
-            Write-Host ((Get-LocalizedText -Text 'Would remove: {0}' -Language $script:Language -Messages $script:Messages) -f $branch.Name) -ForegroundColor Yellow
-            continue
-        }
-
         try
         {
-            $null = Remove-GitBranch -Repository $repositoryRoot -Name $branch.Name -Ref $branch.Ref -ExpectedObjectId $branch.ObjectId -Language $script:Language -Messages $script:Messages
-            $removedCount++
-            Write-Host ((Get-LocalizedText -Text 'Removed: {0}' -Language $script:Language -Messages $script:Messages) -f $branch.Name) -ForegroundColor Green
+            $result = Remove-GitBranch -Repository $repositoryRoot -Name $branch.Name -Ref $branch.Ref `
+                -ExpectedObjectId $branch.ObjectId -Language $script:Language -Messages $script:Messages `
+                @shouldProcessParameters
+            switch ($result.Status)
+            {
+                'Removed'
+                {
+                    $removedCount++
+                    Write-Host ((Get-LocalizedText -Text 'Removed: {0}' -Language $script:Language -Messages $script:Messages) -f $branch.Name) -ForegroundColor Green
+                }
+                'WhatIf'
+                {
+                    $previewedCount++
+                    Write-Host ((Get-LocalizedText -Text 'Would remove: {0}' -Language $script:Language -Messages $script:Messages) -f $branch.Name) -ForegroundColor Yellow
+                }
+                'Declined'
+                {
+                    $skippedCount++
+                    Write-Host ((Get-LocalizedText -Text 'Removal was not approved: {0}' -Language $script:Language -Messages $script:Messages) -f $branch.Name) -ForegroundColor DarkYellow
+                }
+            }
         }
         catch
         {
@@ -159,7 +201,7 @@ try
     Write-Host (Get-LocalizedText -Text '=== Summary ===' -Language $script:Language -Messages $script:Messages) -ForegroundColor Cyan
     Write-Host ((Get-LocalizedText -Text 'Repository: {0}' -Language $script:Language -Messages $script:Messages) -f $repositoryRoot)
     Write-Host ((Get-LocalizedText -Text 'Branches checked: {0}; obsolete candidates: {1}' -Language $script:Language -Messages $script:Messages) -f $branchCount, $candidateCount)
-    Write-Host ((Get-LocalizedText -Text 'Removed: {0}, previewed: {1}, failed: {2}' -Language $script:Language -Messages $script:Messages) -f $removedCount, $previewedCount, $failedBranches.Count)
+    Write-Host ((Get-LocalizedText -Text 'Removed: {0}, previewed: {1}, skipped: {2}, failed: {3}' -Language $script:Language -Messages $script:Messages) -f $removedCount, $previewedCount, $skippedCount, $failedBranches.Count)
     Write-Host (Get-LocalizedText -Text 'Failed branches:' -Language $script:Language -Messages $script:Messages)
 
     if ($failedBranches.Count -eq 0)

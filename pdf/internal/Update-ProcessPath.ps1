@@ -34,11 +34,15 @@
     None. Sets $env:Path as a side effect.
 #>
 function Update-ProcessPath {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [string] $MachinePath = '',
         [string] $UserPath = ''
     )
 
-    $env:Path = @($MachinePath, $UserPath) -join [System.IO.Path]::PathSeparator
+    $newPath = @($MachinePath, $UserPath) -join [System.IO.Path]::PathSeparator
+    if ( $PSCmdlet.ShouldProcess('Process PATH', 'Refresh'))
+    {
+        $env:Path = $newPath
+    }
 }

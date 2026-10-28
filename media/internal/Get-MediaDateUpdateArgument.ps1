@@ -3,7 +3,7 @@
     Finds embedded media date tags that need updating.
 
 .DESCRIPTION
-    Defines Get-MediaDateUpdateArguments, which reads the legacy date tags and
+    Defines Get-MediaDateUpdateArgument, which reads the legacy date tags and
     returns write arguments only for tags whose value differs from the target.
 
 .NOTES
@@ -43,7 +43,7 @@
 .OUTPUTS
     System.String[] containing only date-tag assignments that need writing.
 #>
-function Get-MediaDateUpdateArguments
+function Get-MediaDateUpdateArgument
 {
     [CmdletBinding()]
     param(

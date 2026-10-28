@@ -15,7 +15,8 @@ To preview obsolete branches, change into the repository and run:
 .\Remove-ObsoleteGitBranches.ps1 -WhatIf
 ```
 
-Run it without `-WhatIf` to remove all candidates immediately, without confirmation. To configure Git identity and
+Run it without `-WhatIf` to remove all candidates immediately, without confirmation; add `-Confirm` to request
+per-branch prompts. To configure Git identity and
 standard settings, run:
 
 ```powershell
@@ -30,7 +31,10 @@ existing Git setting is listed first, so pressing Enter (default: choice 1) keep
 
 ## Dependency setup
 
-Git must be installed and available on `PATH`. No administrator privileges are needed. Directory lookups time out quickly and are skipped when no directory is reachable.
+Git must be installed and available on `PATH`. Each Git script checks for it and
+prints a Chocolatey command and download link when it is missing. No administrator
+privileges are needed. Directory lookups time out quickly and are skipped when no
+directory is reachable.
 
 ## Scripts and switches
 
@@ -45,6 +49,7 @@ immediately without confirmation. Before each deletion, it checks that the branc
 | Parameter / switch | Description                                                          |
 |--------------------|----------------------------------------------------------------------|
 | `-WhatIf`          | Lists obsolete branches that would be removed without deleting them. |
+| `-Confirm`         | Prompts before removing each obsolete branch.                        |
 | `-EnglishOutput`   | Forces English console output regardless of the Windows UI language. |
 
 Examples:
@@ -61,15 +66,18 @@ reported as failures.
 
 ### `Initialize-GitConfiguration.ps1`
 
-The script runs interactively by default. The switches below skip the prompts or change the target scope.
+The script asks for identity or setting choices that are not supplied as parameters. It does not prompt before writes
+by default; use `-Confirm` to opt in to write prompts and `-WhatIf` to preview without changing configuration.
 
-| Parameter / switch | Description |
-| --- | --- |
-| `-RepositoryPath <path>` | Directory inside the repository (Local scope). Defaults to the current directory. |
+| Parameter / switch       | Description                                                                                                 |
+|--------------------------|-------------------------------------------------------------------------------------------------------------|
+| `-RepositoryPath <path>` | Directory inside the repository (Local scope). Defaults to the current directory.                           |
 | `-Scope <Local\|Global>` | Where to write the settings. Defaults to `Local`; `Global` applies to all repositories of the current user. |
-| `-Name <name>` | Value for `user.name`; skips the interactive choice. |
-| `-Email <address>` | Value for `user.email`; skips the interactive choice. |
-| `-EnglishOutput` | Forces English console output regardless of the Windows UI language. |
+| `-Name <name>`           | Value for `user.name`; skips the interactive choice.                                                        |
+| `-Email <address>`       | Value for `user.email`; skips the interactive choice.                                                       |
+| `-WhatIf`                | Previews configuration writes without changing Git settings.                                                |
+| `-Confirm`               | Prompts before each Git configuration write.                                                                |
+| `-EnglishOutput`         | Forces English console output regardless of the Windows UI language.                                        |
 
 Examples:
 
@@ -93,13 +101,18 @@ Examples:
 | `format.signOff` | `true` | Adds `Signed-off-by` to patches from `git format-patch`. |
 | `alias.cs` | `commit --signoff` | `git cs` creates a signed-off commit. Git has no setting that signs off every commit automatically. |
 
-Before each prompt the script prints a detailed explanation of the setting and shows the recommendation when your current value differs. The table above summarizes them. Existing values are never changed without your input: each setting is confirmed individually. Pressing Enter accepts the default (the value already set in the target scope, otherwise the recommendation), typing one of the listed values (shown one per line as `[value] explanation`) selects it, free-form settings (`init.defaultBranch`, `alias.cs`) also accept any other text, and `-` leaves the setting untouched. The operation is idempotent: pressing Enter throughout changes nothing on a repeated run.
+Before each choice prompt the script prints a detailed explanation of the setting and shows the recommendation when your
+current value differs. The table above summarizes them. Pressing Enter accepts the default (the value already set in the
+target scope, otherwise the recommendation), typing one of the listed values (shown one per line as
+`[value] explanation`) selects it, free-form settings (`init.defaultBranch`, `alias.cs`) also accept any other text, and
+`-` leaves the setting untouched. These prompts collect choices; they are not confirmation prompts. `-Confirm` controls
+approval of the writes, and `-WhatIf` previews them. The operation is idempotent: pressing Enter throughout changes
+nothing on a repeated run.
 
 ## Shared PowerShell parameters
 
-Both scripts support the common parameters `-Verbose`, `-Debug`, `-ErrorAction`, and `-WarningAction`.
-`Initialize-GitConfiguration.ps1` does not implement `-WhatIf` or `-Confirm`. `Remove-ObsoleteGitBranches.ps1` provides
-`-WhatIf` as a preview switch; otherwise, obsolete branches are removed immediately, without confirmation.
+Both scripts support the common parameters `-WhatIf` and `-Confirm`, as well as `-Verbose`, `-Debug`, `-ErrorAction`,
+and `-WarningAction`. Without `-Confirm`, state changes proceed without confirmation.
 
 ## Safety and behavior
 

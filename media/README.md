@@ -13,11 +13,12 @@ PowerShell 5.1 or PowerShell 7 from a regular user session.
    .\Remove-LivePhotos.ps1 -InputPath 'C:\Media' -WhatIf
    ```
 
-3. After reviewing the candidates, remove matching MOV videos; the script asks before each deletion:
+3. After reviewing the candidates, remove matching MOV videos without confirmation by default:
 
    ```powershell
    .\Remove-LivePhotos.ps1 -InputPath 'C:\Media'
    ```
+   Add `-Confirm` to request a prompt before each deletion.
 
 4. Preview video and JPEG files in a folder:
 
@@ -37,11 +38,12 @@ PowerShell 5.1 or PowerShell 7 from a regular user session.
    .\Remove-MediaBackups.ps1 -InputPath 'C:\Media' -WhatIf
    ```
 
-7. After checking the list, remove eligible backups; the script asks before each deletion:
+7. After checking the list, remove eligible backups without confirmation by default:
 
    ```powershell
    .\Remove-MediaBackups.ps1 -InputPath 'C:\Media'
    ```
+   Add `-Confirm` to request a prompt before each deletion.
 
 8. Preview restoring dates and renaming supported media files:
 
@@ -73,7 +75,8 @@ choco install ffmpeg exiftool -y
 ```
 
 FFmpeg must include `libx265` and MJPEG. Both programs must be discoverable in `PATH`. The script only checks for them;
-it does not install software or require administrator rights.
+it does not install software or require administrator rights. Missing tools are
+reported individually with Chocolatey commands or a download link.
 
 ## Scripts and switches
 
@@ -117,15 +120,15 @@ result is ready. An existing backup is never overwritten; that file is reported 
 
 Recursively finds `_orig` backups for MOV, MP4, JPG, and JPEG files. A backup is eligible only when its processed
 counterpart exists in the same folder. A MOV backup such as `clip_orig.mov` is paired with the optimized `clip.mp4`;
-other supported backups are paired with the same extension. The script previews with `-WhatIf` and prompts before each
-deletion by default.
+other supported backups are paired with the same extension. The script previews with `-WhatIf` and deletes eligible
+backups without confirmation by default. Use `-Confirm` to opt in to per-file prompts.
 
-| Parameter / switch  | Description                                                                         |
-|---------------------|-------------------------------------------------------------------------------------|
-| `-InputPath <path>` | Folder to search recursively. If omitted, prompts for a folder.                     |
-| `-WhatIf`           | Lists eligible backups without deleting files.                                      |
-| `-Confirm`          | Prompts before deleting each eligible backup; use `-Confirm:$false` to suppress it. |
-| `-EnglishOutput`    | Forces English console output regardless of Windows UI language.                    |
+| Parameter / switch  | Description                                                                      |
+|---------------------|----------------------------------------------------------------------------------|
+| `-InputPath <path>` | Folder to search recursively. If omitted, prompts for a folder.                  |
+| `-WhatIf`           | Lists eligible backups without deleting files.                                   |
+| `-Confirm`          | Prompts before deleting each eligible backup. No prompt is requested by default. |
+| `-EnglishOutput`    | Forces English console output regardless of Windows UI language.                 |
 
 Examples:
 
@@ -139,7 +142,8 @@ Examples:
 
 Recursively finds `.mov` videos with a same-name `.jpg` still image in the same folder, then deletes the video and
 keeps the image. This follows the legacy Live Photo matching pattern; `.jpeg` files do not count as a match. The
-script prompts before each deletion by default and supports `-WhatIf` for preview.
+script deletes matching videos without confirmation by default; use `-Confirm` to opt in to per-file prompts or
+`-WhatIf` for preview.
 
 | Parameter / switch  | Description                                                      |
 |---------------------|------------------------------------------------------------------|

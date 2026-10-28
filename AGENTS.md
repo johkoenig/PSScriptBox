@@ -43,9 +43,13 @@ Repository guidance, especially for PowerShell scripts.
   - Report fatal errors as one concise message without a stack trace and end with exit code 1; do not let raw exceptions reach the console.
   - Sections that do not apply (for example item lines or the summary in interactive configuration tools) may be omitted; the banner and the error handling are always required.
 - For numbered multi-step workflows, print an action-oriented header for each step and substep. A substep directly
-  following its parent does not need a blank line; otherwise, separate headers with a blank line. Ask for confirmation
-  before state-changing actions, not for informational checks. Use double-quoted PowerShell prompt strings when they
-  need to expand variables.
+  following its parent does not need a blank line; otherwise, separate headers with a blank line. State-changing
+  scripts and functions run without confirmation by default. Use `SupportsShouldProcess` and gate each mutation with
+  `ShouldProcess`; set `ConfirmImpact` to `Medium` so explicit `-Confirm` prompts and `-WhatIf` previews work without
+  prompting by default. Avoid duplicate prompts in nested helpers; after a parent approves an operation, pass
+  `-Confirm:$false -WhatIf:$false` to its helper. Keep interactive prompts for required input and essential safety
+  preconditions (such as acknowledging Nextcloud synchronization state or UAC elevation), not routine action approval.
+  Use double-quoted PowerShell prompt strings when they need to expand variables.
 - Use `-LiteralPath` and `Join-Path` consistently. Normalize user input with `Trim()` and `ExpandEnvironmentVariables()` before use.
 - Start external console programs with redirected streams and read asynchronously so errors are not mistaken for PowerShell terminating errors and large output cannot block a pipe. Exception: run OCRmyPDF without stream redirection so its progress bar is displayed live.
 - Save PowerShell scripts with a UTF-8 BOM (U+FEFF). Windows PowerShell 5.1 otherwise interprets non-ASCII text as ANSI.
@@ -82,7 +86,9 @@ Repository guidance, especially for PowerShell scripts.
 - Keep commit messages short and factual. Automatically generated commit messages must include exactly one `Signed-off-by` trailer for the user and exactly one `Co-authored-by` trailer for the AI engine used. Use the user's confirmed name and email for the sign-off and the active AI engine's configured name and email for co-authorship; do not invent or assume either identity. Place both trailers at the end of the commit message.
 
 ## Testing
-- The structure below `tests` mirrors the code structure. Example: `nextcloud\internal\Get-UserFolders.ps1` is tested in `tests\nextcloud\internal\Get-UserFolders.Tests.ps1`.
+
+- The structure below `tests` mirrors the code structure. Example: `nextcloud\internal\Get-UserFolder.ps1` is tested in
+  `tests\nextcloud\internal\Get-UserFolder.Tests.ps1`.
 - Every production `.ps1` file has exactly one mirror test file. `tests\Static.Tests.ps1` enforces this.
 - Global tests, such as repository-wide code analysis, stay directly in `tests`, but only if they apply to all files.
 - Shared test helpers (for example `tests\TestHelpers.ps1`) stay in `tests`.

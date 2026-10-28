@@ -58,6 +58,15 @@ Describe 'Set-GitConfigValue' {
         (& git config --global --get user.email) | Should -Be 'ann@contoso.test'
     }
 
+    It 'does not write a value when WhatIf is requested' {
+        $repository = New-TestRepository
+        $result = Set-GitConfigValue -Key 'user.name' -Value 'Ann Lee' `
+            -Scope 'Local' -Repository $repository -WhatIf
+
+        $result | Should -BeFalse
+        (& git -C $repository config --local --get user.name 2> $null) | Should -BeNullOrEmpty
+    }
+
     It 'throws when a local value is written outside a repository' {
         $folder = Join-Path $TestDrive 'not-a-repository'
         New-Item -ItemType Directory -Path $folder | Out-Null

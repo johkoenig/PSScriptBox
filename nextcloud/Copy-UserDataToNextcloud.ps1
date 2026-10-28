@@ -9,10 +9,11 @@
     Nextcloud directory. The default Nextcloud path is discovered beneath the
     current user's profile; use -NextcloudPath to specify another location.
     All destination folders must already exist and be writable. Before copying,
-    the script checks read access, the user confirms that the Nextcloud sync
-    client is paused, and each folder is approved individually. Files with
-    matching SHA-256 hashes anywhere in the destination are skipped. Remaining
-    files are copied to same-directory .part files, verified, and moved into
+    the script checks read access and requires acknowledgement that the
+    Nextcloud sync client is paused. By default, folders are copied without
+    action-confirmation prompts; use -Confirm to request approval per folder.
+    Files with matching SHA-256 hashes anywhere in the destination are skipped.
+    Remaining files are copied to same-directory .part files, verified, and moved into
     their final names with progress.
     The script never mirrors or deletes unrelated destination content or
     source data. After copying, it reminds the user to enable synchronization
@@ -34,6 +35,12 @@
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
+.PARAMETER Confirm
+Prompts before copying each selected folder.
+
+.PARAMETER WhatIf
+Previews copy actions without changing files.
+
 .EXAMPLE
     .\Copy-UserDataToNextcloud.ps1 -WhatIf
     Shows which folders would be copied without changing files.
@@ -53,7 +60,12 @@
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'None')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingWriteHost',
+        '',
+        Justification = 'This user-facing script provides localized, color-coded console output.'
+)]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [string] $NextcloudPath,
 
@@ -74,13 +86,13 @@ $script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
 }
 else { @{} }
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-UserSpecialFolderPaths.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-UserFolders.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-UserSpecialFolderPath.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-UserFolder.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-FolderInventory.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-FileSha256.ps1')
 . (Join-Path $PSScriptRoot 'internal\Test-FileReadAccess.ps1')
 . (Join-Path $PSScriptRoot 'internal\Copy-FileToStaging.ps1')
-. (Join-Path $PSScriptRoot 'internal\Copy-ChangedFiles.ps1')
+. (Join-Path $PSScriptRoot 'internal\Copy-ChangedFile.ps1')
 
 $progressWriter = {
     param([string] $Activity, [string] $Status, [int] $PercentComplete, [switch] $Completed)
@@ -137,7 +149,7 @@ try {
         throw (Get-LocalizedText -Text 'Nextcloud destination does not exist: {0}' -Arguments @($nextcloudFullPath))
     }
 
-    $userFolders = @(Get-UserFolders -Names @($Folders | Select-Object -Unique) -FolderPaths (Get-UserSpecialFolderPaths))
+    $userFolders = @(Get-UserFolder -Names @($Folders | Select-Object -Unique) -FolderPaths (Get-UserSpecialFolderPath))
     if ($userFolders.Count -eq 0) {
         Write-Warning (Get-LocalizedText 'No selected Windows user folders were found.')
         return
@@ -263,24 +275,14 @@ try {
             ))
             $sizeMb = $sourceInventory.TotalBytes / 1MB
             $copyAction = Get-LocalizedText -Text 'Copy folder from {0} ({1:N2} MB)' -Arguments @($sourcePath, $sizeMb)
-            $copyApproved = $false
-            if ($WhatIfPreference -or ($PSBoundParameters.ContainsKey('Confirm') -and $Confirm)) {
-                $copyApproved = $PSCmdlet.ShouldProcess($destinationPath, $copyAction)
-            }
-            else {
-                $prompt = Get-LocalizedText -Text 'Copy folder {0} ({1:N2} MB)? [y/N]' -Arguments @($folder.Name, $sizeMb)
-                $answer = (Read-Host -Prompt $prompt).Trim()
-                if ($answer -match '^(?i:y|yes|j|ja)$') {
-                    $copyApproved = $PSCmdlet.ShouldProcess($destinationPath, $copyAction)
-                }
-            }
+            $copyApproved = $PSCmdlet.ShouldProcess($destinationPath, $copyAction)
             if (-not $copyApproved) {
                 $result.Status = 'Skipped'
                 $result.Reason = Get-LocalizedText 'Not performed (preview or declined)'
                 continue
             }
 
-            $copyResult = Copy-ChangedFiles -Source $sourcePath -Destination $destinationPath `
+            $copyResult = Copy-ChangedFile -Source $sourcePath -Destination $destinationPath `
                 -SourceInventory $sourceInventory -DestinationInventory $migration.DestinationInventory `
                 -FolderName $folder.Name -Language $script:OutputLanguage -Messages $script:GermanMessages `
                 -ProgressReporter $progressWriter

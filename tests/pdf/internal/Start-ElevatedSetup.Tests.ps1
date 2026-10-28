@@ -25,7 +25,7 @@ Describe 'Start-ElevatedSetup' {
     }
 
     It 'starts the script elevated with -ElevatedChild and returns the child exit code' {
-        $exitCode = Start-ElevatedSetup -ScriptPath 'C:\fake\Initialize-PdfProcessor.ps1' -EnglishOutput $false
+        $exitCode = Start-ElevatedSetup -ScriptPath 'C:\fake\setup.ps1' -EnglishOutput $false
         $exitCode | Should -Be 7
         Should -Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
             $Verb -eq 'RunAs' -and $FilePath -eq 'C:\fake\host.exe' -and $ArgumentList -match '-ElevatedChild'
@@ -44,6 +44,11 @@ Describe 'Start-ElevatedSetup' {
         Should -Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
             $ArgumentList -notmatch '-EnglishOutput' -and $ArgumentList -notmatch '-RuntimePythonPath'
         }
+    }
+
+    It 'does not start an elevated process when WhatIf is requested' {
+        Start-ElevatedSetup -ScriptPath 'C:\fake\setup.ps1' -EnglishOutput $false -WhatIf | Should -BeNullOrEmpty
+        Should -Invoke Start-Process -Times 0 -Exactly
     }
 
     It 'falls back to the host executable in PSHOME when it is not on PATH' {

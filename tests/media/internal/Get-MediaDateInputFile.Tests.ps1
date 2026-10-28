@@ -4,7 +4,7 @@
 # - Johannes Koenig <dev@jokoenig.de>
 <#
 .SYNOPSIS
-    Unit tests for media\internal\Get-MediaDateInputFiles.ps1.
+    Unit tests for media\internal\Get-MediaDateInputFile.ps1.
 
 .DESCRIPTION
     Verifies recursive discovery of the legacy media formats and invalid-path
@@ -16,10 +16,10 @@
 
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateInputFiles.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateInputFile.ps1')
 }
 
-Describe 'Get-MediaDateInputFiles' {
+Describe 'Get-MediaDateInputFile' {
     It 'recursively discovers supported extensions and returns the base path' {
         $root = Join-Path $TestDrive 'photos'
         $nested = Join-Path $root 'nested'
@@ -28,7 +28,7 @@ Describe 'Get-MediaDateInputFiles' {
         $null = New-Item -ItemType File -Path (Join-Path $nested 'clip.mov')
         $null = New-Item -ItemType File -Path (Join-Path $nested 'notes.txt')
 
-        $result = Get-MediaDateInputFiles -RootPath $root
+        $result = Get-MediaDateInputFile -RootPath $root
 
         $result.BasePath | Should -Be ([System.IO.Path]::GetFullPath($root))
         @($result.Files.Name) | Should -Contain 'photo.jpg'
@@ -38,7 +38,7 @@ Describe 'Get-MediaDateInputFiles' {
 
     It 'throws a localized error when the path is not a folder' {
         {
-            Get-MediaDateInputFiles -RootPath (Join-Path $TestDrive 'missing') `
+            Get-MediaDateInputFile -RootPath (Join-Path $TestDrive 'missing') `
                 -UiLanguage 'de' -Messages @{ 'The selected path is not a folder: {0}' = 'Kein Ordner: {0}' }
         } | Should -Throw 'Kein Ordner:*'
     }
