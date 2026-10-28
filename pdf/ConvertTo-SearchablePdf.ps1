@@ -99,7 +99,8 @@
       - Ghostscript (optional for ordinary OCR; used for rotation-only
         correction when a scanned PDF already has text)
 
-    Use .\Initialize-PdfProcessor.ps1 to check and install the required software.
+    This script checks its dependencies and prints installation guidance when
+    a required executable or Python module is missing.
 
     Tesseract language data (.traineddata) is not installed automatically. If
     required data is missing, the script points to
@@ -151,6 +152,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-PdfPythonRuntime.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\ConvertTo-QuotedArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-ExecutablePath.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-GhostscriptExecutablePath.ps1')
@@ -215,21 +217,52 @@ Write-Host ''
 
 # Check required programs and modules before processing.
 $pythonRuntime = Get-PdfPythonRuntime
+$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}'
 $dependencyCheck = Get-MissingDependency -PythonRuntime $pythonRuntime `
     -TesseractPath (Get-ExecutablePath -Name 'tesseract') `
     -GhostscriptPath (Get-GhostscriptExecutablePath) -NoGhostscript $false `
     -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
 if ($dependencyCheck.Missing.Count -gt 0) {
-    Write-Host "`n$(Get-LocalizedText 'Missing dependencies:')" -ForegroundColor Yellow
-    $dependencyCheck.Missing | ForEach-Object { Write-Host "  - $_" }
-    Write-Host "`n$(Get-LocalizedText 'Run Initialize-PdfProcessor.ps1 to install the missing dependencies.')"
+    foreach ($dependency in $dependencyCheck.Missing)
+    {
+        $guidance = switch ($dependency)
+        {
+            (Get-LocalizedText 'Python interpreter') {
+                Get-LocalizedText 'Install Python from https://www.python.org/downloads/.'
+                break
+            }
+            'Tesseract' {
+                Get-LocalizedText 'Install Tesseract with Chocolatey: choco install tesseract -y, or download from https://github.com/UB-Mannheim/tesseract/wiki.'
+                break
+            }
+            (Get-LocalizedText 'OCRmyPDF (Python module)') {
+                Get-LocalizedText -Text 'Install the Python module with the selected interpreter: "{0}" -m pip install {1}.' `
+                    -Arguments @($dependencyCheck.PythonPath, 'ocrmypdf')
+                break
+            }
+            (Get-LocalizedText 'pikepdf (Python module)') {
+                Get-LocalizedText -Text 'Install the Python module with the selected interpreter: "{0}" -m pip install {1}.' `
+                    -Arguments @($dependencyCheck.PythonPath, 'pikepdf')
+                break
+            }
+        }
+        $report = Get-MissingDependencyReport -Dependency $dependency -Guidance $guidance `
+            -MessageTemplate $missingDependencyTemplate
+        Write-Host $report.Message -ForegroundColor Yellow
+        Write-Host "  $( $report.Guidance )"
+    }
     exit 1
 }
 if ($dependencyCheck.OptionalMissing.Count -gt 0) {
-    Write-Host "`n$( Get-LocalizedText 'Optional tools not found (some processing will be limited):' )" -ForegroundColor DarkYellow
-    $dependencyCheck.OptionalMissing | ForEach-Object { Write-Host "  - $_" }
-    Write-Host (Get-LocalizedText '  Installation (elevated shell): choco install ghostscript -y')
-    Write-Host (Get-LocalizedText '  Open a new PowerShell session and restart the script.')
+    foreach ($dependency in $dependencyCheck.OptionalMissing)
+    {
+        $report = Get-MissingDependencyReport -Dependency $dependency `
+            -Guidance (Get-LocalizedText 'Install Ghostscript with Chocolatey: choco install ghostscript -y, or download from https://ghostscript.com/releases/gsdnld.html.') `
+            -MessageTemplate $missingDependencyTemplate
+        Write-Host $report.Message -ForegroundColor DarkYellow
+        Write-Host "  $( $report.Guidance )"
+    }
+    Write-Host (Get-LocalizedText 'Open a new PowerShell session and restart the script.')
     Write-Host ''
 }
 

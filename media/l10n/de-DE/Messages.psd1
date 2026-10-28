@@ -4,6 +4,8 @@
 # - Johannes Koenig <dev@jokoenig.de>
 
 @{
+    'Missing dependency: {0}' = 'Fehlende Abhängigkeit: {0}'
+    'Install ExifTool with Chocolatey: choco install exiftool -y, or download from https://exiftool.org/.' = 'Installiere ExifTool mit Chocolatey: choco install exiftool -y, oder lade es von https://exiftool.org/ herunter.'
     'Restores media dates from filenames and metadata.' = 'Stellt Mediendaten anhand von Dateinamen und Metadaten wieder her.'
     'Renames files to YY-MM-DD HH-mm-ss XXXX.ext.' = 'Benennt Dateien in YY-MM-DD HH-mm-ss XXXX.ext um.'
     'Missing dependency: ExifTool.' = 'Fehlende Abhängigkeit: ExifTool.'
@@ -72,8 +74,7 @@
 
     'Optimizes inefficient videos and large JPEG photos.' = 'Optimiert ineffizient komprimierte Videos und große JPEG-Fotos.'
     'Preserves supported file timestamps and verified capture dates.' = 'Erhält unterstützte Dateizeitstempel und geprüfte Aufnahmedaten.'
-    'Missing dependencies: {0}' = 'Fehlende Abhängigkeiten: {0}'
-    'Install FFmpeg with libx265 and MJPEG encoders, plus ExifTool; with Chocolatey run: choco install ffmpeg exiftool -y' = 'Installiere FFmpeg mit den libx265- und MJPEG-Encodern sowie ExifTool. Mit Chocolatey: choco install ffmpeg exiftool -y'
+    'Install FFmpeg (including FFprobe) with Chocolatey: choco install ffmpeg -y.' = 'Installiere FFmpeg (einschließlich FFprobe) mit Chocolatey: choco install ffmpeg -y.'
     'Enter the path to a MOV, MP4, JPG, or JPEG file or a folder containing these files.' = 'Gib den Pfad zu einer MOV-, MP4-, JPG- oder JPEG-Datei oder einem Ordner mit solchen Dateien ein.'
     'Press Ctrl+C to cancel input.' = 'Mit Strg+C kannst du die Eingabe abbrechen.'
     'InputPath' = 'Eingabepfad'

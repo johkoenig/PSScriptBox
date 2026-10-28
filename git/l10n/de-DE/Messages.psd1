@@ -4,6 +4,8 @@
 # - Johannes Koenig <dev@jokoenig.de>
 
 @{
+    'Missing dependency: {0}' = 'Fehlende Abhängigkeit: {0}'
+    'Install Git for Windows from https://git-scm.com/download/win, or run: choco install git.install -y.' = 'Installiere Git for Windows von https://git-scm.com/download/win oder führe folgenden Befehl aus: choco install git.install -y.'
     'Git command failed (exit code {0}): {1}' = 'Git-Befehl fehlgeschlagen (Exitcode {0}): {1}'
     'Could not read Git setting: {0}' = 'Git-Einstellung konnte nicht gelesen werden: {0}'
     'Repository path not found: {0}' = 'Repository-Pfad nicht gefunden: {0}'

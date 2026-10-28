@@ -25,7 +25,7 @@ Describe 'Start-ElevatedSetup' {
     }
 
     It 'starts the script elevated with -ElevatedChild and returns the child exit code' {
-        $exitCode = Start-ElevatedSetup -ScriptPath 'C:\fake\Initialize-PdfProcessor.ps1' -EnglishOutput $false
+        $exitCode = Start-ElevatedSetup -ScriptPath 'C:\fake\setup.ps1' -EnglishOutput $false
         $exitCode | Should -Be 7
         Should -Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
             $Verb -eq 'RunAs' -and $FilePath -eq 'C:\fake\host.exe' -and $ArgumentList -match '-ElevatedChild'

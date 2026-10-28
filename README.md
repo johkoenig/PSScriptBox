@@ -11,7 +11,6 @@ Small PowerShell utilities for everyday tasks, including PDF processing, Git con
 
 Available tools:
 
-- `Initialize-PdfProcessor.ps1` — checks and installs PDF-processing dependencies.
 - `ConvertTo-SearchablePdf.ps1` — adds OCR and corrects scanned pages; digitally born PDFs are skipped, while encrypted
   and signed PDFs are reported as issues.
 - `Optimize-PdfSize.ps1` — downsamples images to reduce PDF size, targeting 300 DPI and JPEG quality 75 by default;
@@ -22,7 +21,6 @@ Available tools:
 
 | Script                          | Parameters and switches                                                                                                                                                                   |
 |---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Initialize-PdfProcessor.ps1`   | `-EnglishOutput`. Internal hidden parameters: `-ElevatedChild`, `-RuntimePythonPath`.                                                                                                     |
 | `ConvertTo-SearchablePdf.ps1`   | `-InputPath <path>`, `-Language <codes>`, `-NoDeskew`, `-NoRotationOfPages`, `-ReplaceOriginal`, `-EnglishOutput`.                                                                        |
 | `Optimize-PdfSize.ps1`          | `-InputPath <path>`, `-Dpi <50-1200>` (default `300`), `-JpegQuality <1-100>` (default `75`), `-MinFileSize <bytes>` (default `1MB`; `0` disables), `-ReplaceOriginal`, `-EnglishOutput`. |
 | `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <path>`, `-EnglishOutput`.                                                                                                                                                    |
@@ -36,6 +34,9 @@ for rotation detection on pages that already have text. PDF-size optimization is
 born PDFs too. For folder input, size optimization discovers all PDFs first and processes only files that meet the
 minimum size. Encrypted and digitally signed PDFs cannot be processed and appear in the issue list. Routine skips and
 unchanged files are counted in summaries but are not listed individually.
+
+PDF scripts that need external tools check them individually and report missing
+executables or Python modules with installation commands or download links.
 
 See the [PDF tools guide](pdf/README.md) for parameter behavior, examples, setup, dependencies, and safety notes.
 

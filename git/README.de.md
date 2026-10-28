@@ -31,7 +31,10 @@ Eingabe. Eine vorhandene Git-Einstellung steht an erster Stelle, die Eingabetast
 
 ## Abhängigkeiten einrichten
 
-Git muss installiert und über `PATH` erreichbar sein. Administratorrechte sind nicht erforderlich. Verzeichnisabfragen haben ein kurzes Zeitlimit und werden übersprungen, wenn kein Verzeichnis erreichbar ist.
+Git muss installiert und über `PATH` erreichbar sein. Jedes Git-Skript prüft die
+Verfügbarkeit und gibt bei fehlendem Git einen Chocolatey-Befehl und einen
+Download-Link aus. Administratorrechte sind nicht erforderlich. Verzeichnisabfragen
+haben ein kurzes Zeitlimit und werden übersprungen, wenn kein Verzeichnis erreichbar ist.
 
 ## Skripte und Schalter
 

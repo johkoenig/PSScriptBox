@@ -25,7 +25,8 @@
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7 and ExifTool.
-    ExifTool must be available in PATH. The script does not install software.
+    ExifTool must be available in PATH. If it is missing, the script prints
+    installation guidance. The script does not install software.
 #>
 
 # SPDX-License-Identifier: MIT
@@ -49,6 +50,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\ConvertTo-QuotedArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaTool.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MediaDateInputFiles.ps1')
@@ -96,12 +98,16 @@ Write-Host (Get-LocalizedText 'Restores media dates from filenames and metadata.
 Write-Host (Get-LocalizedText 'Renames files to YY-MM-DD HH-mm-ss XXXX.ext.') -ForegroundColor Cyan
 Write-Host ''
 
+$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}'
 $exifToolCommand = Get-Command -Name 'exiftool.exe', 'exiftool' -ErrorAction SilentlyContinue |
         Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
 if ($null -eq $exifToolCommand)
 {
-    Write-Host (Get-LocalizedText 'Missing dependency: ExifTool.') -ForegroundColor Red
-    Write-Host (Get-LocalizedText 'Install ExifTool from https://exiftool.org/ and make it available in PATH.') -ForegroundColor Yellow
+    $report = Get-MissingDependencyReport -Dependency 'ExifTool' `
+        -Guidance (Get-LocalizedText 'Install ExifTool with Chocolatey: choco install exiftool -y, or download from https://exiftool.org/.') `
+        -MessageTemplate $missingDependencyTemplate
+    Write-Host $report.Message -ForegroundColor Yellow
+    Write-Host "  $( $report.Guidance )"
     exit 1
 }
 

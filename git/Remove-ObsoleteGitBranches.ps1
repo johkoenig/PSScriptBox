@@ -22,7 +22,8 @@ Removes obsolete branches without prompting.
 .\Remove-ObsoleteGitBranches.ps1 -WhatIf
 
 .NOTES
-Dependencies: Git for Windows.
+Dependencies: Git for Windows. If Git is missing, the script reports
+installation guidance and exits.
 Contributors:
 - Johannes Koenig <dev@jokoenig.de>
 #>
@@ -48,6 +49,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-ObsoleteGitBranches.ps1')
 . (Join-Path $PSScriptRoot 'internal\Remove-GitBranch.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 
 $script:Language = if (-not $EnglishOutput -and [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -eq 'de')
 {
@@ -85,6 +87,20 @@ Write-Host (Get-LocalizedText -Text '  Removes obsolete local branches without c
 Write-Host (Get-LocalizedText -Text '  Supports preview; removal runs without confirmation.' -Language $script:Language -Messages $script:Messages) -ForegroundColor Cyan
 Write-Host ''
 
+$gitCommand = Get-Command -Name 'git.exe' -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
+if ($null -eq $gitCommand)
+{
+    $report = Get-MissingDependencyReport -Dependency 'Git for Windows' `
+        -Guidance (Get-LocalizedText -Text 'Install Git for Windows from https://git-scm.com/download/win, or run: choco install git.install -y.' `
+            -Language $script:Language -Messages $script:Messages) `
+        -MessageTemplate (Get-LocalizedText -Text 'Missing dependency: {0}' `
+            -Language $script:Language -Messages $script:Messages)
+    Write-Host $report.Message -ForegroundColor Yellow
+    Write-Host "  $( $report.Guidance )"
+    exit 1
+}
+
 $failedBranches = [System.Collections.Generic.List[object]]::new()
 $removedCount = 0
 $previewedCount = 0
@@ -94,11 +110,6 @@ $candidateCount = 0
 try
 {
     Write-Host (Get-LocalizedText -Text '=== Obsolete Git branches: processing started ===' -Language $script:Language -Messages $script:Messages) -ForegroundColor Cyan
-
-    if (-not (Get-Command -Name git.exe -ErrorAction SilentlyContinue))
-    {
-        throw (Get-LocalizedText -Text 'Git for Windows was not found on PATH.' -Language $script:Language -Messages $script:Messages)
-    }
 
     $invocationPath = (Get-Location).Path
     $repositoryRoot = (Invoke-GitCommand -Repository $invocationPath -Arguments @(

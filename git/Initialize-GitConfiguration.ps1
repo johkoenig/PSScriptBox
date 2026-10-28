@@ -49,7 +49,8 @@
     Sets the identity for the specified repository without identity prompts.
 
 .NOTES
-    Dependencies: Windows PowerShell 5.1 or later and Git for Windows.
+    Dependencies: Windows PowerShell 5.1 or later and Git for Windows. If Git
+    is missing, the script reports installation guidance and exits.
     Active Directory lookups run only on domain-joined computers and fail
     silently when no directory is reachable. Git has no setting that adds a
     Signed-off-by trailer to every commit; the recommended settings include
@@ -91,6 +92,7 @@ $script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
 }
 else { @{} }
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-GitCommand.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-GitConfigValue.ps1')
 . (Join-Path $PSScriptRoot 'internal\Set-GitConfigValue.ps1')
@@ -122,6 +124,18 @@ $headerLines = @(
 Write-Host ''
 foreach ($headerLine in $headerLines) {
     Write-Host $headerLine -ForegroundColor Cyan
+}
+
+$gitCommand = Get-Command -Name 'git.exe' -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
+if ($null -eq $gitCommand)
+{
+    $report = Get-MissingDependencyReport -Dependency 'Git for Windows' `
+        -Guidance (Get-LocalizedText 'Install Git for Windows from https://git-scm.com/download/win, or run: choco install git.install -y.') `
+        -MessageTemplate (Get-LocalizedText -Text 'Missing dependency: {0}')
+    Write-Host $report.Message -ForegroundColor Yellow
+    Write-Host "  $( $report.Guidance )"
+    exit 1
 }
 Write-Host (Get-LocalizedText '  Sets the Git author identity and confirms recommended standard settings.') -ForegroundColor Cyan
 Write-Host ''

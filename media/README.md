@@ -73,7 +73,8 @@ choco install ffmpeg exiftool -y
 ```
 
 FFmpeg must include `libx265` and MJPEG. Both programs must be discoverable in `PATH`. The script only checks for them;
-it does not install software or require administrator rights.
+it does not install software or require administrator rights. Missing tools are
+reported individually with Chocolatey commands or a download link.
 
 ## Scripts and switches
 

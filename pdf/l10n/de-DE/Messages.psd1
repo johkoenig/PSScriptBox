@@ -4,6 +4,13 @@
 # - Johannes Koenig <dev@jokoenig.de>
 
 @{
+    'Missing dependency: {0}' = 'Fehlende Abhängigkeit: {0}'
+    'Install Python from https://www.python.org/downloads/.' = 'Installiere Python von https://www.python.org/downloads/.'
+    'Install Tesseract with Chocolatey: choco install tesseract -y, or download from https://github.com/UB-Mannheim/tesseract/wiki.' = 'Installiere Tesseract mit Chocolatey: choco install tesseract -y, oder lade es von https://github.com/UB-Mannheim/tesseract/wiki/ herunter.'
+    'Install the Python module with the selected interpreter: "{0}" -m pip install {1}.' = 'Installiere das Python-Modul mit dem ausgewählten Interpreter: "{0}" -m pip install {1}.'
+    'Install pikepdf with the selected interpreter: "{0}" -m pip install pikepdf.' = 'Installiere pikepdf mit dem ausgewählten Interpreter: "{0}" -m pip install pikepdf.'
+    'Install Ghostscript with Chocolatey: choco install ghostscript -y, or download from https://ghostscript.com/releases/gsdnld.html.' = 'Installiere Ghostscript mit Chocolatey: choco install ghostscript -y, oder lade es von https://ghostscript.com/releases/gsdnld.html herunter.'
+    'Open a new PowerShell session and restart the script.' = 'Öffne eine neue PowerShell-Sitzung und starte das Skript erneut.'
     'InputPath' = 'Eingabepfad'
     'Enter the folder containing original PDF backups.' = 'Gib den Ordner mit den Original-PDF-Sicherungen ein.'
     'No folder was specified.' = 'Es wurde kein Ordner angegeben.'
@@ -209,7 +216,6 @@
     'Installing missing Python packages into the selected user Python interpreter (no elevation required).' = 'Fehlende Python-Pakete werden im ausgewählten Benutzer-Python-Interpreter installiert (keine Rechteerhöhung erforderlich).'
     'Machine-wide Python packages still need administrator privileges. Run this script as administrator.' = 'Für systemweite Python-Pakete sind weiterhin Administratorrechte erforderlich. Starte dieses Skript als Administrator.'
     'Missing dependency: Python.' = 'Fehlende Abhängigkeit: Python.'
-    'Run Initialize-PdfProcessor.ps1 to install the missing dependencies.' = 'Führe Initialize-PdfProcessor.ps1 aus, um fehlende Abhängigkeiten zu installieren.'
     'An elevated PowerShell window will now open to install these Chocolatey packages.' = 'Zum Installieren dieser Chocolatey-Pakete wird jetzt ein PowerShell-Fenster mit Administratorrechten geöffnet.'
     'OCRmyPDF and pikepdf will be installed separately for the current user after elevation.' = 'OCRmyPDF und pikepdf werden nach der Rechteerhöhung separat für den aktuellen Benutzer installiert.'
     'Elevated installation failed (exit code {0}).' = 'Die Installation mit Administratorrechten ist fehlgeschlagen (Exitcode {0}).'

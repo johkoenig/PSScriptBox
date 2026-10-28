@@ -49,7 +49,8 @@
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7, FFmpeg with the
     libx265 and MJPEG encoders, FFprobe, and ExifTool. These tools must be
-    available in PATH. The script does not install software or require
+    available in PATH. Missing dependencies are reported individually with
+    installation guidance. The script does not install software or require
     administrator rights.
 #>
 
@@ -75,6 +76,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\ConvertTo-QuotedArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MediaInputFile.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaTool.ps1')
@@ -123,6 +125,7 @@ Write-Host (Get-LocalizedText 'Optimizes inefficient videos and large JPEG photo
 Write-Host (Get-LocalizedText 'Preserves supported file timestamps and verified capture dates.') -ForegroundColor Cyan
 Write-Host ''
 
+$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}'
 $ffmpegCommand = Get-Command -Name 'ffmpeg.exe', 'ffmpeg' -ErrorAction SilentlyContinue |
         Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
 $ffprobeCommand = Get-Command -Name 'ffprobe.exe', 'ffprobe' -ErrorAction SilentlyContinue |
@@ -144,8 +147,21 @@ if ($null -eq $exifToolCommand)
 }
 if ($missingDependencies.Count -gt 0)
 {
-    Write-Host (Get-LocalizedText -Text 'Missing dependencies: {0}' -Arguments @(($missingDependencies -join ', '))) -ForegroundColor Yellow
-    Write-Host (Get-LocalizedText 'Install FFmpeg with libx265 and MJPEG encoders, plus ExifTool; with Chocolatey run: choco install ffmpeg exiftool -y')
+    foreach ($dependency in $missingDependencies)
+    {
+        $guidance = if ($dependency -eq 'ExifTool')
+        {
+            Get-LocalizedText 'Install ExifTool with Chocolatey: choco install exiftool -y, or download from https://exiftool.org/.'
+        }
+        else
+        {
+            Get-LocalizedText 'Install FFmpeg (including FFprobe) with Chocolatey: choco install ffmpeg -y.'
+        }
+        $report = Get-MissingDependencyReport -Dependency $dependency -Guidance $guidance `
+            -MessageTemplate $missingDependencyTemplate
+        Write-Host $report.Message -ForegroundColor Yellow
+        Write-Host "  $( $report.Guidance )"
+    }
     exit 1
 }
 

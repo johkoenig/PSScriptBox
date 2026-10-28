@@ -11,7 +11,6 @@ Kleine PowerShell-Werkzeuge für alltägliche Aufgaben, darunter PDF-Verarbeitun
 
 Verfügbare Werkzeuge:
 
-- `Initialize-PdfProcessor.ps1` — prüft und installiert Abhängigkeiten für die PDF-Verarbeitung.
 - `ConvertTo-SearchablePdf.ps1` — ergänzt OCR und korrigiert gescannte Seiten; digital erzeugte PDFs werden
   übersprungen, verschlüsselte und signierte PDFs als Probleme gemeldet.
 - `Optimize-PdfSize.ps1` — skaliert Bilder zur Größenreduzierung herunter; Standardziel sind 300 DPI und JPEG-Qualität
@@ -22,7 +21,6 @@ Verfügbare Werkzeuge:
 
 | Skript                          | Parameter und Schalter                                                                                                                                                                          |
 |---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Initialize-PdfProcessor.ps1`   | `-EnglishOutput`. Interne ausgeblendete Parameter: `-ElevatedChild`, `-RuntimePythonPath`.                                                                                                      |
 | `ConvertTo-SearchablePdf.ps1`   | `-InputPath <Pfad>`, `-Language <Codes>`, `-NoDeskew`, `-NoRotationOfPages`, `-ReplaceOriginal`, `-EnglishOutput`.                                                                              |
 | `Optimize-PdfSize.ps1`          | `-InputPath <Pfad>`, `-Dpi <50-1200>` (Standard `300`), `-JpegQuality <1-100>` (Standard `75`), `-MinFileSize <Bytes>` (Standard `1MB`; `0` deaktiviert), `-ReplaceOriginal`, `-EnglishOutput`. |
 | `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <Pfad>`, `-EnglishOutput`.                                                                                                                                                          |
@@ -38,6 +36,9 @@ ein separater Schritt und verarbeitet auch digital erzeugte PDFs. Bei Ordnern er
 alle PDFs und verarbeitet nur Dateien, die mindestens die Mindestgröße erreichen. Verschlüsselte und digital signierte
 PDFs können nicht verarbeitet werden und erscheinen in der Problemliste. Regulär übersprungene und unveränderte
 Dateien werden in der Zusammenfassung gezählt, aber nicht einzeln aufgeführt.
+
+PDF-Skripte mit externen Werkzeugen prüfen diese einzeln und melden
+fehlende Programme oder Python-Module mit Installationsbefehlen oder Download-Links.
 
 Die [PDF-Anleitung](pdf/README.de.md) beschreibt das Verhalten der Parameter, Beispiele, Einrichtung, Abhängigkeiten und Sicherheitsaspekte.
 

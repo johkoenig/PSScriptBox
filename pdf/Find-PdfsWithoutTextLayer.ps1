@@ -26,8 +26,8 @@
 
 .NOTES
     Dependencies: PowerShell 5.1 or later, Python, and the pikepdf Python module.
-    Use .\Initialize-PdfProcessor.ps1 to install missing dependencies into the
-    selected Python interpreter.
+    This script checks its dependencies and prints installation guidance when
+    a required executable or Python module is missing.
     No files are modified, and administrator rights are not required.
 #>
 
@@ -52,6 +52,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-PdfPythonRuntime.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\ConvertTo-QuotedArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-PythonCommand.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-PdfTextLayerStatus.ps1')
@@ -93,18 +94,27 @@ if ([string]::IsNullOrWhiteSpace($InputPath)) {
     throw (Get-LocalizedText 'No path was specified.')
 }
 
+$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}'
 $pythonRuntime = Get-PdfPythonRuntime
 if (-not $pythonRuntime) {
-    Write-Host (Get-LocalizedText 'Missing dependency: Python.') -ForegroundColor Yellow
-    Write-Host (Get-LocalizedText 'Run Initialize-PdfProcessor.ps1 to install the missing dependencies.')
+    $report = Get-MissingDependencyReport -Dependency 'Python' `
+        -Guidance (Get-LocalizedText 'Install Python from https://www.python.org/downloads/.') `
+        -MessageTemplate $missingDependencyTemplate
+    Write-Host $report.Message -ForegroundColor Yellow
+    Write-Host "  $( $report.Guidance )"
     exit 1
 }
 $pythonPath = $pythonRuntime.Path
 
 $moduleCheck = Invoke-PythonCommand -PythonPath $pythonPath -Arguments @('-c', 'import pikepdf')
 if ($moduleCheck.ExitCode -ne 0) {
-    Write-Host (Get-LocalizedText 'Missing dependency: Python module pikepdf.') -ForegroundColor Yellow
-    Write-Host (Get-LocalizedText 'Run Initialize-PdfProcessor.ps1 to install the missing dependencies.')
+    $report = Get-MissingDependencyReport -Dependency 'pikepdf (Python module)' `
+        -Guidance (Get-LocalizedText -Text 'Install pikepdf with the selected interpreter: "{0}" -m pip install pikepdf.' `
+            -Arguments @($pythonPath)) `
+        -MessageTemplate $missingDependencyTemplate
+
+    Write-Host $report.Message -ForegroundColor Yellow
+    Write-Host "  $( $report.Guidance )"
     exit 1
 }
 

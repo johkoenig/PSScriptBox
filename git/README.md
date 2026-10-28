@@ -30,7 +30,10 @@ existing Git setting is listed first, so pressing Enter (default: choice 1) keep
 
 ## Dependency setup
 
-Git must be installed and available on `PATH`. No administrator privileges are needed. Directory lookups time out quickly and are skipped when no directory is reachable.
+Git must be installed and available on `PATH`. Each Git script checks for it and
+prints a Chocolatey command and download link when it is missing. No administrator
+privileges are needed. Directory lookups time out quickly and are skipped when no
+directory is reachable.
 
 ## Scripts and switches
 
