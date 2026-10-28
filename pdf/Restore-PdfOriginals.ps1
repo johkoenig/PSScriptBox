@@ -14,6 +14,12 @@
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
+.PARAMETER Confirm
+Prompts before replacing each processed PDF with its original backup.
+
+.PARAMETER WhatIf
+Shows planned restorations without changing files.
+
 .EXAMPLE
     .\Restore-PdfOriginals.ps1
     Prompts for a folder.
@@ -23,8 +29,12 @@
     Previews which processed PDFs would be replaced by their original backups.
 
 .EXAMPLE
-    .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm:$false
+    .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs'
     Restores all matching original PDFs without per-file confirmation.
+
+.EXAMPLE
+    .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm
+    Prompts before restoring each matching original PDF.
 
 .NOTES
     Dependencies: PowerShell 5.1 or later. No additional programs or modules
@@ -41,7 +51,7 @@
         '',
         Justification = 'This user-facing script provides localized, color-coded console output.'
 )]
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [string] $InputPath,
 

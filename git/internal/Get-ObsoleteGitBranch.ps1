@@ -55,7 +55,7 @@ German message catalog keyed by the English source text.
 System.Management.Automation.PSCustomObject containing branch assessments and
 the current branch reference.
 #>
-function Get-ObsoleteGitBranches
+function Get-ObsoleteGitBranch
 {
     [CmdletBinding()]
     param(

@@ -3,7 +3,7 @@
     Finds supported media files for date restoration.
 
 .DESCRIPTION
-    Defines Get-MediaDateInputFiles, which recursively discovers the media
+    Defines Get-MediaDateInputFile, which recursively discovers the media
     formats supported for date restoration.
 
 .NOTES
@@ -34,7 +34,7 @@
 .OUTPUTS
     PSCustomObject with Files (System.IO.FileInfo[]) and BasePath (string).
 #>
-function Get-MediaDateInputFiles
+function Get-MediaDateInputFile
 {
     [CmdletBinding()]
     param(

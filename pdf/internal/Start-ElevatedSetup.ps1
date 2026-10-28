@@ -35,15 +35,20 @@
     Preserves the selected interpreter path in the elevated process.
 
 .OUTPUTS
-    System.Int32. The elevated process exit code.
+    System.Int32, or no output when WhatIf or a declined confirmation prevents starting the process.
 #>
 function Start-ElevatedSetup {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory)][string] $ScriptPath,
         [Parameter(Mandatory)][bool] $EnglishOutput,
         [string] $RuntimePythonPath
     )
+
+    if (-not $PSCmdlet.ShouldProcess($ScriptPath, 'Start elevated setup'))
+    {
+        return
+    }
 
     $hostName = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' }
     $hostPath = Get-ExecutablePath -Name $hostName

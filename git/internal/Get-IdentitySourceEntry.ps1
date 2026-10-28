@@ -28,9 +28,9 @@
     Windows display name, and the full name of a local account. For user.email
     they are the Active Directory mail attribute, the user principal name, and
     the signed-in Microsoft accounts. Entries with empty or invalid values are
-    returned unchanged; Get-IdentityCandidates filters them.
+    returned unchanged; Get-IdentityCandidate filters them.
 
-    Source labels are English templates; Get-IdentityCandidates localizes them.
+    Source labels are English templates; Get-IdentityCandidate localizes them.
 
 .PARAMETER Key
     user.name or user.email.

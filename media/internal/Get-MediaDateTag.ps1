@@ -3,7 +3,7 @@
     Reads date and time metadata from a media file.
 
 .DESCRIPTION
-    Defines Get-MediaDateMetadata, which uses ExifTool to return supported
+    Defines Get-MediaDateTag, which uses ExifTool to return supported
     file-level and capture date/time tags, excluding file-system timestamps
     and per-track creation/modification timestamps.
 
@@ -44,7 +44,7 @@
     Hashtable mapping grouped ExifTool file-level and capture date/time tags
     to normalized values.
 #>
-function Get-MediaDateMetadata
+function Get-MediaDateTag
 {
     [CmdletBinding()]
     param(

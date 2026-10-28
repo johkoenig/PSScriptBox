@@ -46,6 +46,11 @@ Describe 'Start-ElevatedSetup' {
         }
     }
 
+    It 'does not start an elevated process when WhatIf is requested' {
+        Start-ElevatedSetup -ScriptPath 'C:\fake\setup.ps1' -EnglishOutput $false -WhatIf | Should -BeNullOrEmpty
+        Should -Invoke Start-Process -Times 0 -Exactly
+    }
+
     It 'falls back to the host executable in PSHOME when it is not on PATH' {
         Mock Get-ExecutablePath { $null }
         $hostName = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' }

@@ -161,7 +161,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Test-PythonModule.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MissingDependency.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-Tesseract.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-TesseractLanguages.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-TesseractLanguage.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-LanguageDownloadHint.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-PdfInputFile.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-FileSha256.ps1')
@@ -269,7 +269,7 @@ if ($dependencyCheck.OptionalMissing.Count -gt 0) {
 # --- Get Tesseract languages and tessdata folder --------------------------
 $tesseractPath = Get-ExecutablePath -Name 'tesseract'
 try {
-    $tesseractInfo = Get-TesseractLanguages -TesseractPath $tesseractPath -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
+    $tesseractInfo = Get-TesseractLanguage -TesseractPath $tesseractPath -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
 }
 catch {
     Write-Error (Get-LocalizedText -Text 'Could not get Tesseract languages. Check "tesseract --list-langs": {0}' -Arguments @($_.Exception.Message))

@@ -16,8 +16,8 @@ Um veraltete Branches zunächst als Vorschau anzuzeigen, wechsle in das Reposito
 .\Remove-ObsoleteGitBranches.ps1 -WhatIf
 ```
 
-Starte das Skript ohne `-WhatIf`, um alle Kandidaten sofort und ohne Rückfrage zu entfernen. Um Git-Identität und
-Standardeinstellungen einzurichten, starte:
+Starte das Skript ohne `-WhatIf`, um alle Kandidaten sofort und ohne Rückfrage zu entfernen; `-Confirm` aktiviert
+Rückfragen pro Branch. Um Git-Identität und Standardeinstellungen einzurichten, starte:
 
 ```powershell
 .\Initialize-GitConfiguration.ps1
@@ -50,6 +50,7 @@ jedem Löschen wird geprüft, ob sich der Branch seit der Analyse geändert hat.
 | Parameter / Schalter | Beschreibung                                                                  |
 |----------------------|-------------------------------------------------------------------------------|
 | `-WhatIf`            | Zeigt veraltete Branches an, die entfernt würden, ohne sie zu löschen.        |
+| `-Confirm`           | Fragt vor dem Entfernen jedes veralteten Branches nach.                       |
 | `-EnglishOutput`     | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
 
 Beispiele:
@@ -66,15 +67,18 @@ in einem anderen Worktree ausgecheckt sind, nicht entfernen; solche Fälle werde
 
 ### `Initialize-GitConfiguration.ps1`
 
-Das Skript läuft standardmäßig interaktiv. Die folgenden Schalter überspringen die Abfragen oder ändern den Zielbereich.
+Das Skript fragt nach Identitäts- und Einstellungswerten, die nicht als Parameter angegeben wurden. Vor Schreibvorgängen
+fragt es standardmäßig nicht nach; mit `-Confirm` werden Rückfragen aktiviert und `-WhatIf` simuliert Schreibvorgänge.
 
-| Parameter / Schalter | Beschreibung |
-| --- | --- |
-| `-RepositoryPath <Pfad>` | Verzeichnis innerhalb des Repositorys (Bereich Local). Standard ist das aktuelle Verzeichnis. |
+| Parameter / Schalter     | Beschreibung                                                                                                 |
+|--------------------------|--------------------------------------------------------------------------------------------------------------|
+| `-RepositoryPath <Pfad>` | Verzeichnis innerhalb des Repositorys (Bereich Local). Standard ist das aktuelle Verzeichnis.                |
 | `-Scope <Local\|Global>` | Zielbereich der Einstellungen. Standard `Local`; `Global` gilt für alle Repositorys des aktuellen Benutzers. |
-| `-Name <Name>` | Wert für `user.name`; überspringt die interaktive Auswahl. |
-| `-Email <Adresse>` | Wert für `user.email`; überspringt die interaktive Auswahl. |
-| `-EnglishOutput` | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
+| `-Name <Name>`           | Wert für `user.name`; überspringt die interaktive Auswahl.                                                   |
+| `-Email <Adresse>`       | Wert für `user.email`; überspringt die interaktive Auswahl.                                                  |
+| `-WhatIf`                | Zeigt Konfigurationsänderungen an, ohne Git-Einstellungen zu ändern.                                         |
+| `-Confirm`               | Fragt vor jedem Schreibvorgang in der Git-Konfiguration nach.                                                |
+| `-EnglishOutput`         | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.                                |
 
 Beispiele:
 
@@ -98,13 +102,18 @@ Beispiele:
 | `format.signOff` | `true` | Fügt Patches aus `git format-patch` ein `Signed-off-by` hinzu. |
 | `alias.cs` | `commit --signoff` | `git cs` erstellt einen Commit mit Sign-off. Git kennt keine Einstellung, die jeden Commit automatisch signiert. |
 
-Vor jeder Abfrage gibt das Skript eine ausführliche Erklärung der Einstellung aus und zeigt die Empfehlung, falls dein aktueller Wert abweicht. Die Tabelle oben fasst sie zusammen. Vorhandene Werte ändern sich nie ohne deine Eingabe: Jede empfohlene Einstellung wird einzeln bestätigt. Die Eingabetaste übernimmt den Standard (den im Zielbereich bereits gesetzten Wert, sonst die Empfehlung), die Eingabe eines der aufgelisteten Werte (je Zeile als `[Wert] Erklärung`) wählt ihn, freie Einstellungen (`init.defaultBranch`, `alias.cs`) akzeptieren auch jeden anderen Text, `-` lässt die Einstellung unverändert. Das Skript ist idempotent: Wer durchgehend die Eingabetaste drückt, ändert bei einem erneuten Lauf nichts.
+Vor jeder Auswahlabfrage gibt das Skript eine ausführliche Erklärung der Einstellung aus und zeigt die Empfehlung, falls
+dein aktueller Wert abweicht. Die Tabelle oben fasst sie zusammen. Die Eingabetaste übernimmt den Standard (den im
+Zielbereich bereits gesetzten Wert, sonst die Empfehlung), die Eingabe eines der aufgelisteten Werte (je Zeile als
+`[Wert] Erklärung`) wählt ihn, freie Einstellungen (`init.defaultBranch`, `alias.cs`) akzeptieren auch jeden anderen
+Text, `-` lässt die Einstellung unverändert. Diese Abfragen sammeln Werte und sind keine Bestätigungsabfragen.
+`-Confirm` steuert die Freigabe der Schreibvorgänge; `-WhatIf` zeigt eine Vorschau. Das Skript ist idempotent: Wer
+durchgehend die Eingabetaste drückt, ändert bei einem erneuten Lauf nichts.
 
 ## Gemeinsame PowerShell-Parameter
 
-Beide Skripte unterstützen die üblichen Parameter `-Verbose`, `-Debug`, `-ErrorAction` und `-WarningAction`.
-`Initialize-GitConfiguration.ps1` implementiert kein `-WhatIf` und kein `-Confirm`. `Remove-ObsoleteGitBranches.ps1`
-bietet mit `-WhatIf` eine Vorschau; andernfalls werden veraltete Branches sofort und ohne Rückfrage entfernt.
+Beide Skripte unterstützen `-WhatIf` und `-Confirm` sowie die üblichen Parameter `-Verbose`, `-Debug`, `-ErrorAction`
+und `-WarningAction`. Ohne `-Confirm` werden Zustandsänderungen ohne Rückfrage ausgeführt.
 
 ## Sicherheit und Verhalten
 

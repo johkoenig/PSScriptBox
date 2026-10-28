@@ -68,4 +68,15 @@ Describe 'Remove-GitBranch' {
 
         (Invoke-GitCommand -Repository $fixture.Repository -Arguments @('branch', '--list', 'candidate') | Out-String).Trim() | Should -Be 'candidate'
     }
+
+    It 'keeps the branch and reports a preview when WhatIf is requested' {
+        $fixture = New-BranchRemovalRepository
+
+        $result = Remove-GitBranch -Repository $fixture.Repository -Name 'candidate' `
+            -Ref 'refs/heads/candidate' -ExpectedObjectId $fixture.ObjectId -WhatIf
+
+        $result.Status | Should -Be 'WhatIf'
+        (Invoke-GitCommand -Repository $fixture.Repository -Arguments @('branch', '--list', 'candidate') | Out-String).Trim() |
+                Should -Be 'candidate'
+    }
 }

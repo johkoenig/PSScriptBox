@@ -3,7 +3,7 @@
     Provides the changed-file copy helper for the Nextcloud scripts.
 
 .DESCRIPTION
-    Defines Copy-ChangedFiles. Requires Get-LocalizedText.ps1, Get-FileSha256.ps1,
+    Defines Copy-ChangedFile. Requires Get-LocalizedText.ps1, Get-FileSha256.ps1,
     and Copy-FileToStaging.ps1 from the same folder.
 
 .NOTES
@@ -61,7 +61,8 @@
     Throws when a source file changes during the identical-content check or when
     a staged file does not match its expected hash before publication.
 #>
-function Copy-ChangedFiles {
+function Copy-ChangedFile
+{
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string] $Source,

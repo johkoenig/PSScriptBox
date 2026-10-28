@@ -15,13 +15,23 @@
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
+.PARAMETER Confirm
+Prompts before renaming a file or changing its dates.
+
+.PARAMETER WhatIf
+Previews proposed names and date updates without changing files.
+
 .EXAMPLE
     .\Restore-MediaDate.ps1 -InputPath 'C:\Photos' -WhatIf
     Previews date sources and proposed filenames without changing files.
 
 .EXAMPLE
     .\Restore-MediaDate.ps1 -InputPath 'C:\Photos'
-    Processes supported media files and prompts before each change.
+    Processes supported media files without confirmation prompts.
+
+.EXAMPLE
+    .\Restore-MediaDate.ps1 -InputPath 'C:\Photos' -Confirm
+    Prompts before each file is changed.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7 and ExifTool.
@@ -39,7 +49,7 @@
         '',
         Justification = 'This user-facing script provides localized, color-coded console output.'
 )]
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [string] $InputPath,
 
@@ -53,9 +63,9 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\ConvertTo-QuotedArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaTool.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-MediaDateInputFiles.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-MediaDateInputFile.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MediaDateSource.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-MediaDateUpdateArguments.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-MediaDateUpdateArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\New-MediaDateCode.ps1')
 . (Join-Path $PSScriptRoot 'internal\New-MediaDateFileName.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaDateRestoration.ps1')
@@ -126,7 +136,7 @@ if ( [string]::IsNullOrWhiteSpace($InputPath))
 $InputPath = [Environment]::ExpandEnvironmentVariables($InputPath.Trim().Trim('"'))
 try
 {
-    $inputSelection = Get-MediaDateInputFiles -RootPath $InputPath `
+    $inputSelection = Get-MediaDateInputFile -RootPath $InputPath `
         -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
 }
 catch

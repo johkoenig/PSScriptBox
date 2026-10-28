@@ -28,6 +28,11 @@
 function New-MediaDateCode
 {
     [CmdletBinding()]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSUseShouldProcessForStateChangingFunctions',
+            '',
+            Justification = 'Generates a value only and does not change system state.'
+    )]
     param()
 
     $characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'

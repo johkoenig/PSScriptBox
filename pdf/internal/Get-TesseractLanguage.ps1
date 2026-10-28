@@ -3,7 +3,7 @@
     Provides the Tesseract language lookup for the OCR script.
 
 .DESCRIPTION
-    Defines Get-TesseractLanguages, which reads the installed language codes and
+    Defines Get-TesseractLanguage, which reads the installed language codes and
     the tessdata folder from the output of tesseract --list-langs.
 
 .NOTES
@@ -35,7 +35,8 @@
 .OUTPUTS
     PSCustomObject with Languages (string array) and TessdataPath (string).
 #>
-function Get-TesseractLanguages {
+function Get-TesseractLanguage
+{
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string] $TesseractPath,

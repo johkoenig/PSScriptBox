@@ -120,18 +120,19 @@ Beispiele:
 
 Findet `_orig.pdf`-Sicherungen, zu denen die bearbeitete PDF im selben Ordner vorhanden ist. Jede Löschung unterliegt dem Bestätigungsverhalten von PowerShell.
 
-| Parameter / Schalter | Beschreibung |
-| --- | --- |
-| `-InputPath <Ordner>` | Rekursiv zu durchsuchender Ordner. Ohne Angabe wird der Pfad abgefragt. |
-| `-WhatIf` | Zeigt geplante Löschungen an, ohne Dateien zu löschen. |
-| `-Confirm` | Fragt vor jeder Löschung nach. Dies ist wegen der hohen Auswirkung standardmäßig aktiv; `-Confirm:$false` unterdrückt Rückfragen. |
-| `-EnglishOutput` | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache. |
+| Parameter / Schalter  | Beschreibung                                                                               |
+|-----------------------|--------------------------------------------------------------------------------------------|
+| `-InputPath <Ordner>` | Rekursiv zu durchsuchender Ordner. Ohne Angabe wird der Pfad abgefragt.                    |
+| `-WhatIf`             | Zeigt geplante Löschungen an, ohne Dateien zu löschen.                                     |
+| `-Confirm`            | Fragt vor jeder Löschung nach. Ohne diesen Schalter erfolgt standardmäßig keine Rückfrage. |
+| `-EnglishOutput`      | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.              |
 
 Beispiele:
 
 ```powershell
 .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
-.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm:$false
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs'
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm
 .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -EnglishOutput
 ```
 
@@ -139,22 +140,22 @@ Beispiele:
 
 Findet `_orig.pdf`-Sicherungen, zu denen die bearbeitete PDF im selben Ordner vorhanden ist. Für jedes bestätigte Paar
 wird die bearbeitete PDF atomar durch das Original ersetzt; die bearbeitete Datei wird dadurch
-entfernt und die `_orig`-Sicherung aufgebraucht. Die Bestätigung ist standardmäßig aktiv; prüfe den Zielordner
-sorgfältig, bevor du fortfährst.
+entfernt und die `_orig`-Sicherung aufgebraucht. Standardmäßig erfolgt keine Rückfrage; mit `-Confirm` lassen sich
+Rückfragen pro Datei aktivieren.
 
-| Parameter / Schalter  | Beschreibung                                                                      |
-|-----------------------|-----------------------------------------------------------------------------------|
-| `-InputPath <Ordner>` | Rekursiv zu durchsuchender Ordner. Ohne Angabe wird der Pfad abgefragt.           |
-| `-WhatIf`             | Zeigt geplante Wiederherstellungen an, ohne Dateien zu ändern.                    |
-| `-Confirm`            | Fragt vor jeder Wiederherstellung nach; `-Confirm:$false` unterdrückt Rückfragen. |
-| `-EnglishOutput`      | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.     |
+| Parameter / Schalter  | Beschreibung                                                                                        |
+|-----------------------|-----------------------------------------------------------------------------------------------------|
+| `-InputPath <Ordner>` | Rekursiv zu durchsuchender Ordner. Ohne Angabe wird der Pfad abgefragt.                             |
+| `-WhatIf`             | Zeigt geplante Wiederherstellungen an, ohne Dateien zu ändern.                                      |
+| `-Confirm`            | Fragt vor jeder Wiederherstellung nach. Ohne diesen Schalter erfolgt standardmäßig keine Rückfrage. |
+| `-EnglishOutput`      | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.                       |
 
 Beispiele:
 
 ```powershell
 .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -WhatIf
 .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs'
-.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm:$false -EnglishOutput
+.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm -EnglishOutput
 ```
 
 ## Gemeinsame PowerShell-Parameter

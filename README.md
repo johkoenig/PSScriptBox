@@ -24,8 +24,8 @@ Available tools:
 | `ConvertTo-SearchablePdf.ps1`   | `-InputPath <path>`, `-Language <codes>`, `-NoDeskew`, `-NoRotationOfPages`, `-ReplaceOriginal`, `-EnglishOutput`.                                                                        |
 | `Optimize-PdfSize.ps1`          | `-InputPath <path>`, `-Dpi <50-1200>` (default `300`), `-JpegQuality <1-100>` (default `75`), `-MinFileSize <bytes>` (default `1MB`; `0` disables), `-ReplaceOriginal`, `-EnglishOutput`. |
 | `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <path>`, `-EnglishOutput`.                                                                                                                                                    |
-| `Remove-PdfBackups.ps1`         | `-InputPath <folder>`, `-WhatIf`, `-Confirm` (use `-Confirm:$false` to suppress confirmation), `-EnglishOutput`.                                                                          |
-| `Restore-PdfOriginals.ps1`      | `-InputPath <folder>`, `-WhatIf`, `-Confirm` (use `-Confirm:$false` to suppress confirmation), `-EnglishOutput`.                                                                          |
+| `Remove-PdfBackups.ps1`         | `-InputPath <folder>`, `-WhatIf`, `-Confirm` (confirmation is opt-in), `-EnglishOutput`.                                                                                                  |
+| `Restore-PdfOriginals.ps1`      | `-InputPath <folder>`, `-WhatIf`, `-Confirm` (confirmation is opt-in), `-EnglishOutput`.                                                                                                  |
 
 Scanned-PDF OCR uses best-effort, stateless classification: digitally born PDFs are skipped and no persistent marker is
 written beside them. Existing OCR text is preserved; page rotation is detected separately and corrected without
@@ -53,10 +53,13 @@ smaller, with supported file timestamps and embedded EXIF/XMP and container capt
 Per-track timestamps, Samsung maker-note `TimeStamp`, and non-capture EXIF `IFD0:ModifyDate` are excluded from
 verification. By default, the original is saved as `<Name>_orig` with its original extension. Encoding is lossy and
 cannot guarantee imperceptible changes. FFmpeg (including FFprobe) with `libx265` and MJPEG encoders, plus ExifTool,
-must be available in `PATH`. `media/Remove-MediaBackups.ps1` interactively removes `_orig` backups only when their
-processed counterpart exists; a MOV backup is matched to its MP4 output.
+must be available in `PATH`. `media/Remove-MediaBackups.ps1` removes `_orig`
+backups only when their processed counterpart exists; a MOV backup is matched
+to its MP4 output. Removal runs without prompts by default; `-Confirm` opts in
+to per-file prompts.
 `media/Remove-LivePhotos.ps1` removes a MOV video only when a same-name JPG still image exists in the same folder; the
-JPG is kept, and `.jpeg` is not considered a match. It supports `-WhatIf` and confirms each deletion.
+JPG is kept, and `.jpeg` is not considered a match. It supports `-WhatIf`;
+`-Confirm` opts in to per-file prompts.
 
 `media/Restore-MediaDate.ps1` restores dates in this order: filename, EXIF `DateTimeOriginal`, `CreateDate`, then
 `ModifyDate`. It renames supported media to `YY-MM-DD HH-mm-ss XXXX.ext`, updates filesystem creation and last-write
@@ -75,16 +78,20 @@ See the [Media tools guide](media/README.md) for examples, dependencies, and dat
 
 ## Git tools
 
-`git/Initialize-GitConfiguration.ps1` sets the Git author identity (local or global) by offering discovered names and emails (existing Git settings, Active Directory / Windows account data, Microsoft account) or a custom value, and confirms recommended standard settings one by one. Existing values are the defaults and nothing is stored in the script.
+`git/Initialize-GitConfiguration.ps1` sets the Git author identity (local or global) by offering discovered names and
+emails (existing Git settings, Active Directory / Windows account data, Microsoft account) or a custom value, and
+configures recommended standard settings one by one. Existing values are the defaults and nothing is stored in the
+script. It supports `-WhatIf`; `-Confirm` opts in to confirmation before writes.
 
 `git/Remove-ObsoleteGitBranches.ps1` removes obsolete local branches from the repository at the current location. It
 protects `main` and the current branch, and never modifies working-tree files. Without `-WhatIf`, it removes candidates
-immediately without prompting; `-WhatIf` previews them.
+immediately without prompting; `-WhatIf` previews them and `-Confirm` opts in
+to per-branch prompts.
 
-| Script                            | Parameters and switches                                                                                   |
-|-----------------------------------|-----------------------------------------------------------------------------------------------------------|
-| `Initialize-GitConfiguration.ps1` | `-RepositoryPath <path>`, `-Scope <Local\|Global>`, `-Name <name>`, `-Email <address>`, `-EnglishOutput`. |
-| `Remove-ObsoleteGitBranches.ps1`  | `-WhatIf`, `-EnglishOutput`.                                                                              |
+| Script                            | Parameters and switches                                                                                                          |
+|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| `Initialize-GitConfiguration.ps1` | `-RepositoryPath <path>`, `-Scope <Local\|Global>`, `-Name <name>`, `-Email <address>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
+| `Remove-ObsoleteGitBranches.ps1`  | `-WhatIf`, `-Confirm`, `-EnglishOutput`.                                                                                         |
 
 An obsolete-branch candidate is not ahead of local `main`, not ahead of its available upstream, or fully merged into the
 currently checked-out branch. The cleanup uses local refs only and supports `-WhatIf` for preview.
@@ -98,7 +105,7 @@ existing Nextcloud destination folders and never deletes source data. File trans
 moved into their final names only when complete. After synchronization to the server is complete,
 `nextcloud/Remove-MigratedUserData.ps1` can delete local files whose SHA-256 hash matches a file in the corresponding
 Nextcloud destination folder, as well as empty local subfolders when the corresponding Nextcloud folder exists. Before
-deletion, the user confirms that synchronization is complete and approves cleanup separately for each main folder.
+deletion, the user confirms that synchronization is complete. Per-folder action prompts are opt-in with `-Confirm`.
 
 | Script | Parameters and switches |
 | --- | --- |

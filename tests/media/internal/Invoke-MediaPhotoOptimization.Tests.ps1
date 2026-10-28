@@ -15,8 +15,8 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\media\internal\Invoke-MediaTool.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateMetadata.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Set-MediaFileTimestamps.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateTag.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Set-MediaFileTimestamp.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\media\internal\Invoke-MediaPhotoOptimization.ps1')
 }
 
@@ -28,7 +28,7 @@ Describe 'Invoke-MediaPhotoOptimization' {
         [System.IO.File]::WriteAllBytes($script:PhotoPath,[byte[]]::new(100))
         $script:Metadata = @{ 'EXIF:DateTimeOriginal' = '"2021:05:06 12:00:00"' }
 
-        Mock Get-MediaDateMetadata { $script:Metadata }
+        Mock Get-MediaDateTag { $script:Metadata }
         Mock Invoke-MediaTool {
             if ($Arguments -contains '-show_entries')
             {
@@ -49,7 +49,7 @@ Describe 'Invoke-MediaPhotoOptimization' {
 
     It 'writes a smaller JPEG, backs up the source, and preserves timestamps' {
         $timestamp = [datetime]::SpecifyKind([datetime]::new(2021, 5, 6, 12, 30, 0), [System.DateTimeKind]::Utc)
-        Set-MediaFileTimestamps -Path $script:PhotoPath -CreationTimeUtc $timestamp `
+        Set-MediaFileTimestamp -Path $script:PhotoPath -CreationTimeUtc $timestamp `
             -LastWriteTimeUtc $timestamp -LastAccessTimeUtc $timestamp
         $sourceTimes = Get-Item -LiteralPath $script:PhotoPath
         $expectedCreation = $sourceTimes.CreationTimeUtc
@@ -157,7 +157,7 @@ Describe 'Invoke-MediaPhotoOptimization' {
     }
 
     It 'leaves the source unchanged when date metadata differs' {
-        Mock Get-MediaDateMetadata {
+        Mock Get-MediaDateTag {
             if ($Path -eq $script:PhotoPath)
             {
                 return @{ 'EXIF:DateTimeOriginal' = '"2021:05:06 12:00:00"' }

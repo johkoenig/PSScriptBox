@@ -2,7 +2,7 @@
 # Copyright (c) 2026 scriptbox contributors
 <#
 .SYNOPSIS
-    Unit tests for nextcloud\internal\Copy-ChangedFiles.ps1.
+    Unit tests for nextcloud\internal\Copy-ChangedFile.ps1.
 
 .DESCRIPTION
     Checks identical-content skipping, duplicate detection within the source,
@@ -20,7 +20,7 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-FileSha256.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Get-FolderInventory.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Copy-FileToStaging.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Copy-ChangedFiles.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Copy-ChangedFile.ps1')
 
     function Invoke-Copy {
         param([string] $Source, [string] $Destination, [scriptblock] $Reporter)
@@ -34,11 +34,11 @@ BeforeAll {
             FolderName = 'Test'
         }
         if ($null -ne $Reporter) { $parameters['ProgressReporter'] = $Reporter }
-        Copy-ChangedFiles @parameters
+        Copy-ChangedFile @parameters
     }
 }
 
-Describe 'Copy-ChangedFiles' {
+Describe 'Copy-ChangedFile' {
     BeforeEach {
         $script:Source = Join-Path $TestDrive ([guid]::NewGuid().ToString())
         $script:Destination = Join-Path $TestDrive ([guid]::NewGuid().ToString())
@@ -134,7 +134,8 @@ Describe 'Copy-ChangedFiles' {
             return 'AAA'
         }
 
-        { Copy-ChangedFiles -Source $script:Source -Destination $script:Destination `
+        {
+            Copy-ChangedFile -Source $script:Source -Destination $script:Destination `
                 -SourceInventory (Get-FolderInventory -Path $script:Source) `
                 -DestinationInventory (Get-FolderInventory -Path $script:Destination) `
                 -FolderName 'Test' } | Should -Throw -ExpectedMessage '*Source file changed*'

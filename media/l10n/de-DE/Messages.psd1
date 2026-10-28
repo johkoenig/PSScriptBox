@@ -43,6 +43,7 @@
     'Could not reset LastWriteTime for {0}: {1}' = 'LastWriteTime für {0} konnte nicht zurückgesetzt werden: {1}'
     'Could not set CreationTime for {0}: {1}' = 'CreationTime für {0} konnte nicht gesetzt werden: {1}'
     'Could not set LastWriteTime for {0}: {1}' = 'LastWriteTime für {0} konnte nicht gesetzt werden: {1}'
+    'Restore source file timestamps' = 'Zeitstempel der Quelldatei wiederherstellen'
     '{0}; {1}' = '{0}; {1}'
 
     'Removes eligible original media backups.' = 'Entfernt geeignete Original-Mediensicherungen.'

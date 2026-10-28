@@ -3,9 +3,9 @@
     Provides the special user folder resolution for the Nextcloud scripts.
 
 .DESCRIPTION
-    Defines Get-UserFolders. Requires Get-LocalizedText, which is provided by
+    Defines Get-UserFolder. Requires Get-LocalizedText, which is provided by
     common\internal\Get-LocalizedText.ps1 and must be dot-sourced first. Folder paths
-    are passed in from Get-UserSpecialFolderPaths.
+    are passed in from Get-UserSpecialFolderPath.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7.
@@ -30,12 +30,13 @@
 
 .PARAMETER FolderPaths
     Hashtable mapping each folder name to its resolved path, as returned by
-    Get-UserSpecialFolderPaths. Names without a usable path are skipped.
+    Get-UserSpecialFolderPath. Names without a usable path are skipped.
 
 .OUTPUTS
     PSCustomObject[] with source Name, SourcePath, and target TargetName.
 #>
-function Get-UserFolders {
+function Get-UserFolder
+{
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string[]] $Names,

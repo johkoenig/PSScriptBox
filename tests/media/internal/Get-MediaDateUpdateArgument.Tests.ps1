@@ -4,7 +4,7 @@
 # - Johannes Koenig <dev@jokoenig.de>
 <#
 .SYNOPSIS
-    Unit tests for media\internal\Get-MediaDateUpdateArguments.ps1.
+    Unit tests for media\internal\Get-MediaDateUpdateArgument.ps1.
 
 .DESCRIPTION
     Verifies that only missing or mismatched embedded date tags are returned.
@@ -17,10 +17,10 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\ConvertTo-QuotedArgument.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\media\internal\Invoke-MediaTool.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateUpdateArguments.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateUpdateArgument.ps1')
 }
 
-Describe 'Get-MediaDateUpdateArguments' {
+Describe 'Get-MediaDateUpdateArgument' {
     It 'returns no write arguments when all supported date tags already match' {
         Mock Invoke-MediaTool {
             [pscustomobject]@{
@@ -29,7 +29,7 @@ Describe 'Get-MediaDateUpdateArguments' {
                 StdErr = ''
             }
         }
-        $result = @(Get-MediaDateUpdateArguments -Path 'media.mov' `
+        $result = @(Get-MediaDateUpdateArgument -Path 'media.mov' `
             -DateTime ([datetime]'2021-06-07T08:09:10') -ExifToolPath 'exiftool.exe')
 
         $result.Count | Should -Be 0
@@ -45,7 +45,7 @@ Describe 'Get-MediaDateUpdateArguments' {
             }
         }
 
-        $result = @(Get-MediaDateUpdateArguments -Path 'media.mov' `
+        $result = @(Get-MediaDateUpdateArgument -Path 'media.mov' `
             -DateTime ([datetime]'2021-06-07T08:09:10') -ExifToolPath 'exiftool.exe')
 
         $result | Should -Be @('-DateTimeOriginal=2021-06-07 08:09:10')
@@ -56,7 +56,7 @@ Describe 'Get-MediaDateUpdateArguments' {
             [pscustomobject]@{ ExitCode = 0; StdOut = '{}'; StdErr = '' }
         }
 
-        $result = @(Get-MediaDateUpdateArguments -Path 'media.mov' `
+        $result = @(Get-MediaDateUpdateArgument -Path 'media.mov' `
             -DateTime ([datetime]'2021-06-07T08:09:10') -ExifToolPath 'exiftool.exe')
 
         $result.Count | Should -Be 7

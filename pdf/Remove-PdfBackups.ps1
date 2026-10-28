@@ -15,6 +15,12 @@
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
+.PARAMETER Confirm
+Prompts before deleting each eligible backup.
+
+.PARAMETER WhatIf
+Shows eligible backups without deleting them.
+
 .EXAMPLE
     .\Remove-PdfBackups.ps1
     Prompts for a folder.
@@ -25,7 +31,11 @@
 
 .EXAMPLE
     .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs'
-    Prompts for confirmation before deleting each matching _orig file.
+    Removes eligible backups without prompting.
+
+.EXAMPLE
+    .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm
+    Prompts before deleting each eligible backup.
 
 .NOTES
     Dependencies: PowerShell 5.1 or later. No additional programs or modules
@@ -42,7 +52,7 @@
         '',
         Justification = 'This user-facing script provides localized, color-coded console output.'
 )]
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [string] $InputPath,
 

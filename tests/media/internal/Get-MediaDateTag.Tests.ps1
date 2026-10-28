@@ -2,7 +2,7 @@
 # Copyright (c) 2026 scriptbox contributors
 <#
 .SYNOPSIS
-    Unit tests for media\internal\Get-MediaDateMetadata.ps1.
+    Unit tests for media\internal\Get-MediaDateTag.ps1.
 
 .DESCRIPTION
     Mocks ExifTool process results and verifies valid date tags and explicit
@@ -15,10 +15,10 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\media\internal\Invoke-MediaTool.ps1')
-    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateMetadata.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\media\internal\Get-MediaDateTag.ps1')
 }
 
-Describe 'Get-MediaDateMetadata' {
+Describe 'Get-MediaDateTag' {
     It 'keeps file-level and capture dates while excluding per-track timestamps' {
         Mock Invoke-MediaTool {
             [pscustomobject]@{
@@ -36,7 +36,7 @@ Describe 'Get-MediaDateMetadata' {
             }
         }
 
-        $result = Get-MediaDateMetadata -Path 'C:\Videos\clip.mov' -ExifToolPath 'C:\Tools\exiftool.exe'
+        $result = Get-MediaDateTag -Path 'C:\Videos\clip.mov' -ExifToolPath 'C:\Tools\exiftool.exe'
         $result['QuickTime:CreateDate'] | Should -Be '"2021:05:06 12:00:00"'
         $result['EXIF:DateTimeOriginal'] | Should -Be '"2021:05:06 12:00:00"'
         $result['XMP-exif:DateTimeOriginal'] | Should -Be '"2021:05:06 12:00:00"'
@@ -65,7 +65,7 @@ Describe 'Get-MediaDateMetadata' {
             }
         }
 
-        $result = Get-MediaDateMetadata -Path 'C:\Photos\photo.jpg' -ExifToolPath 'C:\Tools\exiftool.exe'
+        $result = Get-MediaDateTag -Path 'C:\Photos\photo.jpg' -ExifToolPath 'C:\Tools\exiftool.exe'
 
         $result.ContainsKey('ExifIFD:DateTimeOriginal') | Should -BeTrue
         $result.ContainsKey('ExifIFD:CreateDate') | Should -BeTrue
@@ -78,7 +78,7 @@ Describe 'Get-MediaDateMetadata' {
             [pscustomobject]@{ ExitCode = 1; StdOut = ''; StdErr = 'read failed' }
         }
 
-        { Get-MediaDateMetadata -Path 'clip.mov' -ExifToolPath 'exiftool.exe' } |
+        { Get-MediaDateTag -Path 'clip.mov' -ExifToolPath 'exiftool.exe' } |
                 Should -Throw 'ExifTool could not read date metadata*read failed'
     }
 
@@ -87,7 +87,7 @@ Describe 'Get-MediaDateMetadata' {
             [pscustomobject]@{ ExitCode = 0; StdOut = 'not-json'; StdErr = '' }
         }
 
-        { Get-MediaDateMetadata -Path 'clip.mov' -ExifToolPath 'exiftool.exe' } |
+        { Get-MediaDateTag -Path 'clip.mov' -ExifToolPath 'exiftool.exe' } |
                 Should -Throw 'ExifTool returned invalid date metadata*'
     }
 
@@ -96,7 +96,7 @@ Describe 'Get-MediaDateMetadata' {
             [pscustomobject]@{ ExitCode = 0; StdOut = '[{},{}]'; StdErr = '' }
         }
 
-        { Get-MediaDateMetadata -Path 'clip.mov' -ExifToolPath 'exiftool.exe' } |
+        { Get-MediaDateTag -Path 'clip.mov' -ExifToolPath 'exiftool.exe' } |
                 Should -Throw 'ExifTool returned an unexpected number*'
     }
 }

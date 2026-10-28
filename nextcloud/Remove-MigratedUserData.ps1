@@ -9,8 +9,9 @@
     beneath its corresponding Nextcloud folder. Before deleting anything, the
     user confirms that synchronization to the server has fully completed.
     The script then shows the number and total size of matching local files,
-    counts subfolders that also exist in Nextcloud, and requests approval
-    separately for each main folder. Matching local files are deleted after
+    counts subfolders that also exist in Nextcloud, and removes matching files
+    without per-folder confirmation by default. Use -Confirm to request
+    approval separately for each main folder. Matching local files are deleted after
     their hashes are rechecked. Empty local subfolders are also deleted only
     when the corresponding Nextcloud folder exists; non-matching files and the
     selected main folders are retained.
@@ -31,14 +32,24 @@
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
+.PARAMETER Confirm
+Prompts before removing matching files and subfolders from each selected folder.
+
+.PARAMETER WhatIf
+Previews planned removals without changing files.
+
 .EXAMPLE
     .\Remove-MigratedUserData.ps1 -WhatIf
     Shows matching local files and corresponding subfolders that may be removed.
 
 .EXAMPLE
     .\Remove-MigratedUserData.ps1 -NextcloudPath 'D:\Nextcloud' -Folders Documents,Pictures
-    Checks and interactively removes matching local Documents and Pictures
-    files after the user confirms that synchronization has completed.
+    Checks and removes matching local Documents and Pictures files after the
+    user confirms that synchronization has completed.
+
+.EXAMPLE
+    .\Remove-MigratedUserData.ps1 -NextcloudPath 'D:\Nextcloud' -Confirm
+    Requests per-folder approval after the synchronization acknowledgement.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or later. No administrator rights or
@@ -55,7 +66,7 @@
         '',
         Justification = 'This user-facing script provides localized, color-coded console output.'
 )]
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'None')]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [string] $NextcloudPath,
 
@@ -76,11 +87,11 @@ $script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
 }
 else { @{} }
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-UserSpecialFolderPaths.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-UserFolders.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-UserSpecialFolderPath.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-UserFolder.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-FolderInventory.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-FileSha256.ps1')
-. (Join-Path $PSScriptRoot 'internal\Remove-EmptyMatchingDirectories.ps1')
+. (Join-Path $PSScriptRoot 'internal\Remove-EmptyMatchingDirectory.ps1')
 
 # --- Banner ---------------------------------------------------------------
 $headerLines = @(
@@ -99,7 +110,7 @@ foreach ($headerLine in $headerLines) {
     Write-Host $headerLine -ForegroundColor Cyan
 }
 Write-Host (Get-LocalizedText '  Removes local files and empty subfolders when they exist in Nextcloud.') -ForegroundColor Cyan
-Write-Host (Get-LocalizedText '  Files and folders are removed only after synchronization and per-folder approval.') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText '  Files and folders are removed only after synchronization; -Confirm enables per-folder prompts.') -ForegroundColor Cyan
 Write-Host ''
 
 try {
@@ -123,7 +134,7 @@ try {
         throw (Get-LocalizedText -Text 'Nextcloud destination does not exist: {0}' -Arguments @($nextcloudFullPath))
     }
 
-    $userFolders = @(Get-UserFolders -Names @($Folders | Select-Object -Unique) -FolderPaths (Get-UserSpecialFolderPaths))
+    $userFolders = @(Get-UserFolder -Names @($Folders | Select-Object -Unique) -FolderPaths (Get-UserSpecialFolderPath))
     if ($userFolders.Count -eq 0) {
         Write-Warning (Get-LocalizedText 'No selected Windows user folders were found.')
         return
@@ -252,22 +263,10 @@ try {
 
         Write-Host ''
         Write-Host (Get-LocalizedText -Text '--- Folder {0}/{1}: {2} ---' -Arguments @(($i + 1), $plans.Count, $plan.Folder.Name)) -ForegroundColor Cyan
-        $prompt = Get-LocalizedText -Text 'Delete {0} local files ({1:N2} MB) and check {2} matching subfolders in {3}? [y/N]' -Arguments @(
-            $plan.Matches.Count, ($plan.TotalBytes / 1MB), $plan.MatchingDirectories.Count, $plan.Folder.Name
-        )
         $action = Get-LocalizedText -Text 'Remove {0} local files ({1:N2} MB) and empty subfolders with matching Nextcloud folders' -Arguments @(
             $plan.Matches.Count, ($plan.TotalBytes / 1MB)
         )
-        $approved = $false
-        if ($WhatIfPreference -or ($PSBoundParameters.ContainsKey('Confirm') -and $Confirm)) {
-            $approved = $PSCmdlet.ShouldProcess($plan.SourcePath, $action)
-        }
-        else {
-            $answer = (Read-Host -Prompt $prompt).Trim()
-            if ($answer -match '^(?i:y|yes|j|ja)$') {
-                $approved = $PSCmdlet.ShouldProcess($plan.SourcePath, $action)
-            }
-        }
+        $approved = $PSCmdlet.ShouldProcess($plan.SourcePath, $action)
         if (-not $approved) {
             $results.Add([pscustomobject]@{
                 Name = $plan.Folder.Name
@@ -313,9 +312,11 @@ try {
                 ))
             }
         }
-        $directoryResult = Remove-EmptyMatchingDirectories `
+        $directoryResult = Remove-EmptyMatchingDirectory `
             -SourcePath $plan.SourcePath -DestinationPath $plan.DestinationPath `
-            -RelativeDirectories $plan.MatchingDirectories
+            -RelativeDirectories $plan.MatchingDirectories `
+            -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages `
+            -Confirm:$false -WhatIf:$false
         $deletedDirectories = $directoryResult.DeletedCount
         $failedDirectories = $directoryResult.FailedDirectories
         foreach ($failedDirectory in $failedDirectories) {

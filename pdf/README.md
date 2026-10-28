@@ -115,18 +115,19 @@ Examples:
 
 Finds `_orig.pdf` backups for which the corresponding processed PDF exists in the same folder. Each deletion is subject to PowerShell's confirmation behavior.
 
-| Parameter / switch | Description |
-| --- | --- |
-| `-InputPath <folder>` | Folder to search recursively. If omitted, prompts for a path. |
-| `-WhatIf` | Lists planned deletions without deleting files. |
-| `-Confirm` | Prompts before each deletion. This is enabled by default because deletion is a high-impact action; `-Confirm:$false` suppresses prompts. |
-| `-EnglishOutput` | Forces English console output regardless of Windows UI language. |
+| Parameter / switch    | Description                                                                      |
+|-----------------------|----------------------------------------------------------------------------------|
+| `-InputPath <folder>` | Folder to search recursively. If omitted, prompts for a path.                    |
+| `-WhatIf`             | Lists planned deletions without deleting files.                                  |
+| `-Confirm`            | Prompts before each deletion. Deletion proceeds without confirmation by default. |
+| `-EnglishOutput`      | Forces English console output regardless of Windows UI language.                 |
 
 Examples:
 
 ```powershell
 .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
-.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm:$false
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs'
+.\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm
 .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -EnglishOutput
 ```
 
@@ -134,21 +135,21 @@ Examples:
 
 Finds `_orig.pdf` backups whose corresponding processed PDFs exist in the same folder. For each approved pair, it
 atomically replaces the processed PDF with the original backup, removing the processed file and consuming the `_orig`
-backup. Confirmation is enabled by default; review the target folder carefully before proceeding.
+backup. Restoration proceeds without confirmation by default; use `-Confirm` to opt in to per-file prompts.
 
-| Parameter / switch    | Description                                                            |
-|-----------------------|------------------------------------------------------------------------|
-| `-InputPath <folder>` | Folder to search recursively. If omitted, prompts for a path.          |
-| `-WhatIf`             | Lists planned restorations without changing files.                     |
-| `-Confirm`            | Prompts before each restoration; `-Confirm:$false` suppresses prompts. |
-| `-EnglishOutput`      | Forces English console output regardless of Windows UI language.       |
+| Parameter / switch    | Description                                                               |
+|-----------------------|---------------------------------------------------------------------------|
+| `-InputPath <folder>` | Folder to search recursively. If omitted, prompts for a path.             |
+| `-WhatIf`             | Lists planned restorations without changing files.                        |
+| `-Confirm`            | Prompts before each restoration. No confirmation is requested by default. |
+| `-EnglishOutput`      | Forces English console output regardless of Windows UI language.          |
 
 Examples:
 
 ```powershell
 .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -WhatIf
 .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs'
-.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm:$false -EnglishOutput
+.\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm -EnglishOutput
 ```
 
 ## Shared PowerShell parameters

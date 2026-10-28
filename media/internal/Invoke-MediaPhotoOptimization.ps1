@@ -10,7 +10,7 @@
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7, FFmpeg, FFprobe, ExifTool.
-    Uses Get-MediaDateMetadata, Invoke-MediaTool, Set-MediaFileTimestamps,
+    Uses Get-MediaDateTag, Invoke-MediaTool, Set-MediaFileTimestamp,
     and Get-LocalizedText.
 #>
 
@@ -193,7 +193,7 @@ function Invoke-MediaPhotoOptimization
             & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Estimated JPEG dimensions: {0} x {1} -> {2} x {3} pixels (target {4:N1} MB).' -Arguments @(
                 $sourceWidth, $sourceHeight, $targetWidth, $targetHeight, ($EstimatedOutputSizeBytes / 1MB)
             ))
-            $sourceDateMetadata = Get-MediaDateMetadata -Path $photoPath -ExifToolPath $ExifToolPath `
+            $sourceDateMetadata = Get-MediaDateTag -Path $photoPath -ExifToolPath $ExifToolPath `
                 -UiLanguage $UiLanguage -Messages $Messages
 
             $encodeResult = Invoke-MediaTool -ExecutablePath $FFmpegPath -Arguments @(
@@ -239,8 +239,9 @@ function Invoke-MediaPhotoOptimization
                 throw (Get-LocalizedText @localization -Text 'ExifTool could not copy metadata (exit code {0}): {1}' -Arguments @($copyResult.ExitCode, $details))
             }
 
-            Set-MediaFileTimestamps -Path $temporaryPath @sourceTimestamps
-            $outputDateMetadata = Get-MediaDateMetadata -Path $temporaryPath -ExifToolPath $ExifToolPath `
+            Set-MediaFileTimestamp -Path $temporaryPath @sourceTimestamps `
+                -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
+            $outputDateMetadata = Get-MediaDateTag -Path $temporaryPath -ExifToolPath $ExifToolPath `
                 -UiLanguage $UiLanguage -Messages $Messages
             $changedTags = [System.Collections.Generic.List[string]]::new()
             foreach ($tagName in $sourceDateMetadata.Keys)
@@ -292,7 +293,8 @@ function Invoke-MediaPhotoOptimization
 
                     [System.IO.File]::Move($temporaryPath, $photoPath)
                     $outputCreated = $true
-                    Set-MediaFileTimestamps -Path $photoPath @sourceTimestamps
+                    Set-MediaFileTimestamp -Path $photoPath @sourceTimestamps `
+                        -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
 
                     if ($ReplaceOriginal)
                     {
@@ -370,7 +372,8 @@ function Invoke-MediaPhotoOptimization
         {
             try
             {
-                Set-MediaFileTimestamps -Path $timestampPath @sourceTimestamps
+                Set-MediaFileTimestamp -Path $timestampPath @sourceTimestamps `
+                    -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
             }
             catch
             {

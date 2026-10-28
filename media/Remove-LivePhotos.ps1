@@ -13,12 +13,22 @@
 .PARAMETER EnglishOutput
     Forces English console output regardless of the Windows display language.
 
+.PARAMETER Confirm
+Prompts before deleting each matching MOV file.
+
+.PARAMETER WhatIf
+Shows matching MOV files without deleting them.
+
 .EXAMPLE
     .\Remove-LivePhotos.ps1 -InputPath 'C:\Photos' -WhatIf
     Previews MOV files that have a same-name JPG in the same folder.
 
 .EXAMPLE
     .\Remove-LivePhotos.ps1 -InputPath 'C:\Photos'
+    Removes matching MOV files without prompting.
+
+.EXAMPLE
+    .\Remove-LivePhotos.ps1 -InputPath 'C:\Photos' -Confirm
     Prompts before deleting each matching MOV file.
 
 .NOTES
@@ -36,7 +46,7 @@
         '',
         Justification = 'This user-facing script provides localized, color-coded console output.'
 )]
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [string] $InputPath,
 

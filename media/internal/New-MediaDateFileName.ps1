@@ -45,6 +45,11 @@
 function New-MediaDateFileName
 {
     [CmdletBinding()]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSUseShouldProcessForStateChangingFunctions',
+            '',
+            Justification = 'Calculates an available path only and does not create or modify files.'
+    )]
     param(
         [Parameter(Mandatory)][datetime] $DateTime,
         [Parameter(Mandatory)][string] $DirectoryPath,

@@ -24,8 +24,8 @@ Verfügbare Werkzeuge:
 | `ConvertTo-SearchablePdf.ps1`   | `-InputPath <Pfad>`, `-Language <Codes>`, `-NoDeskew`, `-NoRotationOfPages`, `-ReplaceOriginal`, `-EnglishOutput`.                                                                              |
 | `Optimize-PdfSize.ps1`          | `-InputPath <Pfad>`, `-Dpi <50-1200>` (Standard `300`), `-JpegQuality <1-100>` (Standard `75`), `-MinFileSize <Bytes>` (Standard `1MB`; `0` deaktiviert), `-ReplaceOriginal`, `-EnglishOutput`. |
 | `Find-PdfsWithoutTextLayer.ps1` | `-InputPath <Pfad>`, `-EnglishOutput`.                                                                                                                                                          |
-| `Remove-PdfBackups.ps1`         | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm` (mit `-Confirm:$false` werden Rückfragen unterdrückt), `-EnglishOutput`.                                                                           |
-| `Restore-PdfOriginals.ps1`      | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm` (mit `-Confirm:$false` werden Rückfragen unterdrückt), `-EnglishOutput`.                                                                           |
+| `Remove-PdfBackups.ps1`         | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm` (Rückfragen sind standardmäßig deaktiviert), `-EnglishOutput`.                                                                                     |
+| `Restore-PdfOriginals.ps1`      | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm` (Rückfragen sind standardmäßig deaktiviert), `-EnglishOutput`.                                                                                     |
 
 Die OCR-Verarbeitung gescannter PDFs verwendet eine bestmögliche zustandslose Klassifizierung: digital erzeugte PDFs
 werden übersprungen; neben der PDF wird kein dauerhafter Marker abgelegt. Gescannte PDFs mit vorhandener OCR werden
@@ -59,12 +59,12 @@ nicht verglichen. Der interne Samsung-Maker-Note-Zeitstempel `TimeStamp` und das
 Standardmäßig wird das Original als `<Name>_orig` mit seiner ursprünglichen Erweiterung gesichert.
 Die Kodierung ist verlustbehaftet und kann keine unmerkliche Qualitätsänderung garantieren. FFmpeg (einschließlich
 FFprobe) mit `libx265`- und MJPEG-Encodern sowie ExifTool müssen über `PATH` verfügbar sein.
-`media/Remove-MediaBackups.ps1` entfernt interaktiv `_orig`-Sicherungen nur, wenn die bearbeitete Datei vorhanden ist;
-eine MOV-Sicherung wird der MP4-Ausgabe zugeordnet.
+`media/Remove-MediaBackups.ps1` entfernt geeignete `_orig`-Sicherungen ohne Rückfrage, wenn die bearbeitete Datei
+vorhanden ist; eine MOV-Sicherung wird der MP4-Ausgabe zugeordnet. Mit `-Confirm` lassen sich Rückfragen pro Datei
+aktivieren.
 `media/Remove-LivePhotos.ps1` entfernt ein MOV-Video nur, wenn im selben Ordner ein gleichnamiges JPG-Foto vorhanden
-ist;
-das JPG bleibt erhalten und `.jpeg` gilt nicht als Treffer. Das Skript unterstützt `-WhatIf` und fragt vor jeder
-Löschung nach.
+ist; das JPG bleibt erhalten und `.jpeg` gilt nicht als Treffer. Das Skript unterstützt `-WhatIf`; mit `-Confirm`
+lassen sich Rückfragen pro Datei aktivieren.
 
 `media/Restore-MediaDate.ps1` stellt Datumsangaben in dieser Reihenfolge wieder her: Dateiname, EXIF
 `DateTimeOriginal`, `CreateDate`, dann `ModifyDate`. Das Skript benennt unterstützte Mediendateien nach
@@ -85,16 +85,21 @@ Erhalt von Datumsangaben.
 
 ## Git-Werkzeuge
 
-`git/Initialize-GitConfiguration.ps1` legt die Git-Autor-Identität (lokal oder global) fest, indem es gefundene Namen und E-Mail-Adressen (vorhandene Git-Einstellungen, Active-Directory-/Windows-Kontodaten, Microsoft-Konto) oder einen eigenen Wert zur Auswahl anbietet und empfohlene Standardeinstellungen einzeln bestätigen lässt. Vorhandene Werte sind jeweils der Standard; im Skript werden keine Identitätsdaten gespeichert.
+`git/Initialize-GitConfiguration.ps1` legt die Git-Autor-Identität (lokal oder global) fest, indem es gefundene Namen
+und E-Mail-Adressen (vorhandene Git-Einstellungen, Active-Directory-/Windows-Kontodaten, Microsoft-Konto) oder einen
+eigenen Wert zur Auswahl anbietet und empfohlene Standardeinstellungen einzeln konfiguriert. Vorhandene Werte sind
+jeweils der Standard; im Skript werden keine Identitätsdaten gespeichert. Mit `-WhatIf` werden Schreibvorgänge
+simuliert; `-Confirm` aktiviert Rückfragen vor dem Schreiben.
 
 `git/Remove-ObsoleteGitBranches.ps1` entfernt veraltete lokale Branches aus dem Repository am aktuellen Speicherort.
 `main` und der aktuelle Branch bleiben geschützt; Dateien im Arbeitsbereich werden nicht verändert. Ohne `-WhatIf`
-werden Kandidaten sofort und ohne Rückfrage entfernt; `-WhatIf` zeigt sie als Vorschau an.
+werden Kandidaten sofort und ohne Rückfrage entfernt; `-WhatIf` zeigt sie als Vorschau an und `-Confirm` aktiviert
+Rückfragen pro Branch.
 
-| Skript                            | Parameter und Schalter                                                                                    |
-|-----------------------------------|-----------------------------------------------------------------------------------------------------------|
-| `Initialize-GitConfiguration.ps1` | `-RepositoryPath <Pfad>`, `-Scope <Local\|Global>`, `-Name <Name>`, `-Email <Adresse>`, `-EnglishOutput`. |
-| `Remove-ObsoleteGitBranches.ps1`  | `-WhatIf`, `-EnglishOutput`.                                                                              |
+| Skript                            | Parameter und Schalter                                                                                                           |
+|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| `Initialize-GitConfiguration.ps1` | `-RepositoryPath <Pfad>`, `-Scope <Local\|Global>`, `-Name <Name>`, `-Email <Adresse>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
+| `Remove-ObsoleteGitBranches.ps1`  | `-WhatIf`, `-Confirm`, `-EnglishOutput`.                                                                                         |
 
 Ein Branch ist ein Kandidat, wenn er nicht weiter als der lokale `main`-Branch oder sein verfügbarer Upstream ist oder
 vollständig in den aktuell ausgecheckten Branch integriert wurde. Die Bereinigung verwendet nur lokale Referenzen; mit
@@ -109,8 +114,8 @@ in vorhandene Nextcloud-Zielordner und löscht niemals Quelldaten. Dateiübertra
 zwischengespeichert und erst nach Abschluss unter den endgültigen Namen verschoben. Nach abgeschlossener
 Synchronisierung zum Server kann `nextcloud/Remove-MigratedUserData.ps1` lokale Dateien löschen, deren SHA-256-Hash mit
 einer Datei im zugeordneten Nextcloud-Zielordner übereinstimmt, sowie leere lokale Unterordner, wenn der entsprechende
-Nextcloud-Ordner existiert. Vor dem Löschen bestätigt der Benutzer die vollständige Synchronisierung und genehmigt die
-Bereinigung für jeden Hauptordner separat.
+Nextcloud-Ordner existiert. Vor dem Löschen bestätigt der Benutzer die vollständige Synchronisierung. Rückfragen zur
+Bereinigung pro Hauptordner lassen sich mit `-Confirm` aktivieren.
 
 | Skript | Parameter und Schalter |
 | --- | --- |

@@ -82,8 +82,8 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaTool.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MediaVideoInfo.ps1')
 . (Join-Path $PSScriptRoot 'internal\Test-MediaVideoCodecEfficient.ps1')
-. (Join-Path $PSScriptRoot 'internal\Get-MediaDateMetadata.ps1')
-. (Join-Path $PSScriptRoot 'internal\Set-MediaFileTimestamps.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-MediaDateTag.ps1')
+. (Join-Path $PSScriptRoot 'internal\Set-MediaFileTimestamp.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaSizeOptimization.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaPhotoOptimization.ps1')
 
@@ -353,7 +353,8 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
         }
         $videoInfo = Get-MediaVideoInfo -Path $video.FullName -FFprobePath $ffprobeCommand.Source `
             -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
-        Set-MediaFileTimestamps -Path $video.FullName @videoTimestamps
+        Set-MediaFileTimestamp -Path $video.FullName @videoTimestamps `
+            -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages -Confirm:$false -WhatIf:$false
     }
     catch
     {
@@ -362,7 +363,8 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
         {
             try
             {
-                Set-MediaFileTimestamps -Path $video.FullName @videoTimestamps
+                Set-MediaFileTimestamp -Path $video.FullName @videoTimestamps `
+                    -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages -Confirm:$false -WhatIf:$false
             }
             catch
             {

@@ -9,7 +9,7 @@
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7, FFmpeg, ExifTool.
-    Uses Get-MediaDateMetadata, Invoke-MediaTool, Set-MediaFileTimestamps,
+    Uses Get-MediaDateTag, Invoke-MediaTool, Set-MediaFileTimestamp,
     and Get-LocalizedText.
 #>
 
@@ -126,7 +126,7 @@ function Invoke-MediaSizeOptimization
         }
 
         & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Optimizing: {0}' -Arguments @($Video.Name))
-        $sourceDateMetadata = Get-MediaDateMetadata -Path $Video.FullName -ExifToolPath $ExifToolPath `
+        $sourceDateMetadata = Get-MediaDateTag -Path $Video.FullName -ExifToolPath $ExifToolPath `
             -UiLanguage $UiLanguage -Messages $Messages
 
         $scaleFilter = "scale=w='if(gte(iw,ih),min(1280,iw),-2)':h='if(gte(iw,ih),-2,min(1280,ih))'"
@@ -176,8 +176,9 @@ function Invoke-MediaSizeOptimization
             throw (Get-LocalizedText @localization -Text 'ExifTool could not copy metadata (exit code {0}): {1}' -Arguments @($copyResult.ExitCode, $details))
         }
 
-        Set-MediaFileTimestamps -Path $temporaryPath @sourceTimestamps
-        $outputDateMetadata = Get-MediaDateMetadata -Path $temporaryPath -ExifToolPath $ExifToolPath `
+        Set-MediaFileTimestamp -Path $temporaryPath @sourceTimestamps `
+            -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
+        $outputDateMetadata = Get-MediaDateTag -Path $temporaryPath -ExifToolPath $ExifToolPath `
             -UiLanguage $UiLanguage -Messages $Messages
         $changedTags = [System.Collections.Generic.List[string]]::new()
         foreach ($tagName in $sourceDateMetadata.Keys)
@@ -229,7 +230,8 @@ function Invoke-MediaSizeOptimization
 
                 [System.IO.File]::Move($temporaryPath, $outputPath)
                 $outputCreated = $true
-                Set-MediaFileTimestamps -Path $outputPath @sourceTimestamps
+                Set-MediaFileTimestamp -Path $outputPath @sourceTimestamps `
+                    -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
 
                 if ($ReplaceOriginal -and $samePathOutput)
                 {
@@ -311,7 +313,8 @@ function Invoke-MediaSizeOptimization
         {
             try
             {
-                Set-MediaFileTimestamps -Path $timestampPath @sourceTimestamps
+                Set-MediaFileTimestamp -Path $timestampPath @sourceTimestamps `
+                    -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
             }
             catch
             {
