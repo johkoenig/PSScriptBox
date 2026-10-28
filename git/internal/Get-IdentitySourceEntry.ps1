@@ -57,8 +57,8 @@
 .PARAMETER Language
     'de' selects German error text for unreadable settings; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject[] with Value, Source, and SourceArguments properties.
@@ -74,14 +74,14 @@ function Get-IdentitySourceEntry {
         [Parameter(Mandatory)][string] $MachineName,
         [Parameter(Mandatory)][object] $DirectoryInfo,
         [string] $Language = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
 
     $entries = [System.Collections.Generic.List[object]]::new()
     $scopes = if ($Scope -eq 'Local') { @('Local', 'Global', 'System') } else { @('Global', 'System') }
     foreach ($existingScope in $scopes) {
         $entries.Add([pscustomobject]@{
-                Value           = Get-GitConfigValue -Key $Key -Scope $existingScope -Repository $Repository -Language $Language -Messages $Messages
+            Value = Get-GitConfigValue -Key $Key -Scope $existingScope -Repository $Repository -Language $Language -MessagesPath $MessagesPath
                 Source          = 'Existing Git setting ({0})'
                 SourceArguments = @($existingScope)
             })

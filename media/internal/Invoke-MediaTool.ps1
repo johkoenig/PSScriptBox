@@ -34,8 +34,8 @@
 .PARAMETER UiLanguage
     Language of error messages: 'de' selects German, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with ExitCode, StdOut, and StdErr.
@@ -47,10 +47,8 @@ function Invoke-MediaTool
         [Parameter(Mandatory)][string] $ExecutablePath,
         [Parameter(Mandatory)][string[]] $Arguments,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ }
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $ExecutablePath
     $startInfo.Arguments = ($Arguments | ForEach-Object { ConvertTo-QuotedArgument -Value $_ }) -join ' '
@@ -71,11 +69,11 @@ function Invoke-MediaTool
         }
         catch
         {
-            throw (Get-LocalizedText @localization -Text 'Media tool could not be started: {0}' -Arguments @($_.Exception.Message))
+            throw (Get-LocalizedText -Text 'Media tool could not be started: {0}' -Arguments @($_.Exception.Message) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         if (-not $started)
         {
-            throw (Get-LocalizedText @localization -Text 'Media tool could not be started: {0}' -Arguments @($ExecutablePath))
+            throw (Get-LocalizedText -Text 'Media tool could not be started: {0}' -Arguments @($ExecutablePath) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()

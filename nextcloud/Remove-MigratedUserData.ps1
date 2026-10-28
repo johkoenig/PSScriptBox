@@ -82,10 +82,7 @@ $ErrorActionPreference = 'Stop'
 $script:OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 ) { 'en' } else { 'de' }
-$script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
-    Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1')
-}
-else { @{} }
+$script:MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-UserSpecialFolderPath.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-UserFolder.ps1')
@@ -109,8 +106,8 @@ Write-Host ''
 foreach ($headerLine in $headerLines) {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText '  Removes local files and empty subfolders when they exist in Nextcloud.') -ForegroundColor Cyan
-Write-Host (Get-LocalizedText '  Files and folders are removed only after synchronization; -Confirm enables per-folder prompts.') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText '  Removes local files and empty subfolders when they exist in Nextcloud.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText '  Files and folders are removed only after synchronization; -Confirm enables per-folder prompts.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
 Write-Host ''
 
 try {
@@ -122,27 +119,27 @@ try {
             $NextcloudPath = $defaultPath
         }
         else {
-            $NextcloudPath = Read-Host -Prompt (Get-LocalizedText 'Enter the Nextcloud synchronization folder path')
+        $NextcloudPath = Read-Host -Prompt (Get-LocalizedText 'Enter the Nextcloud synchronization folder path' -Language $script: OutputLanguage -MessagesPath $script: MessagesPath)
         }
     }
     if ([string]::IsNullOrWhiteSpace($NextcloudPath)) {
-        throw (Get-LocalizedText 'No Nextcloud path was specified.')
+        throw (Get-LocalizedText 'No Nextcloud path was specified.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     }
     $NextcloudPath = [Environment]::ExpandEnvironmentVariables($NextcloudPath.Trim().Trim('"'))
     $nextcloudFullPath = [System.IO.Path]::GetFullPath($NextcloudPath)
     if (-not (Test-Path -LiteralPath $nextcloudFullPath -PathType Container)) {
-        throw (Get-LocalizedText -Text 'Nextcloud destination does not exist: {0}' -Arguments @($nextcloudFullPath))
+        throw (Get-LocalizedText -Text 'Nextcloud destination does not exist: {0}' -Arguments @($nextcloudFullPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     }
 
-    $userFolders = @(Get-UserFolder -Names @($Folders | Select-Object -Unique) -FolderPaths (Get-UserSpecialFolderPath))
+    $userFolders = @(Get-UserFolder -Names @($Folders | Select-Object -Unique) -FolderPaths (Get-UserSpecialFolderPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     if ($userFolders.Count -eq 0) {
-        Write-Warning (Get-LocalizedText 'No selected Windows user folders were found.')
+        Write-Warning (Get-LocalizedText 'No selected Windows user folders were found.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
         return
     }
-    Write-Host (Get-LocalizedText '=== Nextcloud local cleanup: processing started ===') -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText -Text 'Nextcloud destination: {0}' -Arguments @($nextcloudFullPath))
-    Write-Host (Get-LocalizedText -Text 'Number of folders: {0}' -Arguments @($userFolders.Count))
-    Write-Host (Get-LocalizedText -Text 'Selected folders: {0}' -Arguments @(($userFolders.Name -join ', ')))
+    Write-Host (Get-LocalizedText '=== Nextcloud local cleanup: processing started ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text 'Nextcloud destination: {0}' -Arguments @($nextcloudFullPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Number of folders: {0}' -Arguments @($userFolders.Count) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Selected folders: {0}' -Arguments @(($userFolders.Name -join ', ')) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
 
     # --- Build the deletion plan --------------------------------------------
     $plans = [System.Collections.Generic.List[object]]::new()
@@ -158,14 +155,14 @@ try {
             $results.Add([pscustomobject]@{
                 Name = $folder.Name
                 Status = 'Skipped'
-                Reason = Get-LocalizedText 'Source and Nextcloud destination overlap'
+                Reason = Get-LocalizedText 'Source and Nextcloud destination overlap' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
                 Files = 0
                 Bytes = [long]0
             })
             continue
         }
         if (-not (Test-Path -LiteralPath $destinationPath -PathType Container)) {
-            throw (Get-LocalizedText -Text 'Destination folder does not exist: {0}' -Arguments @($destinationPath))
+            throw (Get-LocalizedText -Text 'Destination folder does not exist: {0}' -Arguments @($destinationPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
         }
 
         $sourceInventory = Get-FolderInventory -Path $sourcePath
@@ -224,13 +221,13 @@ try {
     for ($i = 0; $i -lt $plans.Count; $i++) {
         $plan = $plans[$i]
         Write-Host ''
-        Write-Host (Get-LocalizedText -Text '--- Folder {0}/{1}: {2} ---' -Arguments @(($i + 1), $plans.Count, $plan.Folder.Name)) -ForegroundColor Cyan
+        Write-Host (Get-LocalizedText -Text '--- Folder {0}/{1}: {2} ---' -Arguments @(($i + 1), $plans.Count, $plan.Folder.Name) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
         Write-Host (Get-LocalizedText -Text 'Matching local files: {0} ({1:N2} MB)' -Arguments @(
             $plan.Matches.Count, ($plan.TotalBytes / 1MB)
-        ))
+        ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
         Write-Host (Get-LocalizedText -Text 'Local subfolders with a matching Nextcloud folder: {0}' -Arguments @(
             $plan.MatchingDirectories.Count
-        ))
+        ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     }
 
     $syncCompleted = $true
@@ -239,10 +236,10 @@ try {
         $plannedCleanupCount += $plan.Matches.Count + $plan.MatchingDirectories.Count
     }
     if (-not $WhatIfPreference -and $plannedCleanupCount -gt 0) {
-        $answer = (Read-Host -Prompt (Get-LocalizedText 'Confirm Nextcloud synchronization to the server has fully completed. Continue? [y/N]')).Trim()
+        $answer = (Read-Host -Prompt (Get-LocalizedText 'Confirm Nextcloud synchronization to the server has fully completed. Continue? [y/N]' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)).Trim()
         $syncCompleted = $answer -match '^(?i:y|yes|j|ja)$'
         if (-not $syncCompleted) {
-            Write-Host (Get-LocalizedText 'Deletion cancelled; no local files were removed.') -ForegroundColor Yellow
+            Write-Host (Get-LocalizedText 'Deletion cancelled; no local files were removed.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
         }
     }
 
@@ -253,7 +250,7 @@ try {
             $results.Add([pscustomobject]@{
                 Name = $plan.Folder.Name
                 Status = 'Skipped'
-                Reason = Get-LocalizedText 'No matching local files or subfolders were found in Nextcloud'
+                Reason = Get-LocalizedText 'No matching local files or subfolders were found in Nextcloud' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
                 Files = 0
                 Directories = 0
                 Bytes = [long]0
@@ -262,16 +259,16 @@ try {
         }
 
         Write-Host ''
-        Write-Host (Get-LocalizedText -Text '--- Folder {0}/{1}: {2} ---' -Arguments @(($i + 1), $plans.Count, $plan.Folder.Name)) -ForegroundColor Cyan
+        Write-Host (Get-LocalizedText -Text '--- Folder {0}/{1}: {2} ---' -Arguments @(($i + 1), $plans.Count, $plan.Folder.Name) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
         $action = Get-LocalizedText -Text 'Remove {0} local files ({1:N2} MB) and empty subfolders with matching Nextcloud folders' -Arguments @(
             $plan.Matches.Count, ($plan.TotalBytes / 1MB)
-        )
+        ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
         $approved = $PSCmdlet.ShouldProcess($plan.SourcePath, $action)
         if (-not $approved) {
             $results.Add([pscustomobject]@{
                 Name = $plan.Folder.Name
                 Status = 'Skipped'
-                Reason = Get-LocalizedText 'Not performed (preview or declined)'
+                Reason = Get-LocalizedText 'Not performed (preview or declined)' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
                 Files = 0
                 Directories = 0
                 Bytes = [long]0
@@ -286,7 +283,7 @@ try {
             $sourceFilePath = Join-Path $plan.SourcePath $file.RelativePath
             try {
                 if (-not (Test-Path -LiteralPath $sourceFilePath -PathType Leaf)) {
-                    throw (Get-LocalizedText -Text 'Local file changed before deletion: {0}' -Arguments @($file.RelativePath))
+                    throw (Get-LocalizedText -Text 'Local file changed before deletion: {0}' -Arguments @($file.RelativePath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
                 }
                 $sourceHash = Get-FileSha256 -Path $sourceFilePath
                 $destinationStillMatches = $false
@@ -299,7 +296,7 @@ try {
                     }
                 }
                 if (-not $destinationStillMatches) {
-                    throw (Get-LocalizedText -Text 'No identical Nextcloud file remains; local file retained: {0}' -Arguments @($file.RelativePath))
+                    throw (Get-LocalizedText -Text 'No identical Nextcloud file remains; local file retained: {0}' -Arguments @($file.RelativePath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
                 }
                 Remove-Item -LiteralPath $sourceFilePath -Force -ErrorAction Stop
                 $deletedFiles++
@@ -309,20 +306,20 @@ try {
                 $failedFiles.Add($file.RelativePath)
                 Write-Warning (Get-LocalizedText -Text 'Could not delete local file ''{0}'': {1}' -Arguments @(
                     $file.RelativePath, $_.Exception.Message
-                ))
+                ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
             }
         }
         $directoryResult = Remove-EmptyMatchingDirectory `
             -SourcePath $plan.SourcePath -DestinationPath $plan.DestinationPath `
             -RelativeDirectories $plan.MatchingDirectories `
-            -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages `
+            -UiLanguage $script:OutputLanguage -MessagesPath $script:MessagesPath `
             -Confirm:$false -WhatIf:$false
         $deletedDirectories = $directoryResult.DeletedCount
         $failedDirectories = $directoryResult.FailedDirectories
         foreach ($failedDirectory in $failedDirectories) {
             Write-Warning (Get-LocalizedText -Text 'Could not delete local folder ''{0}'': {1}' -Arguments @(
                 $failedDirectory.RelativePath, $failedDirectory.Message
-            ))
+            ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
         }
         $results.Add([pscustomobject]@{
             Name = $plan.Folder.Name
@@ -330,7 +327,7 @@ try {
             Reason = if ($failedFiles.Count -gt 0 -or $failedDirectories.Count -gt 0) {
                 Get-LocalizedText -Text '{0} local file(s) and {1} local folder(s) could not be removed.' -Arguments @(
                     $failedFiles.Count, $failedDirectories.Count
-                )
+                ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
             } else { '' }
             Files = $deletedFiles
             Directories = $deletedDirectories
@@ -338,10 +335,10 @@ try {
         })
         Write-Host (Get-LocalizedText -Text 'Deleted locally: {0} files ({1:N2} MB).' -Arguments @(
             $deletedFiles, ($deletedBytes / 1MB)
-        )) -ForegroundColor Green
+        ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
         Write-Host (Get-LocalizedText -Text 'Deleted locally: {0} empty subfolders.' -Arguments @(
             $deletedDirectories
-        )) -ForegroundColor Green
+        ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
     }
 
     if (-not $syncCompleted) {
@@ -350,7 +347,7 @@ try {
                 $results.Add([pscustomobject]@{
                     Name = $plan.Folder.Name
                     Status = 'Skipped'
-                    Reason = Get-LocalizedText 'No matching local files or subfolders were found in Nextcloud'
+                    Reason = Get-LocalizedText 'No matching local files or subfolders were found in Nextcloud' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
                     Files = 0
                     Directories = 0
                     Bytes = [long]0
@@ -360,7 +357,7 @@ try {
             $results.Add([pscustomobject]@{
                 Name = $plan.Folder.Name
                 Status = 'Skipped'
-                Reason = Get-LocalizedText 'Synchronization was not confirmed complete'
+                Reason = Get-LocalizedText 'Synchronization was not confirmed complete' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
                 Files = 0
                 Directories = 0
                 Bytes = [long]0
@@ -376,35 +373,35 @@ try {
     $deletedBytesTotal = [long](($successResults | ForEach-Object { [long]$_.Bytes }) | Measure-Object -Sum).Sum
     $deletedDirectoriesTotal = [long](($successResults | ForEach-Object { [long]$_.Directories }) | Measure-Object -Sum).Sum
     Write-Host ''
-    Write-Host (Get-LocalizedText '=== Summary ===') -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($nextcloudFullPath))
+    Write-Host (Get-LocalizedText '=== Summary ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($nextcloudFullPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     Write-Host (Get-LocalizedText -Text 'Succeeded: {0}, skipped: {1}, failed: {2}' -Arguments @(
         $successResults.Count, $skippedResults.Count, $failedResults.Count
-    ))
+    ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     Write-Host (Get-LocalizedText -Text 'Deleted total: {0} local files ({1:N2} MB).' -Arguments @(
         $deletedFilesTotal, ($deletedBytesTotal / 1MB)
-    ))
+    ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     Write-Host (Get-LocalizedText -Text 'Deleted total: {0} empty local subfolders.' -Arguments @(
         $deletedDirectoriesTotal
-    ))
+    ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Failed folders:') -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Failed folders:' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
     if ($failedResults.Count -eq 0) {
-        Write-Host (Get-LocalizedText '  None.')
+        Write-Host (Get-LocalizedText '  None.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     }
     else {
         foreach ($result in $failedResults) {
-            Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($result.Name, $result.Reason)) -ForegroundColor Yellow
+            Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($result.Name, $result.Reason) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
         }
     }
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Skipped folders:') -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Skipped folders:' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
     if ($skippedResults.Count -eq 0) {
-        Write-Host (Get-LocalizedText '  None.')
+        Write-Host (Get-LocalizedText '  None.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     }
     else {
         foreach ($result in $skippedResults) {
-            Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($result.Name, $result.Reason)) -ForegroundColor Yellow
+            Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($result.Name, $result.Reason) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
         }
     }
 }

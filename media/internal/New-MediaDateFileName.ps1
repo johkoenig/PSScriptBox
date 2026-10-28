@@ -36,8 +36,8 @@
 .PARAMETER UiLanguage
     Language of error messages: 'de' selects German, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with FileName and FullPath properties.
@@ -55,10 +55,8 @@ function New-MediaDateFileName
         [Parameter(Mandatory)][string] $DirectoryPath,
         [Parameter(Mandatory)][string] $Extension,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ }
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $datePrefix = $DateTime.ToString('yy-MM-dd HH-mm-ss', [System.Globalization.CultureInfo]::InvariantCulture)
     for ($attempt = 0; $attempt -lt 100; $attempt++)
     {
@@ -73,5 +71,5 @@ function New-MediaDateFileName
         }
     }
 
-    throw (Get-LocalizedText @localization -Text 'Could not generate a unique filename for {0}.' -Arguments @($DirectoryPath))
+    throw (Get-LocalizedText -Text 'Could not generate a unique filename for {0}.' -Arguments @($DirectoryPath) -Language $UiLanguage -MessagesPath $MessagesPath)
 }

@@ -31,8 +31,8 @@
 .PARAMETER UiLanguage
     Language of error messages: 'de' selects the German catalog, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with ExitCode, StdOut, and StdErr.
@@ -43,10 +43,8 @@ function Invoke-Tesseract {
         [Parameter(Mandatory)][string] $TesseractPath,
         [Parameter(Mandatory)][string] $Arguments,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $TesseractPath
     $startInfo.Arguments = $Arguments
@@ -59,7 +57,7 @@ function Invoke-Tesseract {
     $process.StartInfo = $startInfo
     try {
         if (-not $process.Start()) {
-            throw (Get-LocalizedText @localization -Text 'Tesseract could not be started.')
+            throw (Get-LocalizedText -Text 'Tesseract could not be started.' -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         # Read asynchronously so large output cannot block the pipe.
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()

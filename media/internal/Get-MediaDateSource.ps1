@@ -34,8 +34,8 @@
 .PARAMETER UiLanguage
     Language of error messages: 'de' selects German, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with DateTime and Source properties.
@@ -47,10 +47,8 @@ function Get-MediaDateSource
         [Parameter(Mandatory)][System.IO.FileInfo] $File,
         [Parameter(Mandatory)][string] $ExifToolPath,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ }
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $filenameMatch = [regex]::Match($File.Name, '^(\d{2}-\d{2}-\d{2} \d{2}-\d{2}-\d{2})')
     if ($filenameMatch.Success)
     {
@@ -72,7 +70,7 @@ function Get-MediaDateSource
         }
         catch
         {
-            throw (Get-LocalizedText @localization -Text 'Invalid date in filename: {0}' -Arguments @($File.Name))
+            throw (Get-LocalizedText -Text 'Invalid date in filename: {0}' -Arguments @($File.Name) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         return [pscustomobject]@{
@@ -91,7 +89,7 @@ function Get-MediaDateSource
     {
         $result = Invoke-MediaTool -ExecutablePath $ExifToolPath -Arguments @(
             '-s', '-s', '-s', '-d', '%Y-%m-%d %H:%M:%S', "-$( $dateTag.Name )", $File.FullName
-        ) -UiLanguage $UiLanguage -Messages $Messages
+        ) -UiLanguage $UiLanguage -MessagesPath $MessagesPath
         if ($result.ExitCode -ne 0)
         {
             $details = if ( [string]::IsNullOrWhiteSpace($result.StdErr))
@@ -102,9 +100,9 @@ function Get-MediaDateSource
             {
                 $result.StdErr.Trim()
             }
-            throw (Get-LocalizedText @localization -Text 'ExifTool failed to read date tag {0} for {1} (exit code {2}): {3}' -Arguments @(
+            throw (Get-LocalizedText -Text 'ExifTool failed to read date tag {0} for {1} (exit code {2}): {3}' -Arguments @(
                 $dateTag.Name, $File.FullName, $result.ExitCode, $details
-            ))
+            ) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         $dateValue = @(
@@ -128,9 +126,9 @@ function Get-MediaDateSource
         }
         catch
         {
-            throw (Get-LocalizedText @localization -Text 'Invalid date in metadata tag {0} for {1}: {2}' -Arguments @(
+            throw (Get-LocalizedText -Text 'Invalid date in metadata tag {0} for {1}: {2}' -Arguments @(
                 $dateTag.Name, $File.Name,$dateValue[0].Trim()
-            ))
+            ) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         return [pscustomobject]@{
@@ -140,5 +138,5 @@ function Get-MediaDateSource
         }
     }
 
-    throw (Get-LocalizedText @localization -Text 'No valid date found for {0} in filename or metadata.' -Arguments @($File.Name))
+    throw (Get-LocalizedText -Text 'No valid date found for {0} in filename or metadata.' -Arguments @($File.Name) -Language $UiLanguage -MessagesPath $MessagesPath)
 }

@@ -36,8 +36,8 @@
 .PARAMETER Language
     'de' selects German option texts; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject[] with Value, Text, and IsCurrent properties.
@@ -48,21 +48,21 @@ function Get-RecommendedSettingOption {
         [AllowEmptyCollection()][object[]] $Options = @(),
         [AllowEmptyString()][string] $Current,
         [string] $Language = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
 
     $result = [System.Collections.Generic.List[object]]::new()
     if ($Current -and -not @($Options | Where-Object { $_.Value -ceq $Current }).Count) {
         $result.Add([pscustomobject]@{
                 Value     = $Current
-                Text      = Get-LocalizedText -Text 'Current value (unchanged)' -Language $Language -Messages $Messages
+                Text = Get-LocalizedText -Text 'Current value (unchanged)' -Language $Language -MessagesPath $MessagesPath
                 IsCurrent = $true
             })
     }
     foreach ($option in $Options) {
         $result.Add([pscustomobject]@{
                 Value     = [string] $option.Value
-                Text      = Get-LocalizedText -Text ([string] $option.Text) -Language $Language -Messages $Messages
+                Text = Get-LocalizedText -Text ([string]$option.Text) -Language $Language -MessagesPath $MessagesPath
                 IsCurrent = $false
             })
     }

@@ -32,6 +32,12 @@
     Hashtable mapping each folder name to its resolved path, as returned by
     Get-UserSpecialFolderPath. Names without a usable path are skipped.
 
+.PARAMETER Language
+    'de' selects German messages; any other value selects English.
+
+.PARAMETER MessagesPath
+    Path to the German message catalog.
+
 .OUTPUTS
     PSCustomObject[] with source Name, SourcePath, and target TargetName.
 #>
@@ -40,14 +46,16 @@ function Get-UserFolder
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string[]] $Names,
-        [Parameter(Mandatory)][hashtable] $FolderPaths
+        [Parameter(Mandatory)][hashtable] $FolderPaths,
+        [Parameter(Mandatory)][string] $Language,
+        [string] $MessagesPath = ''
     )
 
     foreach ($name in $Names) {
         $sourcePath = [string]$FolderPaths[$name]
         if ([string]::IsNullOrWhiteSpace($sourcePath) -or
             -not (Test-Path -LiteralPath $sourcePath -PathType Container)) {
-            Write-Warning (Get-LocalizedText -Text 'The Windows folder could not be found and will be skipped: {0}' -Arguments @($name))
+            Write-Warning (Get-LocalizedText -Text 'The Windows folder could not be found and will be skipped: {0}' -Arguments @($name) -Language $Language -MessagesPath $MessagesPath)
             continue
         }
         [pscustomobject]@{

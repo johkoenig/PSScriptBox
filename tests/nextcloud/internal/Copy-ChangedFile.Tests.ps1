@@ -15,7 +15,7 @@
 
 BeforeAll {
     $script:OutputLanguage = 'en'
-    $script:GermanMessages = @{}
+    $script:MessagesPath = ''
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-FileSha256.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Get-FolderInventory.ps1')

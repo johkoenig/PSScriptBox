@@ -76,14 +76,7 @@ else
 {
     'de'
 }
-$script:GermanMessages = if ($script:OutputLanguage -eq 'de')
-{
-    Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1')
-}
-else
-{
-    @{ }
-}
+$script:MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 
 $headerLines = @(
     '       .-------------------------------------------.'
@@ -101,23 +94,23 @@ foreach ($headerLine in $headerLines)
 {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText 'Removes eligible original media backups.') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Removes eligible original media backups.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
 Write-Host ''
 
 if ( [string]::IsNullOrWhiteSpace($InputPath))
 {
-    Write-Host (Get-LocalizedText 'Enter the folder containing original media backups.')
-    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath')
+    Write-Host (Get-LocalizedText 'Enter the folder containing original media backups.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
 }
 if ( [string]::IsNullOrWhiteSpace($InputPath))
 {
-    throw (Get-LocalizedText 'No folder was specified.')
+    throw (Get-LocalizedText 'No folder was specified.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
 }
 
 $InputPath = [Environment]::ExpandEnvironmentVariables($InputPath.Trim().Trim('"'))
 if (-not (Test-Path -LiteralPath $InputPath -PathType Container))
 {
-    throw (Get-LocalizedText -Text 'The specified folder was not found: {0}' -Arguments @($InputPath))
+    throw (Get-LocalizedText -Text 'The specified folder was not found: {0}' -Arguments @($InputPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
 }
 
 $directory = Get-Item -LiteralPath $InputPath
@@ -140,17 +133,17 @@ $eligibleBackups = @(Get-EligibleMediaBackup -RootPath $directory.FullName)
 $eligibleCount = $eligibleBackups.Count
 $deletedCount = 0
 
-Write-Host (Get-LocalizedText -Text '  Folder: {0}' -Arguments @($directory.FullName))
-Write-Host (Get-LocalizedText -Text '  Original media backups eligible for deletion: {0}' -Arguments @($eligibleCount)) -ForegroundColor Yellow
+Write-Host (Get-LocalizedText -Text '  Folder: {0}' -Arguments @($directory.FullName) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+Write-Host (Get-LocalizedText -Text '  Original media backups eligible for deletion: {0}' -Arguments @($eligibleCount) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
 
 if ($eligibleCount -eq 0)
 {
-    Write-Host (Get-LocalizedText 'No matching _orig media backups with a processed media file were found.') -ForegroundColor Green
+    Write-Host (Get-LocalizedText 'No matching _orig media backups with a processed media file were found.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
     Write-Host ''
-    Write-Host (Get-LocalizedText '=== Summary ===') -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath))
-    Write-Host (Get-LocalizedText 'Found: 0')
-    Write-Host (Get-LocalizedText 'Deleted: 0')
+    Write-Host (Get-LocalizedText '=== Summary ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText 'Found: 0' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText 'Deleted: 0' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     return
 }
 
@@ -164,12 +157,12 @@ foreach ($backup in $eligibleBackups)
 if ($WhatIfPreference)
 {
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Preview: no files were deleted.') -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Preview: no files were deleted.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
     Write-Host ''
-    Write-Host (Get-LocalizedText '=== Summary ===') -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath))
-    Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount))
-    Write-Host (Get-LocalizedText 'Deleted: 0')
+    Write-Host (Get-LocalizedText '=== Summary ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText 'Deleted: 0' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
     return
 }
 
@@ -178,7 +171,7 @@ foreach ($backup in $eligibleBackups)
 {
     $relativePath = $backup.BackupFile.FullName.Substring($basePathPrefix.Length)
     $relativeProcessedPath = $backup.ProcessedPath.Substring($basePathPrefix.Length)
-    $action = Get-LocalizedText -Text 'Delete original media backup; keep processed media file: {0}' -Arguments @($relativeProcessedPath)
+    $action = Get-LocalizedText -Text 'Delete original media backup; keep processed media file: {0}' -Arguments @($relativeProcessedPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
     if ( $PSCmdlet.ShouldProcess($relativePath, $action))
     {
         $backup
@@ -189,19 +182,19 @@ foreach ($backup in $eligibleBackups)
 if ($approvedBackups.Count -gt 0)
 {
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Deleting original media backups...') -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Deleting original media backups...' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
 }
 
 foreach ($backup in $approvedBackups)
 {
     $relativePath = $backup.BackupFile.FullName.Substring($basePathPrefix.Length)
     Remove-Item -LiteralPath $backup.BackupFile.FullName -Force
-    Write-Host (Get-LocalizedText -Text '  Deleted: {0}' -Arguments @($relativePath)) -ForegroundColor Green
+    Write-Host (Get-LocalizedText -Text '  Deleted: {0}' -Arguments @($relativePath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
     $deletedCount++
 }
 
 Write-Host ''
-Write-Host (Get-LocalizedText '=== Summary ===') -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath))
-Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount))
-Write-Host (Get-LocalizedText -Text 'Deleted: {0}' -Arguments @($deletedCount))
+Write-Host (Get-LocalizedText '=== Summary ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Deleted: {0}' -Arguments @($deletedCount) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)

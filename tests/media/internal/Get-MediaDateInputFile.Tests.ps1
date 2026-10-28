@@ -39,7 +39,7 @@ Describe 'Get-MediaDateInputFile' {
     It 'throws a localized error when the path is not a folder' {
         {
             Get-MediaDateInputFile -RootPath (Join-Path $TestDrive 'missing') `
-                -UiLanguage 'de' -Messages @{ 'The selected path is not a folder: {0}' = 'Kein Ordner: {0}' }
-        } | Should -Throw 'Kein Ordner:*'
+                -UiLanguage 'de' -MessagesPath (Join-Path $PSScriptRoot '..\..\..\media\l10n\de-DE\Messages.psd1')
+        } | Should -Throw 'Der ausgewählte Pfad ist kein Ordner:*'
     }
 }

@@ -19,7 +19,7 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\git\internal\Invoke-GitCommand.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\git\internal\Remove-GitBranch.ps1')
     $script:Language = 'en-US'
-    $script:Messages = @{ }
+    $script:MessagesPath = ''
 
     function New-BranchRemovalRepository
     {

@@ -14,7 +14,7 @@
 
 BeforeAll {
     $script:OutputLanguage = 'en'
-    $script:GermanMessages = @{ }
+    $script:MessagesPath = ''
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-FileSha256.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Copy-FileToStaging.ps1')
@@ -115,7 +115,7 @@ Describe 'Copy-FileToStaging' {
         [System.IO.File]::WriteAllText((Join-Path $script:Source 'german.txt'), 'x')
         $bytes = [byte[]]::new(2MB)
         [System.IO.File]::WriteAllBytes((Join-Path $script:Source 'german.bin'), $bytes)
-        $messages = @{ 'Copying folder {0}' = 'Ordner {0} wird kopiert' }
+        $messages = Join-Path $PSScriptRoot '..\..\..\nextcloud\l10n\de-DE\Messages.psd1'
         $script:Activities = [System.Collections.Generic.List[string]]::new()
         $reporter = {
             param([string] $Activity, [string] $Status, [int] $PercentComplete, [switch] $Completed)
@@ -125,13 +125,13 @@ Describe 'Copy-FileToStaging' {
         Copy-FileToStaging -SourceDirectory $script:Source -DestinationDirectory $script:Destination `
             -FileName 'german.bin' -RelativePath 'german.bin' -FileLength $bytes.Length `
             -ExpectedHash (Get-FileSha256 -Path (Join-Path $script:Source 'german.bin')) `
-            -CompletedBytes 0 -TotalBytes $bytes.Length -FolderName 'Test' -Language 'de' -Messages $messages `
+            -CompletedBytes 0 -TotalBytes $bytes.Length -FolderName 'Test' -Language 'de' -MessagesPath $messages `
             -ProgressReporter $reporter
 
         Test-Path -LiteralPath (Join-Path $script:Destination 'german.bin') | Should -BeTrue
         foreach ($activity in $script:Activities)
         {
-            $activity | Should -Be 'Ordner Test wird kopiert'
+            $activity | Should -Be 'Kopiere Ordner Test'
         }
     }
 }

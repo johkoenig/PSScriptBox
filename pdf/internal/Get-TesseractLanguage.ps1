@@ -29,8 +29,8 @@
 .PARAMETER UiLanguage
     Language of error messages: 'de' selects the German catalog, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with Languages (string array) and TessdataPath (string).
@@ -41,13 +41,11 @@ function Get-TesseractLanguage
     param(
         [Parameter(Mandatory)][string] $TesseractPath,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
-    $result = Invoke-Tesseract -TesseractPath $TesseractPath -Arguments '--list-langs' -UiLanguage $UiLanguage -Messages $Messages
+    $result = Invoke-Tesseract -TesseractPath $TesseractPath -Arguments '--list-langs' -UiLanguage $UiLanguage -MessagesPath $MessagesPath
     if ($result.ExitCode -ne 0) {
-        throw (Get-LocalizedText @localization -Text 'Tesseract --list-langs failed: {0}' -Arguments @($result.StdErr))
+        throw (Get-LocalizedText -Text 'Tesseract --list-langs failed: {0}' -Arguments @($result.StdErr) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
 
     # The header names the tessdata folder in quotation marks, for example:

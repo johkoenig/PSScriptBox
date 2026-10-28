@@ -15,8 +15,8 @@ Name of the local main branch used for comparison and protection.
 .PARAMETER Language
 'de' selects German error text; any other value selects English.
 
-.PARAMETER Messages
-German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+Path to the German message catalog.
 
 .OUTPUTS
 System.Management.Automation.PSCustomObject containing branch assessments and
@@ -48,8 +48,8 @@ Name of the local main branch used for comparison and protection.
 .PARAMETER Language
 'de' selects German error text; any other value selects English.
 
-.PARAMETER Messages
-German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+Path to the German message catalog.
 
 .OUTPUTS
 System.Management.Automation.PSCustomObject containing branch assessments and
@@ -66,21 +66,21 @@ function Get-ObsoleteGitBranch
 
         [string]$Language = 'en',
 
-        [hashtable]$Messages = @{ }
+        [string]$MessagesPath = ''
     )
 
     $branchLines = Invoke-GitCommand -Repository $Repository -Arguments @(
         'for-each-ref',
         '--format=%(refname)%09%(objectname)%09%(upstream)',
         'refs/heads'
-    ) -Language $Language -Messages $Messages
+    ) -Language $Language -MessagesPath $MessagesPath
 
     $branches = foreach ($line in $branchLines)
     {
         $fields = $line.Split([char]9)
         if ($fields.Count -ne 3 -or -not $fields[0].StartsWith('refs/heads/'))
         {
-            $message = Get-LocalizedText -Text "Git returned invalid branch data: '{0}'" -Language $Language -Messages $Messages
+            $message = Get-LocalizedText -Text "Git returned invalid branch data: '{0}'" -Language $Language -MessagesPath $MessagesPath
             throw ($message -f $line)
         }
 
@@ -95,7 +95,7 @@ function Get-ObsoleteGitBranch
     $mainRef = "refs/heads/$MainBranch"
     if (-not ($branches | Where-Object { $_.Ref -eq $mainRef }))
     {
-        $message = Get-LocalizedText -Text "The main branch '{0}' was not found in this repository." -Language $Language -Messages $Messages
+        $message = Get-LocalizedText -Text "The main branch '{0}' was not found in this repository." -Language $Language -MessagesPath $MessagesPath
         throw ($message -f $MainBranch)
     }
 
@@ -103,13 +103,13 @@ function Get-ObsoleteGitBranch
         'rev-parse',
         '--symbolic-full-name',
         'HEAD'
-    ) -Language $Language -Messages $Messages | Select-Object -First 1).Trim()
+    ) -Language $Language -MessagesPath $MessagesPath | Select-Object -First 1).Trim()
 
     $allRefs = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($ref in (Invoke-GitCommand -Repository $Repository -Arguments @(
         'for-each-ref',
         '--format=%(refname)'
-    ) -Language $Language -Messages $Messages))
+    ) -Language $Language -MessagesPath $MessagesPath))
     {
         $null = $allRefs.Add($ref)
     }
@@ -120,7 +120,7 @@ function Get-ObsoleteGitBranch
         '--merged',
         'HEAD',
         '--format=%(refname)'
-    ) -Language $Language -Messages $Messages))
+    ) -Language $Language -MessagesPath $MessagesPath))
     {
         if ($ref)
         {
@@ -139,17 +139,17 @@ function Get-ObsoleteGitBranch
                 'rev-list',
                 '--count',
                 "$mainRef..$( $branch.Ref )"
-            ) -Language $Language -Messages $Messages | Select-Object -First 1).Trim()
+            ) -Language $Language -MessagesPath $MessagesPath | Select-Object -First 1).Trim()
 
             if ($aheadOfMain -notmatch '^\d+$')
             {
-                $message = Get-LocalizedText -Text "Git returned an invalid commit count for '{0}': '{1}'" -Language $Language -Messages $Messages
+                $message = Get-LocalizedText -Text "Git returned an invalid commit count for '{0}': '{1}'" -Language $Language -MessagesPath $MessagesPath
                 throw ($message -f $branch.Name, $aheadOfMain)
             }
 
             if ([long]$aheadOfMain -eq 0)
             {
-                $reasons.Add((Get-LocalizedText -Text 'Not ahead of main' -Language $Language -Messages $Messages))
+                $reasons.Add((Get-LocalizedText -Text 'Not ahead of main' -Language $Language -MessagesPath $MessagesPath))
             }
 
             if ($branch.Upstream -and $allRefs.Contains($branch.Upstream))
@@ -158,23 +158,23 @@ function Get-ObsoleteGitBranch
                     'rev-list',
                     '--count',
                     "$( $branch.Upstream )..$( $branch.Ref )"
-                ) -Language $Language -Messages $Messages | Select-Object -First 1).Trim()
+                ) -Language $Language -MessagesPath $MessagesPath | Select-Object -First 1).Trim()
 
                 if ($aheadOfUpstream -notmatch '^\d+$')
                 {
-                    $message = Get-LocalizedText -Text "Git returned an invalid commit count for '{0}': '{1}'" -Language $Language -Messages $Messages
+                    $message = Get-LocalizedText -Text "Git returned an invalid commit count for '{0}': '{1}'" -Language $Language -MessagesPath $MessagesPath
                     throw ($message -f $branch.Name, $aheadOfUpstream)
                 }
 
                 if ([long]$aheadOfUpstream -eq 0)
                 {
-                    $reasons.Add((Get-LocalizedText -Text 'Not ahead of upstream' -Language $Language -Messages $Messages))
+                    $reasons.Add((Get-LocalizedText -Text 'Not ahead of upstream' -Language $Language -MessagesPath $MessagesPath))
                 }
             }
 
             if ( $mergedRefs.Contains($branch.Ref))
             {
-                $reasons.Add((Get-LocalizedText -Text 'Fully merged into the current branch' -Language $Language -Messages $Messages))
+                $reasons.Add((Get-LocalizedText -Text 'Fully merged into the current branch' -Language $Language -MessagesPath $MessagesPath))
             }
         }
 

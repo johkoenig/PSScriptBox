@@ -3,8 +3,9 @@
     Provides the localized console message lookup shared by all tool folders.
 
 .DESCRIPTION
-    Defines Get-LocalizedText. Without explicit -Language and -Messages values, it
-    uses the calling script's $script:OutputLanguage and $script:GermanMessages.
+    Defines Get-LocalizedText. Without an explicit -Language value, it uses the
+    current UI culture. The German catalog is loaded from -MessagesPath when
+    German is selected.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7.
@@ -33,8 +34,8 @@
 .PARAMETER Language
     'de' selects the German catalog; any other value selects English.
 
-.PARAMETER Messages
-    German catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog. Required when German output is selected.
 
 .OUTPUTS
     System.String. The localized and optionally formatted message.
@@ -44,14 +45,40 @@ function Get-LocalizedText {
     param(
         [Parameter(Mandatory)][string] $Text,
         [AllowEmptyCollection()][object[]] $Arguments = @(),
-        [string] $Language = $script:OutputLanguage,
-        [hashtable] $Messages = $script:GermanMessages
+        [string] $Language,
+        [string] $MessagesPath
     )
 
-    $template = if ($Language -eq 'de' -and $Messages.ContainsKey($Text)) {
-        $Messages[$Text]
+    $effectiveLanguage = if ( $PSBoundParameters.ContainsKey('Language'))
+    {
+        $Language
     }
-    else { $Text }
+    else
+    {
+        [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName
+    }
+
+    $template = $Text
+    if ($effectiveLanguage -eq 'de')
+    {
+        if ( [string]::IsNullOrWhiteSpace($MessagesPath))
+        {
+            throw 'MessagesPath is required when German output is selected.'
+        }
+
+        $catalogPath = [System.IO.Path]::GetFullPath($MessagesPath)
+        if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf))
+        {
+            throw "The German message catalog was not found: $catalogPath"
+        }
+
+        $messages = Import-PowerShellDataFile -LiteralPath $catalogPath
+        if ( $messages.ContainsKey($Text))
+        {
+            $template = $messages[$Text]
+        }
+    }
+
     if ($Arguments.Count -gt 0) { return $template -f $Arguments }
     return $template
 }

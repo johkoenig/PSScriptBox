@@ -36,8 +36,8 @@
 .PARAMETER Language
     'de' selects German error text; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     System.String. The configured value or an empty string.
@@ -49,7 +49,7 @@ function Get-GitConfigValue {
         [Parameter(Mandatory)][ValidateSet('Local', 'Global', 'System')][string] $Scope,
         [string] $Repository,
         [string] $Language = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
 
     if ($Scope -eq 'Local' -and -not $Repository) { return '' }
@@ -66,7 +66,7 @@ function Get-GitConfigValue {
     # Exit code 1 means the key is absent. A missing system config file is not an error for this purpose.
     if ($exitCode -eq 1 -or ($exitCode -ne 0 -and $Scope -eq 'System')) { return '' }
     if ($exitCode -ne 0) {
-        throw (Get-LocalizedText -Text 'Could not read Git setting: {0}' -Arguments @($Key) -Language $Language -Messages $Messages)
+        throw (Get-LocalizedText -Text 'Could not read Git setting: {0}' -Arguments @($Key) -Language $Language -MessagesPath $MessagesPath)
     }
     return ($value -join [Environment]::NewLine).Trim()
 }

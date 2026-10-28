@@ -28,8 +28,8 @@
 .PARAMETER UiLanguage
     Language of error messages: 'de' selects German, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with Files (System.IO.FileInfo[]) and BasePath (string).
@@ -40,13 +40,11 @@ function Get-MediaDateInputFile
     param(
         [Parameter(Mandatory)][string] $RootPath,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ }
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     if (-not (Test-Path -LiteralPath $RootPath -PathType Container))
     {
-        throw (Get-LocalizedText @localization -Text 'The selected path is not a folder: {0}' -Arguments @($RootPath))
+        throw (Get-LocalizedText -Text 'The selected path is not a folder: {0}' -Arguments @($RootPath) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
 
     $directory = Get-Item -LiteralPath $RootPath -ErrorAction Stop

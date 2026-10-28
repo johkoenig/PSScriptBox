@@ -80,14 +80,7 @@ else
 {
     'de'
 }
-$script:GermanMessages = if ($script:OutputLanguage -eq 'de')
-{
-    Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1')
-}
-else
-{
-    @{ }
-}
+$script:MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 
 $headerLines = @(
     '       .-------------------------------------------.'
@@ -104,17 +97,17 @@ foreach ($headerLine in $headerLines)
 {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText 'Restores media dates from filenames and metadata.') -ForegroundColor Cyan
-Write-Host (Get-LocalizedText 'Renames files to YY-MM-DD HH-mm-ss XXXX.ext.') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Restores media dates from filenames and metadata.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Renames files to YY-MM-DD HH-mm-ss XXXX.ext.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
 Write-Host ''
 
-$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}'
+$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
 $exifToolCommand = Get-Command -Name 'exiftool.exe', 'exiftool' -ErrorAction SilentlyContinue |
         Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
 if ($null -eq $exifToolCommand)
 {
     $report = Get-MissingDependencyReport -Dependency 'ExifTool' `
-        -Guidance (Get-LocalizedText 'Install ExifTool with Chocolatey: choco install exiftool -y, or download from https://exiftool.org/.') `
+        -Guidance (Get-LocalizedText 'Install ExifTool with Chocolatey: choco install exiftool -y, or download from https://exiftool.org/.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) `
         -MessageTemplate $missingDependencyTemplate
     Write-Host $report.Message -ForegroundColor Yellow
     Write-Host "  $( $report.Guidance )"
@@ -123,13 +116,13 @@ if ($null -eq $exifToolCommand)
 
 if ( [string]::IsNullOrWhiteSpace($InputPath))
 {
-    Write-Host (Get-LocalizedText 'Enter the folder containing media files to restore.')
-    Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.') -ForegroundColor Yellow
-    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath')
+    Write-Host (Get-LocalizedText 'Enter the folder containing media files to restore.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
 }
 if ( [string]::IsNullOrWhiteSpace($InputPath))
 {
-    Write-Host (Get-LocalizedText 'No folder was specified.') -ForegroundColor Red
+    Write-Host (Get-LocalizedText 'No folder was specified.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Red
     exit 1
 }
 
@@ -137,11 +130,11 @@ $InputPath = [Environment]::ExpandEnvironmentVariables($InputPath.Trim().Trim('"
 try
 {
     $inputSelection = Get-MediaDateInputFile -RootPath $InputPath `
-        -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
+        -UiLanguage $script:OutputLanguage -MessagesPath $script:MessagesPath
 }
 catch
 {
-    Write-Host (Get-LocalizedText -Text 'Error: {0}' -Arguments @($_.Exception.Message)) -ForegroundColor Red
+    Write-Host (Get-LocalizedText -Text 'Error: {0}' -Arguments @($_.Exception.Message) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Red
     exit 1
 }
 
@@ -164,16 +157,16 @@ else
 }
 
 Write-Host ''
-Write-Host (Get-LocalizedText '=== Media date restoration: processing started ===') -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($basePath))
-Write-Host (Get-LocalizedText -Text 'Number of files: {0}' -Arguments @($mediaFiles.Count))
-Write-Host (Get-LocalizedText 'Date source priority: filename, EXIF DateTimeOriginal, CreateDate, ModifyDate')
-Write-Host (Get-LocalizedText 'Filename pattern: YY-MM-DD HH-mm-ss XXXX')
-Write-Host (Get-LocalizedText 'Creation time, last-write time, and supported metadata dates are changed only when needed.')
+Write-Host (Get-LocalizedText '=== Media date restoration: processing started ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($basePath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Number of files: {0}' -Arguments @($mediaFiles.Count) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+Write-Host (Get-LocalizedText 'Date source priority: filename, EXIF DateTimeOriginal, CreateDate, ModifyDate' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+Write-Host (Get-LocalizedText 'Filename pattern: YY-MM-DD HH-mm-ss XXXX' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+Write-Host (Get-LocalizedText 'Creation time, last-write time, and supported metadata dates are changed only when needed.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
 
 if ($mediaFiles.Count -eq 0)
 {
-    Write-Host (Get-LocalizedText 'No supported media files found in the selected folder or its subfolders.') -ForegroundColor Yellow
+    Write-Host (Get-LocalizedText 'No supported media files found in the selected folder or its subfolders.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
 }
 
 $results = @()
@@ -184,13 +177,13 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
     Write-Host ''
     Write-Host (Get-LocalizedText -Text '--- Media file {0}/{1}: {2} ---' -Arguments @(
         ($index + 1), $mediaFiles.Count, $relativePath
-    )) -ForegroundColor Cyan
+    ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
 
     $targetPath = $null
     try
     {
         $dateResult = Get-MediaDateSource -File $file -ExifToolPath $exifToolCommand.Source `
-            -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
+            -UiLanguage $script:OutputLanguage -MessagesPath $script:MessagesPath
         $alreadyFormatted = $dateResult.IsFileNameFormatted
         $targetName = if ($alreadyFormatted)
         {
@@ -203,36 +196,36 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
         {
             New-MediaDateFileName -DateTime $dateResult.DateTime `
                 -DirectoryPath $file.DirectoryName -Extension $file.Extension `
-                -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
+                -UiLanguage $script:OutputLanguage -MessagesPath $script:MessagesPath
         }
         $targetPath = $targetName.FullPath
 
         Write-Host (Get-LocalizedText -Text 'Date source: {0}' -Arguments @(
-            (Get-LocalizedText $dateResult.Source)
-        ))
+            (Get-LocalizedText $dateResult.Source -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
         Write-Host (Get-LocalizedText -Text 'Restored date: {0}' -Arguments @(
             $dateResult.DateTime.ToString('yyyy-MM-dd HH:mm:ss', [System.Globalization.CultureInfo]::InvariantCulture)
-        ))
+        ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
         if ($alreadyFormatted)
         {
-            Write-Host (Get-LocalizedText 'Filename already matches the requested pattern.')
-            $action = Get-LocalizedText -Text 'Restore filesystem and metadata dates: {0}' -Arguments @($targetName.FileName)
+            Write-Host (Get-LocalizedText 'Filename already matches the requested pattern.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+            $action = Get-LocalizedText -Text 'Restore filesystem and metadata dates: {0}' -Arguments @($targetName.FileName) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
         }
         else
         {
-            Write-Host (Get-LocalizedText -Text 'Target filename: {0}' -Arguments @($targetName.FileName))
-            $action = Get-LocalizedText -Text 'Rename file and restore filesystem and metadata dates: {0}' -Arguments @($targetName.FileName)
+            Write-Host (Get-LocalizedText -Text 'Target filename: {0}' -Arguments @($targetName.FileName) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+            $action = Get-LocalizedText -Text 'Rename file and restore filesystem and metadata dates: {0}' -Arguments @($targetName.FileName) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
         }
 
         if (-not $PSCmdlet.ShouldProcess($file.FullName, $action))
         {
             $skipReason = if ($WhatIfPreference)
             {
-                Get-LocalizedText 'Preview only; no files were changed.'
+                Get-LocalizedText 'Preview only; no files were changed.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
             }
             else
             {
-                Get-LocalizedText 'Operation was not approved.'
+                Get-LocalizedText 'Operation was not approved.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
             }
             $results += [pscustomobject]@{
                 Success = $false
@@ -245,20 +238,20 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
 
         $restoration = Invoke-MediaDateRestoration -File $file -TargetPath $targetName.FullPath `
             -DateTime $dateResult.DateTime -ExifToolPath $exifToolCommand.Source `
-            -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
+            -UiLanguage $script:OutputLanguage -MessagesPath $script:MessagesPath
         foreach ($warningMessage in $restoration.WarningMessages)
         {
             Write-Host $warningMessage -ForegroundColor Yellow
         }
         if ($alreadyFormatted)
         {
-            Write-Host (Get-LocalizedText 'Filename kept unchanged.') -ForegroundColor Green
+            Write-Host (Get-LocalizedText 'Filename kept unchanged.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
         }
         else
         {
-            Write-Host (Get-LocalizedText -Text 'Renamed to: {0}' -Arguments @($targetName.FileName)) -ForegroundColor Green
+            Write-Host (Get-LocalizedText -Text 'Renamed to: {0}' -Arguments @($targetName.FileName) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
         }
-        Write-Host (Get-LocalizedText 'Filesystem and metadata dates were restored.') -ForegroundColor Green
+        Write-Host (Get-LocalizedText 'Filesystem and metadata dates were restored.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
         $results += [pscustomobject]@{
             Success = $true
             Skipped = $false
@@ -280,7 +273,7 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
         }
         Write-Warning (Get-LocalizedText -Text "Could not restore '{0}':`n{1}" -Arguments @(
             $file.Name, $failureReason
-        ))
+        ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
         $results += [pscustomobject]@{
             Success = $false
             Skipped = $false
@@ -295,16 +288,16 @@ $skippedResults = @($results | Where-Object { $_.Skipped })
 $failedResults = @($results | Where-Object { -not $_.Success -and -not $_.Skipped })
 
 Write-Host ''
-Write-Host (Get-LocalizedText '=== Summary ===') -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath))
+Write-Host (Get-LocalizedText '=== Summary ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
 Write-Host (Get-LocalizedText -Text 'Succeeded: {0}, skipped: {1}, failed: {2}' -Arguments @(
     $successfulResults.Count, $skippedResults.Count, $failedResults.Count
-))
+) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
 Write-Host ''
-Write-Host (Get-LocalizedText 'Failed files:') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Failed files:' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
 if ($failedResults.Count -eq 0)
 {
-    Write-Host (Get-LocalizedText '  None.')
+    Write-Host (Get-LocalizedText '  None.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
 }
 else
 {
@@ -313,14 +306,14 @@ else
         $relativePath = $result.FilePath.Substring($basePathPrefix.Length)
         Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @(
             $relativePath, $result.FailureReason
-        )) -ForegroundColor Yellow
+        ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
     }
 }
 Write-Host ''
-Write-Host (Get-LocalizedText 'Skipped files:') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Skipped files:' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
 if ($skippedResults.Count -eq 0)
 {
-    Write-Host (Get-LocalizedText '  None.')
+    Write-Host (Get-LocalizedText '  None.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
 }
 else
 {
@@ -329,6 +322,6 @@ else
         $relativePath = $result.FilePath.Substring($basePathPrefix.Length)
         Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @(
             $relativePath, $result.FailureReason
-        )) -ForegroundColor DarkYellow
+        ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor DarkYellow
     }
 }

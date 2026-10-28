@@ -92,16 +92,17 @@ Describe 'Get-PdfTextLayerStatus' {
 
     It 'uses the German catalog entry for the error message when German output is selected' {
         Mock Invoke-PythonCommand { New-PythonResult -ExitCode 1 -StdErr 'boom' }
-        $messages = @{ 'PDF check failed (exit code {0}): {1}' = 'DE: check failed ({0}): {1}' }
+        $messages = Join-Path $PSScriptRoot '..\..\..\pdf\l10n\de-DE\Messages.psd1'
 
-        { Get-PdfTextLayerStatus -Pdf $script:Pdf -PythonPath $script:PythonPath -UiLanguage 'de' -Messages $messages } |
-            Should -Throw -ExpectedMessage 'DE: check failed (1): boom'
+        { Get-PdfTextLayerStatus -Pdf $script:Pdf -PythonPath $script:PythonPath -UiLanguage 'de' -MessagesPath $messages } |
+                Should -Throw -ExpectedMessage 'PDF-Prüfung fehlgeschlagen (Exitcode 1): boom'
     }
 
     It 'passes the language selection through to the Python command' {
         Mock Invoke-PythonCommand { New-PythonResult -StdOut "1`t1" }
 
-        Get-PdfTextLayerStatus -Pdf $script:Pdf -PythonPath $script:PythonPath -UiLanguage 'de' -Messages @{} | Out-Null
+        Get-PdfTextLayerStatus -Pdf $script:Pdf -PythonPath $script:PythonPath -UiLanguage 'de' `
+            -MessagesPath (Join-Path $PSScriptRoot '..\..\..\pdf\l10n\de-DE\Messages.psd1') | Out-Null
         Should -Invoke Invoke-PythonCommand -Times 1 -Exactly -ParameterFilter { $UiLanguage -eq 'de' }
     }
 

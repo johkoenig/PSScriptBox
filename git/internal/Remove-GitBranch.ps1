@@ -22,8 +22,8 @@ Commit identifier observed during analysis.
 .PARAMETER Language
 'de' selects German error text; any other value selects English.
 
-.PARAMETER Messages
-German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+Path to the German message catalog.
 
 .OUTPUTS
 System.Management.Automation.PSCustomObject describing the removed branch.
@@ -61,8 +61,8 @@ Commit identifier observed during analysis.
 .PARAMETER Language
 'de' selects German error text; any other value selects English.
 
-.PARAMETER Messages
-German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+Path to the German message catalog.
 
 .PARAMETER WhatIf
 Simulates branch removal without changing the repository.
@@ -92,23 +92,23 @@ function Remove-GitBranch
 
         [string]$Language = 'en',
 
-        [hashtable]$Messages = @{ }
+        [string]$MessagesPath = ''
     )
 
     $actualObjectId = (Invoke-GitCommand -Repository $Repository -Arguments @(
         'rev-parse',
         '--verify',
         $Ref
-    ) -Language $Language -Messages $Messages | Select-Object -First 1).Trim()
+    ) -Language $Language -MessagesPath $MessagesPath | Select-Object -First 1).Trim()
 
     if ($actualObjectId -ne $ExpectedObjectId)
     {
-        $message = Get-LocalizedText -Text 'Branch changed after analysis; refusing to remove it: {0}' -Language $Language -Messages $Messages
+        $message = Get-LocalizedText -Text 'Branch changed after analysis; refusing to remove it: {0}' -Language $Language -MessagesPath $MessagesPath
         throw ($message -f $Name)
     }
 
     $action = Get-LocalizedText -Text 'Remove local Git branch: {0}' `
-        -Arguments @($Name) -Language $Language -Messages $Messages
+        -Arguments @($Name) -Language $Language -MessagesPath $MessagesPath
     if (-not $PSCmdlet.ShouldProcess($Name, $action))
     {
         return [pscustomobject]@{
@@ -130,7 +130,7 @@ function Remove-GitBranch
         '-D',
         '--',
         $Name
-    ) -Language $Language -Messages $Messages
+    ) -Language $Language -MessagesPath $MessagesPath
 
     [pscustomobject]@{
         Name = $Name

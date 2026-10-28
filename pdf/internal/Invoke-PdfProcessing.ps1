@@ -60,8 +60,8 @@
 .PARAMETER UiLanguage
     Language of the messages: 'de' selects the German catalog, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .PARAMETER Reporter
     Scriptblock that receives console output. It is called as
@@ -84,12 +84,9 @@ function Invoke-PdfProcessing {
         [AllowNull()][string] $GhostscriptPath,
         [AllowNull()][string] $TesseractPath,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{},
+        [string]$MessagesPath = '',
         [scriptblock] $Reporter = { }
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
-
     # Keep temporary files beside the input so replacement stays on the same volume.
     $tempStem = '.{0}' -f [guid]::NewGuid().ToString('N')
     $tempPath = Join-Path $Pdf.DirectoryName ($tempStem + '.pdf.part')
@@ -101,7 +98,7 @@ function Invoke-PdfProcessing {
     $failureReason = $null
     $failureDetails = $null
     try {
-        & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Processing: {0}' -Arguments @($Pdf.Name))
+        & $Reporter 'Host' $null (Get-LocalizedText -Text 'Processing: {0}' -Arguments @($Pdf.Name) -Language $Language -MessagesPath $MessagesPath)
         $signatureCheck = @'
 import sys
 import pikepdf
@@ -224,12 +221,12 @@ with pdf:
         }
         if ($signatureCheckExitCode -ne 0) {
             $checkDetails = ($signatureCheckOutput | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
-            throw (Get-LocalizedText @localization -Text 'Signature and text-layer check failed (exit code {0}): {1}' -Arguments @($signatureCheckExitCode, $checkDetails))
+            throw (Get-LocalizedText -Text 'Signature and text-layer check failed (exit code {0}): {1}' -Arguments @($signatureCheckExitCode, $checkDetails) -Language $Language -MessagesPath $MessagesPath)
         }
         $signatureStatus = ($signatureCheckOutput | ForEach-Object { $_.ToString() }) -join ''
         if ($signatureStatus.Trim() -eq 'ENCRYPTED') {
-            $failureReason = Get-LocalizedText @localization -Text 'Encrypted PDF'
-            & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Could not process: '{0}'`nThe PDF is encrypted and will not be processed." -Arguments @($Pdf.Name))
+            $failureReason = Get-LocalizedText -Text 'Encrypted PDF' -Language $Language -MessagesPath $MessagesPath
+            & $Reporter 'Warning' $null (Get-LocalizedText -Text "Could not process: '{0}'`nThe PDF is encrypted and will not be processed." -Arguments @($Pdf.Name) -Language $Language -MessagesPath $MessagesPath)
             return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
         $signatureValues = $signatureStatus.Trim() -split "`t"
@@ -241,7 +238,7 @@ with pdf:
             $signatureValues[3] -notmatch '^\d+$' -or
             $signatureValues[4] -notmatch '^\d+$'
         ) {
-            throw (Get-LocalizedText @localization -Text "Signature and text-layer check returned an invalid result: '{0}'" -Arguments @($signatureStatus))
+            throw (Get-LocalizedText -Text "Signature and text-layer check returned an invalid result: '{0}'" -Arguments @($signatureStatus) -Language $Language -MessagesPath $MessagesPath)
         }
         $signatureStatus = $signatureValues[0]
         $pageCount = [int]$signatureValues[1]
@@ -249,27 +246,27 @@ with pdf:
         $visibleTextPageCount = [int]$signatureValues[3]
         $scannedPageCount = [int]$signatureValues[4]
         if ($pageCount -eq 0) {
-            throw (Get-LocalizedText @localization -Text 'The PDF file contains no pages.')
+            throw (Get-LocalizedText -Text 'The PDF file contains no pages.' -Language $Language -MessagesPath $MessagesPath)
         }
         $isDigitallyBorn = $visibleTextPageCount -gt 0 -and $scannedPageCount -eq 0
         if ($signatureStatus -eq 'SIGNED') {
-            $failureReason = Get-LocalizedText @localization -Text 'Digitally signed PDF'
-            $failureDetails = Get-LocalizedText @localization -Text 'The input PDF has a digital signature. OCR would alter the document and invalidate the signature.'
-            & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Could not process: '{0}'`n{1}" -Arguments @($Pdf.Name, $failureDetails))
+            $failureReason = Get-LocalizedText -Text 'Digitally signed PDF' -Language $Language -MessagesPath $MessagesPath
+            $failureDetails = Get-LocalizedText -Text 'The input PDF has a digital signature. OCR would alter the document and invalidate the signature.' -Language $Language -MessagesPath $MessagesPath
+            & $Reporter 'Warning' $null (Get-LocalizedText -Text "Could not process: '{0}'`n{1}" -Arguments @($Pdf.Name, $failureDetails) -Language $Language -MessagesPath $MessagesPath)
             return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
 
         if ($isDigitallyBorn)
         {
-            $failureReason = Get-LocalizedText @localization -Text 'Digitally born PDF; skipped by default'
-            & $Reporter 'Host' 'Green' (Get-LocalizedText @localization -Text 'This PDF appears digitally born; skipping it.')
+            $failureReason = Get-LocalizedText -Text 'Digitally born PDF; skipped by default' -Language $Language -MessagesPath $MessagesPath
+            & $Reporter 'Host' 'Green' (Get-LocalizedText -Text 'This PDF appears digitally born; skipping it.' -Language $Language -MessagesPath $MessagesPath)
             return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
 
         if (-not $ReplaceOriginal -and (Test-Path -LiteralPath $originalPath)) {
             $relativeOriginalPath = $originalPath.Substring($Pdf.DirectoryName.Length + 1)
-            $backupWarning = Get-LocalizedText @localization -Text 'Backup already exists'
-            & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Backup '{0}' already exists and will be preserved; replacing the PDF directly." -Arguments @($relativeOriginalPath))
+            $backupWarning = Get-LocalizedText -Text 'Backup already exists' -Language $Language -MessagesPath $MessagesPath
+            & $Reporter 'Warning' $null (Get-LocalizedText -Text "Backup '{0}' already exists and will be preserved; replacing the PDF directly." -Arguments @($relativeOriginalPath) -Language $Language -MessagesPath $MessagesPath)
         }
 
         $hasExistingText = $textPageCount -gt 0
@@ -279,7 +276,7 @@ with pdf:
         $changedRotationPages = 0
         if ($hasExistingText)
         {
-            & $Reporter 'Host' 'Yellow' (Get-LocalizedText @localization -Text 'Existing OCR text will be preserved; page rotation is detected without running OCR.')
+            & $Reporter 'Host' 'Yellow' (Get-LocalizedText -Text 'Existing OCR text will be preserved; page rotation is detected without running OCR.' -Language $Language -MessagesPath $MessagesPath)
             if (-not $NoRotationOfPages)
             {
                 if ($GhostscriptPath -and $TesseractPath)
@@ -287,7 +284,7 @@ with pdf:
                     $rotationResult = Invoke-PdfRotationOnly -Pdf $Pdf -PageCount $pageCount `
                         -PythonPath $PythonPath -GhostscriptPath $GhostscriptPath -TesseractPath $TesseractPath `
                         -OutputPath $rotationTempPath -ConfidenceThreshold 5 `
-                        -UiLanguage $UiLanguage -Messages $Messages
+                        -UiLanguage $UiLanguage -MessagesPath $MessagesPath
                     $changedRotationPages = $rotationResult.ChangedPages.Count
                     if ($changedRotationPages -gt 0)
                     {
@@ -295,12 +292,12 @@ with pdf:
                     }
                     if ($rotationResult.UndeterminedPages.Count -gt 0)
                     {
-                        & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text 'Orientation could not be determined for pages: {0}; those pages were left unchanged.' -Arguments @(($rotationResult.UndeterminedPages -join ', ')))
+                        & $Reporter 'Warning' $null (Get-LocalizedText -Text 'Orientation could not be determined for pages: {0}; those pages were left unchanged.' -Arguments @(($rotationResult.UndeterminedPages -join ', ')) -Language $Language -MessagesPath $MessagesPath)
                     }
                 }
                 else
                 {
-                    $rotationWarning = Get-LocalizedText @localization -Text 'Ghostscript is unavailable; page rotation could not be checked for this PDF.'
+                    $rotationWarning = Get-LocalizedText -Text 'Ghostscript is unavailable; page rotation could not be checked for this PDF.' -Language $Language -MessagesPath $MessagesPath
                     $backupWarning = if ($backupWarning)
                     {
                         $backupWarning + ' ' + $rotationWarning
@@ -319,7 +316,7 @@ with pdf:
                 $resultPath = $rotationTempPath
                 if ($changedRotationPages -eq 0)
                 {
-                    $failureReason = Get-LocalizedText @localization -Text 'Existing OCR was preserved; no page rotation was applied.'
+                    $failureReason = Get-LocalizedText -Text 'Existing OCR was preserved; no page rotation was applied.' -Language $Language -MessagesPath $MessagesPath
                     & $Reporter 'Host' 'Yellow' $failureReason
                     return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $backupWarning; OriginalBytes = [long]0; ResultBytes = [long]0 }
                 }
@@ -359,8 +356,8 @@ with pdf:
             }
             if ($ocrExitCode -ne 0 -or -not (Test-Path -LiteralPath $tempPath))
             {
-                $failureReason = Get-LocalizedText @localization -Text 'OCRmyPDF error (exit code {0})' -Arguments @($ocrExitCode)
-                $failureDetails = Get-LocalizedText @localization -Text '{0}. See the OCRmyPDF console output for details.' -Arguments @($failureReason)
+                $failureReason = Get-LocalizedText -Text 'OCRmyPDF error (exit code {0})' -Arguments @($ocrExitCode) -Language $Language -MessagesPath $MessagesPath
+                $failureDetails = Get-LocalizedText -Text '{0}. See the OCRmyPDF console output for details.' -Arguments @($failureReason) -Language $Language -MessagesPath $MessagesPath
                 throw $failureDetails
             }
         }
@@ -371,7 +368,7 @@ with pdf:
 
         if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf))
         {
-            throw (Get-LocalizedText @localization 'The processing step did not produce an output PDF.')
+            throw (Get-LocalizedText 'The processing step did not produce an output PDF.' -Language $Language -MessagesPath $MessagesPath)
         }
         $originalSize = (Get-Item -LiteralPath $Pdf.FullName).Length
         $resultSize = (Get-Item -LiteralPath $resultPath).Length
@@ -380,30 +377,30 @@ with pdf:
         $originalHash = Get-FileSha256 -Path $Pdf.FullName
         $resultHash = Get-FileSha256 -Path $resultPath
         if ($originalHash -eq $resultHash) {
-            & $Reporter 'Host' 'Yellow' (Get-LocalizedText @localization -Text 'The result is identical to the original (no changes); discarding the output.')
-            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = (Get-LocalizedText @localization -Text 'No changes'); Warning = $backupWarning; OriginalBytes = [long]$originalSize; ResultBytes = [long]0 }
+            & $Reporter 'Host' 'Yellow' (Get-LocalizedText -Text 'The result is identical to the original (no changes); discarding the output.' -Language $Language -MessagesPath $MessagesPath)
+            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = (Get-LocalizedText -Text 'No changes' -Language $Language -MessagesPath $MessagesPath); Warning = $backupWarning; OriginalBytes = [long]$originalSize; ResultBytes = [long]0 }
         }
 
         # Replace the input only after successful processing and hash validation.
         if (-not $ReplaceOriginal -and -not (Test-Path -LiteralPath $originalPath)) {
             [System.IO.File]::Replace($resultPath, $Pdf.FullName, $originalPath)
-            & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Original backed up: {0}' -Arguments @($originalPath))
+            & $Reporter 'Host' $null (Get-LocalizedText -Text 'Original backed up: {0}' -Arguments @($originalPath) -Language $Language -MessagesPath $MessagesPath)
         }
         else {
             [System.IO.File]::Replace($resultPath, $Pdf.FullName, $replaceBackupPath)
         }
         if ($resultSize -lt $originalSize) {
-            & $Reporter 'Host' 'Green' (Get-LocalizedText @localization -Text 'Optimized: {0:N1} MB -> {1:N1} MB' -Arguments @(($originalSize / 1MB), ($resultSize / 1MB)))
+            & $Reporter 'Host' 'Green' (Get-LocalizedText -Text 'Optimized: {0:N1} MB -> {1:N1} MB' -Arguments @(($originalSize / 1MB), ($resultSize / 1MB)) -Language $Language -MessagesPath $MessagesPath)
         }
         else {
-            & $Reporter 'Host' 'Cyan' (Get-LocalizedText @localization -Text 'Processed (larger than original): {0:N1} MB -> {1:N1} MB' -Arguments @(($originalSize / 1MB), ($resultSize / 1MB)))
+            & $Reporter 'Host' 'Cyan' (Get-LocalizedText -Text 'Processed (larger than original): {0:N1} MB -> {1:N1} MB' -Arguments @(($originalSize / 1MB), ($resultSize / 1MB)) -Language $Language -MessagesPath $MessagesPath)
         }
-        & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Saved: {0}' -Arguments @($Pdf.FullName))
+        & $Reporter 'Host' $null (Get-LocalizedText -Text 'Saved: {0}' -Arguments @($Pdf.FullName) -Language $Language -MessagesPath $MessagesPath)
         return [pscustomobject]@{ Success = $true; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $null; Warning = $backupWarning; OriginalBytes = [long]$originalSize; ResultBytes = [long]$resultSize }
     }
     catch {
         if (-not $failureDetails) { $failureDetails = $_.Exception.Message }
-        & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Error processing '{0}':`n{1}" -Arguments @($Pdf.Name, $failureDetails))
+        & $Reporter 'Warning' $null (Get-LocalizedText -Text "Error processing '{0}':`n{1}" -Arguments @($Pdf.Name, $failureDetails) -Language $Language -MessagesPath $MessagesPath)
         if (-not $failureReason) {
             $failureReason = $failureDetails -split '[\r\n]' | Select-Object -First 1
         }

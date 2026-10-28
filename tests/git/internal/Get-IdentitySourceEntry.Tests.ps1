@@ -86,10 +86,10 @@ Describe 'Get-IdentitySourceEntry' {
         $entries[6].Value | Should -Be 'ann@fabrikam.test'
     }
 
-    It 'passes the language and catalog to the Git helper' {
+    It 'passes the language and catalog path to the Git helper' {
         $account = $script:DomainAccount.Clone()
         $account.Language = 'de'
-        $account.Messages = @{}
+        $account.MessagesPath = Join-Path $PSScriptRoot '..\..\..\git\l10n\de-DE\Messages.psd1'
         Get-IdentitySourceEntry @account | Out-Null
         Should -Invoke Get-GitConfigValue -ParameterFilter { $Language -eq 'de' } -Times 3 -Exactly
     }

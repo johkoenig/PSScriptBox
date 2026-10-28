@@ -31,8 +31,8 @@
 .PARAMETER UiLanguage
     Language of error messages: 'de' selects the German catalog, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with Files (System.IO.FileInfo[]) and BasePath (string). BasePath
@@ -43,14 +43,15 @@ function Get-PdfInputFile {
     param(
         [string] $Path,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
-    if ([string]::IsNullOrWhiteSpace($Path)) { throw (Get-LocalizedText @localization -Text 'No path was entered.') }
+    if ( [string]::IsNullOrWhiteSpace($Path))
+    {
+        throw (Get-LocalizedText -Text 'No path was entered.' -Language $UiLanguage -MessagesPath $MessagesPath)
+    }
     $Path = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"'))
     if (-not (Test-Path -LiteralPath $Path)) {
-        throw (Get-LocalizedText @localization -Text 'Path not found: {0}' -Arguments @($Path))
+        throw (Get-LocalizedText -Text 'Path not found: {0}' -Arguments @($Path) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
     $item = Get-Item -LiteralPath $Path
 
@@ -62,7 +63,7 @@ function Get-PdfInputFile {
     }
     else {
         if ($item.Extension -ine '.pdf') {
-            throw (Get-LocalizedText @localization -Text 'The selected file does not have a .pdf extension.')
+            throw (Get-LocalizedText -Text 'The selected file does not have a .pdf extension.' -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         $files = @($item)
         $basePath = $item.DirectoryName

@@ -37,8 +37,8 @@
 .PARAMETER UiLanguage
     Language of error messages: 'de' selects German, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     System.String[] containing only date-tag assignments that need writing.
@@ -51,10 +51,8 @@ function Get-MediaDateUpdateArgument
         [Parameter(Mandatory)][datetime] $DateTime,
         [Parameter(Mandatory)][string] $ExifToolPath,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ }
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $dateTags = @(
         'DateTimeOriginal',
         'CreateDate',
@@ -71,7 +69,7 @@ function Get-MediaDateUpdateArgument
         '-DateTimeOriginal', '-CreateDate', '-ModifyDate',
         '-MediaCreateDate', '-MediaModifyDate', '-TrackCreateDate', '-TrackModifyDate',
         $Path
-    ) -UiLanguage $UiLanguage -Messages $Messages
+    ) -UiLanguage $UiLanguage -MessagesPath $MessagesPath
     if ($result.ExitCode -ne 0)
     {
         $details = if ( [string]::IsNullOrWhiteSpace($result.StdErr))
@@ -82,9 +80,9 @@ function Get-MediaDateUpdateArgument
         {
             $result.StdErr.Trim()
         }
-        throw (Get-LocalizedText @localization -Text 'ExifTool could not read date metadata for {0}: {1}' -Arguments @(
+        throw (Get-LocalizedText -Text 'ExifTool could not read date metadata for {0}: {1}' -Arguments @(
             $Path, $details
-        ))
+        ) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
 
     try
@@ -93,9 +91,9 @@ function Get-MediaDateUpdateArgument
     }
     catch
     {
-        throw (Get-LocalizedText @localization -Text 'ExifTool returned invalid date metadata for {0}: {1}' -Arguments @(
+        throw (Get-LocalizedText -Text 'ExifTool returned invalid date metadata for {0}: {1}' -Arguments @(
             $Path, $_.Exception.Message
-        ))
+        ) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
     if ($parsedMetadata -is [array])
     {
@@ -107,9 +105,9 @@ function Get-MediaDateUpdateArgument
     }
     if ($records.Count -ne 1)
     {
-        throw (Get-LocalizedText @localization -Text 'ExifTool returned an unexpected number of metadata records for {0}.' -Arguments @(
+        throw (Get-LocalizedText -Text 'ExifTool returned an unexpected number of metadata records for {0}.' -Arguments @(
             $Path
-        ))
+        ) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
 
     $propertiesByTag = @{ }

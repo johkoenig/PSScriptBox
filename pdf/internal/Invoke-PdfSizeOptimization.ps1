@@ -50,8 +50,8 @@
 .PARAMETER UiLanguage
     Language of the messages: 'de' selects the German catalog, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .PARAMETER Reporter
     Receives regular and warning messages for display by the caller.
@@ -73,11 +73,9 @@ function Invoke-PdfSizeOptimization
         [long] $MinFileSize = 1MB,
         [Parameter(Mandatory)][bool] $ReplaceOriginal,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ },
+        [string]$MessagesPath = '',
         [scriptblock] $Reporter = { }
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $tempStem = '.{0}' -f [guid]::NewGuid().ToString('N')
     $candidatePath = Join-Path $Pdf.DirectoryName ($tempStem + '.pdf.part')
     $checkPath = Join-Path $Pdf.DirectoryName ($tempStem + '.check.py.part')
@@ -91,12 +89,12 @@ function Invoke-PdfSizeOptimization
         $originalSize = (Get-Item -LiteralPath $Pdf.FullName).Length
         if ($originalSize -lt $MinFileSize)
         {
-            $failureReason = Get-LocalizedText @localization -Text 'Below minimum file size: {0:N2} MB' -Arguments @(($MinFileSize / 1MB))
-            & $Reporter 'Host' 'DarkYellow' (Get-LocalizedText @localization -Text 'The original is smaller than the minimum size ({0:N2} MB); skipping it.' -Arguments @(($MinFileSize / 1MB)))
+            $failureReason = Get-LocalizedText -Text 'Below minimum file size: {0:N2} MB' -Arguments @(($MinFileSize / 1MB)) -Language $UiLanguage -MessagesPath $MessagesPath
+            & $Reporter 'Host' 'DarkYellow' (Get-LocalizedText -Text 'The original is smaller than the minimum size ({0:N2} MB); skipping it.' -Arguments @(($MinFileSize / 1MB)) -Language $UiLanguage -MessagesPath $MessagesPath)
             return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
 
-        & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Processing: {0}' -Arguments @($Pdf.Name))
+        & $Reporter 'Host' $null (Get-LocalizedText -Text 'Processing: {0}' -Arguments @($Pdf.Name) -Language $UiLanguage -MessagesPath $MessagesPath)
         $checkScript = @'
 import sys
 import pikepdf
@@ -147,25 +145,25 @@ with pdf:
         if ($checkExitCode -ne 0)
         {
             $details = ($checkOutput | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
-            throw (Get-LocalizedText @localization -Text 'PDF protection check failed (exit code {0}): {1}' -Arguments @($checkExitCode, $details))
+            throw (Get-LocalizedText -Text 'PDF protection check failed (exit code {0}): {1}' -Arguments @($checkExitCode, $details) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         $protection = ($checkOutput | ForEach-Object { $_.ToString() }) -join ''
         if ($protection.Trim() -eq 'ENCRYPTED')
         {
-            $failureReason = Get-LocalizedText @localization -Text 'Encrypted PDF'
-            & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Could not process: '{0}'`nThe PDF is encrypted and will not be processed." -Arguments @($Pdf.Name))
+            $failureReason = Get-LocalizedText -Text 'Encrypted PDF' -Language $UiLanguage -MessagesPath $MessagesPath
+            & $Reporter 'Warning' $null (Get-LocalizedText -Text "Could not process: '{0}'`nThe PDF is encrypted and will not be processed." -Arguments @($Pdf.Name) -Language $UiLanguage -MessagesPath $MessagesPath)
             return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
         if ($protection.Trim() -eq 'SIGNED')
         {
-            $failureReason = Get-LocalizedText @localization -Text 'Digitally signed PDF'
-            & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Could not process: '{0}'`nThe input PDF has a digital signature. PDF size optimization would alter the document and invalidate the signature." -Arguments @($Pdf.Name))
+            $failureReason = Get-LocalizedText -Text 'Digitally signed PDF' -Language $UiLanguage -MessagesPath $MessagesPath
+            & $Reporter 'Warning' $null (Get-LocalizedText -Text "Could not process: '{0}'`nThe input PDF has a digital signature. PDF size optimization would alter the document and invalidate the signature." -Arguments @($Pdf.Name) -Language $UiLanguage -MessagesPath $MessagesPath)
             return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
         if ($protection.Trim() -ne 'UNSIGNED')
         {
-            throw (Get-LocalizedText @localization -Text "PDF protection check returned an invalid result: '{0}'" -Arguments @($protection))
+            throw (Get-LocalizedText -Text "PDF protection check returned an invalid result: '{0}'" -Arguments @($protection) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         Copy-Item -LiteralPath $Pdf.FullName -Destination $candidatePath
@@ -174,35 +172,35 @@ with pdf:
         $reduced = Optimize-WithGhostscript -GhostscriptPath $GhostscriptPath -Pdf $candidate -Dpi $Dpi -Quality $Quality
         if (-not $reduced)
         {
-            $failureReason = Get-LocalizedText @localization -Text 'No size reduction'
-            & $Reporter 'Host' 'Yellow' (Get-LocalizedText @localization -Text 'Ghostscript did not produce a smaller PDF; the original was left unchanged.')
+            $failureReason = Get-LocalizedText -Text 'No size reduction' -Language $UiLanguage -MessagesPath $MessagesPath
+            & $Reporter 'Host' 'Yellow' (Get-LocalizedText -Text 'Ghostscript did not produce a smaller PDF; the original was left unchanged.' -Language $UiLanguage -MessagesPath $MessagesPath)
             return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $backupWarning; OriginalBytes = [long]0; ResultBytes = [long]0 }
         }
 
         if (-not $ReplaceOriginal -and (Test-Path -LiteralPath $originalPath))
         {
-            $backupWarning = Get-LocalizedText @localization -Text 'Backup already exists'
-            & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Backup '{0}' already exists and will be preserved; replacing the PDF directly." -Arguments @([System.IO.Path]::GetFileName($originalPath)))
+            $backupWarning = Get-LocalizedText -Text 'Backup already exists' -Language $UiLanguage -MessagesPath $MessagesPath
+            & $Reporter 'Warning' $null (Get-LocalizedText -Text "Backup '{0}' already exists and will be preserved; replacing the PDF directly." -Arguments @([System.IO.Path]::GetFileName($originalPath)) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         $resultSize = (Get-Item -LiteralPath $candidatePath).Length
         if (-not $ReplaceOriginal -and -not (Test-Path -LiteralPath $originalPath))
         {
             [System.IO.File]::Replace($candidatePath, $Pdf.FullName, $originalPath)
-            & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Original backed up: {0}' -Arguments @($originalPath))
+            & $Reporter 'Host' $null (Get-LocalizedText -Text 'Original backed up: {0}' -Arguments @($originalPath) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         else
         {
             [System.IO.File]::Replace($candidatePath, $Pdf.FullName, $replaceBackupPath)
         }
-        & $Reporter 'Host' 'Green' (Get-LocalizedText @localization -Text 'Optimized: {0:N1} MB -> {1:N1} MB' -Arguments @(($originalSize / 1MB), ($resultSize / 1MB)))
-        & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Saved: {0}' -Arguments @($Pdf.FullName))
+        & $Reporter 'Host' 'Green' (Get-LocalizedText -Text 'Optimized: {0:N1} MB -> {1:N1} MB' -Arguments @(($originalSize / 1MB), ($resultSize / 1MB)) -Language $UiLanguage -MessagesPath $MessagesPath)
+        & $Reporter 'Host' $null (Get-LocalizedText -Text 'Saved: {0}' -Arguments @($Pdf.FullName) -Language $UiLanguage -MessagesPath $MessagesPath)
         return [pscustomobject]@{ Success = $true; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $null; Warning = $backupWarning; OriginalBytes = [long]$originalSize; ResultBytes = [long]$resultSize }
     }
     catch
     {
         $errorDetails = $_.Exception.Message
         $failureReason = $errorDetails -split '[\r\n]' | Select-Object -First 1
-        & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Error processing '{0}':`n{1}" -Arguments @($Pdf.Name, $errorDetails))
+        & $Reporter 'Warning' $null (Get-LocalizedText -Text "Error processing '{0}':`n{1}" -Arguments @($Pdf.Name, $errorDetails) -Language $UiLanguage -MessagesPath $MessagesPath)
         return [pscustomobject]@{ Success = $false; Skipped = $false; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $backupWarning; OriginalBytes = [long]0; ResultBytes = [long]0 }
     }
     finally

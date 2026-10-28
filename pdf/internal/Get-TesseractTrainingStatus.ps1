@@ -31,8 +31,8 @@
 .PARAMETER UiLanguage
     'de' selects German messages; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with Languages, TessdataPath, and CheckSucceeded.
@@ -42,10 +42,10 @@ function Get-TesseractTrainingStatus {
     param(
         [Parameter(Mandatory)][string] $TesseractPath,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
 
-    $processOptions = @{ UiLanguage = $UiLanguage; Messages = $Messages }
+    $processOptions = @{ UiLanguage = $UiLanguage; MessagesPath = $MessagesPath }
     $result = Invoke-SetupProcess -FilePath $TesseractPath -Arguments @('--list-langs') @processOptions
     if ($result.ExitCode -ne 0) {
         return [pscustomobject]@{

@@ -80,9 +80,9 @@ Describe 'Set-RecommendedGitSetting' {
     }
 
     It 'passes the scope, repository, language, and catalog to the Git helpers' {
-        $messages = @{ 'x' = 'y' }
+        $messages = Join-Path $PSScriptRoot '..\..\..\git\l10n\de-DE\Messages.psd1'
         Set-RecommendedGitSetting -Changes @(New-Change -Key 'fetch.prune' -Value 'true') `
-            -Scope 'Local' -Repository 'C:\repo' -Language 'de' -Messages $messages | Out-Null
+            -Scope 'Local' -Repository 'C:\repo' -Language 'de' -MessagesPath $messages | Out-Null
         Should -Invoke Get-GitConfigValue -Times 1 -Exactly -ParameterFilter {
             $Scope -eq 'Local' -and $Repository -eq 'C:\repo' -and $Language -eq 'de'
         }

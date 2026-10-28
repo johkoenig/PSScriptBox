@@ -40,8 +40,8 @@
 .PARAMETER UiLanguage
 Language of user-facing confirmation text: 'de' selects German, anything else English.
 
-.PARAMETER Messages
-German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+Path to the German message catalog.
 
 .OUTPUTS
 PSCustomObject with DeletedCount (number of deleted folders) and
@@ -55,7 +55,7 @@ function Remove-EmptyMatchingDirectory
         [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string] $DestinationPath,
         [Parameter(Mandatory)][AllowEmptyCollection()][string[]] $RelativeDirectories,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ }
+        [string]$MessagesPath = ''
     )
 
     $deletedCount = 0
@@ -77,7 +77,7 @@ function Remove-EmptyMatchingDirectory
             $entries = [System.IO.Directory]::GetFileSystemEntries($sourceDirectoryPath)
             if ($entries.Length -eq 0) {
                 $action = Get-LocalizedText -Text 'Remove empty matching directory: {0}' `
-                    -Arguments @($relativeDirectory) -Language $UiLanguage -Messages $Messages
+                    -Arguments @($relativeDirectory) -Language $UiLanguage -MessagesPath $MessagesPath
                 if ( $PSCmdlet.ShouldProcess($sourceDirectoryPath, $action))
                 {
                     Remove-Item -LiteralPath $sourceDirectoryPath -Force -ErrorAction Stop

@@ -7,6 +7,9 @@ Repository guidance, especially for PowerShell scripts.
 - German text appears only in the German message catalog (`l10n/de-DE/Messages.psd1`) and in console output or input prompts the user sees. Never put German text into code, comments, or help.
 - Console messages must be localized: use German when the Windows UI culture is German and English otherwise. Every script must provide an `-EnglishOutput` switch to force English.
 - Keep translations out of executable logic. Use a message catalog under the relevant tool folder's `l10n/<culture>/Messages.psd1` and a small, documented lookup helper. English source strings are the fallback; add German translations to the German catalog.
+- Pass the catalog path through callers to `Get-LocalizedText` and internal helper functions; do not rely on
+  script-scope language or catalog variables. When `-Language` is omitted, `Get-LocalizedText` derives it from the
+  current UI culture.
 - Every script starts with comment-based help containing `.SYNOPSIS`, `.DESCRIPTION`, at least one `.EXAMPLE`, and `.NOTES` listing dependencies.
 - Keep user-facing documentation in both top-level `README.md` / `README.de.md` and each tool folder's `README.md` / `README.de.md`. Update all applicable README files whenever script content, behavior, parameters, or user workflows change; keep the English and German versions consistent.
 - Each README starts with one note line that links to the other language version (for example, `> Deutsche Version: [README.de.md](README.de.md)`). Do not add "Documentation" or "Related Documentation" sections at the end.

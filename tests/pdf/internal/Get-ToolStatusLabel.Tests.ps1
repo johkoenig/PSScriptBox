@@ -30,7 +30,7 @@ Describe 'Get-ToolStatusLabel' {
     }
 
     It 'returns the German label when the German catalog is supplied' {
-        $messages = @{ 'Missing' = 'Fehlt' }
-        Get-ToolStatusLabel -Available $false -Path '' -UiLanguage 'de' -Messages $messages | Should -Be 'Fehlt'
+        $messagesPath = Join-Path $PSScriptRoot '..\..\..\pdf\l10n\de-DE\Messages.psd1'
+        Get-ToolStatusLabel -Available $false -Path '' -UiLanguage 'de' -MessagesPath $messagesPath | Should -Be 'Fehlt'
     }
 }

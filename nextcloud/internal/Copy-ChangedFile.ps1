@@ -46,8 +46,8 @@
 .PARAMETER Language
     'de' selects German messages; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .PARAMETER ProgressReporter
     Optional callback invoked with -Activity, -Status, and -PercentComplete
@@ -71,7 +71,7 @@ function Copy-ChangedFile
         [Parameter(Mandatory)][psobject] $DestinationInventory,
         [Parameter(Mandatory)][string] $FolderName,
         [string] $Language = 'en',
-        [hashtable] $Messages = @{},
+        [string]$MessagesPath = '',
         [AllowNull()][scriptblock] $ProgressReporter
     )
 
@@ -99,14 +99,14 @@ function Copy-ChangedFile
     foreach ($relativeDirectory in ($SourceInventory.Directories | Sort-Object { $_.Length })) {
         [System.IO.Directory]::CreateDirectory((Join-Path $Destination $relativeDirectory)) | Out-Null
     }
-    $activity = Get-LocalizedText -Text 'Copying folder {0}' -Arguments @($FolderName) -Language $Language -Messages $Messages
+    $activity = Get-LocalizedText -Text 'Copying folder {0}' -Arguments @($FolderName) -Language $Language -MessagesPath $MessagesPath
     for ($i = 0; $i -lt $SourceInventory.Files.Count; $i++) {
         $file = $SourceInventory.Files[$i]
         if ($SourceInventory.Files.Count -gt 0 -and $null -ne $ProgressReporter)
         {
             $checkPercent = [int](100 * $i / $SourceInventory.Files.Count)
             & $ProgressReporter -Activity $activity `
-                -Status (Get-LocalizedText -Text 'Checking files for identical content' -Language $Language -Messages $Messages) `
+                -Status (Get-LocalizedText -Text 'Checking files for identical content' -Language $Language -MessagesPath $MessagesPath) `
                 -PercentComplete $checkPercent
         }
         $sourceFilePath = Join-Path $Source $file.RelativePath
@@ -129,7 +129,7 @@ function Copy-ChangedFile
             $sourceHashAfterCheck = Get-FileSha256 -Path $sourceFilePath
             if ($sourceHashAfterCheck -ne $sourceHash) {
                 throw (Get-LocalizedText -Text 'Source file changed while checking for identical content: {0}' `
-                        -Arguments @($file.RelativePath) -Language $Language -Messages $Messages)
+                        -Arguments @($file.RelativePath) -Language $Language -MessagesPath $MessagesPath)
             }
             $identicalFiles++
             $identicalBytes += [long]$file.Length
@@ -151,7 +151,7 @@ function Copy-ChangedFile
             -DestinationDirectory $destinationFileDirectory -FileName $sourceFileName `
             -RelativePath $file.RelativePath -FileLength ([long]$file.Length) -ExpectedHash $copyItem.Hash `
             -CompletedBytes $completedBytes -TotalBytes ([long]$SourceInventory.TotalBytes) `
-            -FolderName $FolderName -Language $Language -Messages $Messages -ProgressReporter $ProgressReporter
+            -FolderName $FolderName -Language $Language -MessagesPath $MessagesPath -ProgressReporter $ProgressReporter
         $copiedFiles++
         $copiedBytes += [long]$file.Length
         $completedBytes += [long]$file.Length

@@ -39,8 +39,8 @@
 .PARAMETER UiLanguage
     Language of confirmation text: 'de' selects German, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
 None.
@@ -54,11 +54,11 @@ function Set-MediaFileTimestamp
         [Parameter(Mandatory)][datetime] $LastWriteTimeUtc,
         [Parameter(Mandatory)][datetime] $LastAccessTimeUtc,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ }
+        [string]$MessagesPath = ''
     )
 
     $action = Get-LocalizedText -Text 'Restore source file timestamps' `
-        -Language $UiLanguage -Messages $Messages
+        -Language $UiLanguage -MessagesPath $MessagesPath
     if (-not $PSCmdlet.ShouldProcess($Path, $action))
     {
         return
