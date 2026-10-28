@@ -23,6 +23,23 @@ Repository guidance, especially for PowerShell scripts.
 - Every PowerShell function and user-defined method follows the `ApprovedVerb-Noun` pattern. Check every prefix against `Get-Verb`; do not assume a familiar English verb is approved. Use a specific noun, and update callers and tests whenever a function or method is renamed.
 - Comment on non-obvious decisions and explain why. Do not add comments that merely restate obvious code; use short section headings to structure the main script.
 
+## File headers and contributor attribution
+
+- License the project and its files under the MIT License. Keep the standard license text in the root `LICENSE.md`.
+- Every PowerShell script, module, and data file (`.ps1`, `.psm1`, `.psd1`) must include the SPDX identifier, project
+  copyright notice, and a `Contributors` section. Use the file's comment syntax and this order:
+  ```text
+  # SPDX-License-Identifier: MIT
+  # Copyright (c) <year> PSScriptBox contributors
+  # Contributors:
+  # - <contributor reference>
+  ```
+- In production scripts, place this header after the required file-level comment-based help. In test files, place it at
+  the beginning of the file, before any file-level description.
+- Every code file must have a `Contributors` section, using the appropriate comment syntax for its language. Each
+  contributor who participates in a code file must add their own reference to that file's section; preserve existing
+  entries. Include contact details only when that contributor has explicitly approved them.
+
 ## Code structure and testability
 - Every tool folder has a top-level script for the user-facing flow. The script contains only parameter handling, the console flow, and calls to functions. Load helpers by dot-sourcing them with paths relative to `$PSScriptRoot`.
 - Production PowerShell code must not use `$script:` scope. Pass data explicitly through parameters and return values
@@ -60,8 +77,6 @@ Repository guidance, especially for PowerShell scripts.
 - Use `-LiteralPath` and `Join-Path` consistently. Normalize user input with `Trim()` and `ExpandEnvironmentVariables()` before use.
 - Start external console programs with redirected streams and read asynchronously so errors are not mistaken for PowerShell terminating errors and large output cannot block a pipe. Exception: run OCRmyPDF without stream redirection so its progress bar is displayed live.
 - Save PowerShell scripts with a UTF-8 BOM (U+FEFF). Windows PowerShell 5.1 otherwise interprets non-ASCII text as ANSI.
-- License the project and its files under the MIT License. Keep the standard license text in the root `LICENSE.md` and add an SPDX-License-Identifier: MIT header and the project copyright notice to every PowerShell script and PowerShell data file. Place headers after the required script help block.
-- Include a `Contributors` section in every code file, listing the contributors and contact details explicitly approved for attribution.
 
 ## Dependencies and installation
 - Scripts that only process or inspect user files must not install software and should not require administrator rights.
@@ -104,3 +119,12 @@ Repository guidance, especially for PowerShell scripts.
 - New code aims for near 100% coverage. Existing code is covered step by step. Legacy scripts with top-level flow have a skipped placeholder test until they are refactored into functions.
 - Run `tests\Invoke-Tests.ps1` (add `-Coverage` for coverage of `internal` files). The tests must pass on Windows PowerShell 5.1 and PowerShell 7.
 - Every `.ps1` file, including tests, is saved with a UTF-8 BOM.
+
+## AI-assisted development
+
+- AI tools are welcome and encouraged, especially for applying repository-wide standards, deriving tests, writing
+  documentation, and reviewing changes. They may also assist with core implementation.
+- Vibe coding is permitted within reason, but generated work must be reviewed, understood, and validated before
+  submission. The contributor remains responsible for the correctness, security, licensing, privacy, testing, and user
+  impact of every change in their PR.
+- Do not provide confidential information, credentials, or secrets to AI tools.
