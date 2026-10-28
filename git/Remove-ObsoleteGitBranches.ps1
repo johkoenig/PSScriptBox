@@ -65,7 +65,7 @@ foreach ($parameterName in @('Confirm', 'WhatIf'))
     }
 }
 
-$script:Language = if (-not $EnglishOutput -and [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -eq 'de')
+$Language = if (-not $EnglishOutput -and [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -eq 'de')
 {
     'de'
 }
@@ -73,7 +73,7 @@ else
 {
     'en'
 }
-$script:MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
+$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 
 $headerLines = @(
     '       .-------------------------------------------.'
@@ -90,8 +90,8 @@ foreach ($headerLine in $headerLines)
 {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText -Text '  Removes obsolete local branches without changing the working tree.' -Language $script:Language -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text '  Supports preview; removal runs without confirmation.' -Language $script:Language -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text '  Removes obsolete local branches without changing the working tree.' -Language $Language -MessagesPath $MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text '  Supports preview; removal runs without confirmation.' -Language $Language -MessagesPath $MessagesPath) -ForegroundColor Cyan
 Write-Host ''
 
 $gitCommand = Get-Command -Name 'git.exe' -ErrorAction SilentlyContinue |
@@ -100,9 +100,9 @@ if ($null -eq $gitCommand)
 {
     $report = Get-MissingDependencyReport -Dependency 'Git for Windows' `
         -Guidance (Get-LocalizedText -Text 'Install Git for Windows from https://git-scm.com/download/win, or run: choco install git.install -y.' `
-            -Language $script:Language -MessagesPath $script:MessagesPath) `
+            -Language $Language -MessagesPath $MessagesPath) `
         -MessageTemplate (Get-LocalizedText -Text 'Missing dependency: {0}' `
-            -Language $script:Language -MessagesPath $script:MessagesPath)
+            -Language $Language -MessagesPath $MessagesPath)
     Write-Host $report.Message -ForegroundColor Yellow
     Write-Host "  $( $report.Guidance )"
     exit 1
@@ -117,15 +117,15 @@ $candidateCount = 0
 
 try
 {
-    Write-Host (Get-LocalizedText -Text '=== Obsolete Git branches: processing started ===' -Language $script:Language -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text '=== Obsolete Git branches: processing started ===' -Language $Language -MessagesPath $MessagesPath) -ForegroundColor Cyan
 
     $invocationPath = (Get-Location).Path
     $repositoryRoot = (Invoke-GitCommand -Repository $invocationPath -Arguments @(
         'rev-parse',
         '--show-toplevel'
-    ) -Language $script:Language -MessagesPath $script:MessagesPath | Select-Object -First 1).Trim()
+    ) -Language $Language -MessagesPath $MessagesPath | Select-Object -First 1).Trim()
 
-    $branchState = Get-ObsoleteGitBranch -Repository $repositoryRoot -MainBranch 'main' -Language $script:Language -MessagesPath $script:MessagesPath
+    $branchState = Get-ObsoleteGitBranch -Repository $repositoryRoot -MainBranch 'main' -Language $Language -MessagesPath $MessagesPath
     $branchCount = $branchState.Branches.Count
     $candidateBranches = @($branchState.Branches | Where-Object { $_.IsObsolete })
     $candidateCount = $candidateBranches.Count
@@ -138,43 +138,43 @@ try
         $branchState.CurrentBranchRef.Substring('refs/heads/'.Length)
     }
 
-    Write-Host ((Get-LocalizedText -Text 'Repository: {0}' -Language $script:Language -MessagesPath $script:MessagesPath) -f $repositoryRoot)
-    Write-Host ((Get-LocalizedText -Text 'Current branch: {0}' -Language $script:Language -MessagesPath $script:MessagesPath) -f $currentBranchName)
-    Write-Host ((Get-LocalizedText -Text 'Local branches: {0}' -Language $script:Language -MessagesPath $script:MessagesPath) -f $branchCount)
-    Write-Host ((Get-LocalizedText -Text 'Obsolete candidates: {0}' -Language $script:Language -MessagesPath $script:MessagesPath) -f $candidateCount)
+    Write-Host ((Get-LocalizedText -Text 'Repository: {0}' -Language $Language -MessagesPath $MessagesPath) -f $repositoryRoot)
+    Write-Host ((Get-LocalizedText -Text 'Current branch: {0}' -Language $Language -MessagesPath $MessagesPath) -f $currentBranchName)
+    Write-Host ((Get-LocalizedText -Text 'Local branches: {0}' -Language $Language -MessagesPath $MessagesPath) -f $branchCount)
+    Write-Host ((Get-LocalizedText -Text 'Obsolete candidates: {0}' -Language $Language -MessagesPath $MessagesPath) -f $candidateCount)
 
     if ($candidateCount -eq 0)
     {
-        Write-Host (Get-LocalizedText -Text 'Nothing to remove; no obsolete local branches were found.' -Language $script:Language -MessagesPath $script:MessagesPath) -ForegroundColor Green
+        Write-Host (Get-LocalizedText -Text 'Nothing to remove; no obsolete local branches were found.' -Language $Language -MessagesPath $MessagesPath) -ForegroundColor Green
     }
 
     for ($index = 0; $index -lt $candidateBranches.Count; $index++) {
         $branch = $candidateBranches[$index]
         Write-Host ''
-        Write-Host ((Get-LocalizedText -Text '--- Branch {0}/{1}: {2} ---' -Language $script:Language -MessagesPath $script:MessagesPath) -f ($index + 1), $candidateCount, $branch.Name) -ForegroundColor Cyan
-        Write-Host ((Get-LocalizedText -Text 'Reasons: {0}' -Language $script:Language -MessagesPath $script:MessagesPath) -f ($branch.Reasons -join '; '))
+        Write-Host ((Get-LocalizedText -Text '--- Branch {0}/{1}: {2} ---' -Language $Language -MessagesPath $MessagesPath) -f ($index + 1), $candidateCount, $branch.Name) -ForegroundColor Cyan
+        Write-Host ((Get-LocalizedText -Text 'Reasons: {0}' -Language $Language -MessagesPath $MessagesPath) -f ($branch.Reasons -join '; '))
 
         try
         {
             $result = Remove-GitBranch -Repository $repositoryRoot -Name $branch.Name -Ref $branch.Ref `
-                -ExpectedObjectId $branch.ObjectId -Language $script:Language -MessagesPath $script:MessagesPath `
+                -ExpectedObjectId $branch.ObjectId -Language $Language -MessagesPath $MessagesPath `
                 @shouldProcessParameters
             switch ($result.Status)
             {
                 'Removed'
                 {
                     $removedCount++
-                    Write-Host ((Get-LocalizedText -Text 'Removed: {0}' -Language $script:Language -MessagesPath $script:MessagesPath) -f $branch.Name) -ForegroundColor Green
+                    Write-Host ((Get-LocalizedText -Text 'Removed: {0}' -Language $Language -MessagesPath $MessagesPath) -f $branch.Name) -ForegroundColor Green
                 }
                 'WhatIf'
                 {
                     $previewedCount++
-                    Write-Host ((Get-LocalizedText -Text 'Would remove: {0}' -Language $script:Language -MessagesPath $script:MessagesPath) -f $branch.Name) -ForegroundColor Yellow
+                    Write-Host ((Get-LocalizedText -Text 'Would remove: {0}' -Language $Language -MessagesPath $MessagesPath) -f $branch.Name) -ForegroundColor Yellow
                 }
                 'Declined'
                 {
                     $skippedCount++
-                    Write-Host ((Get-LocalizedText -Text 'Removal was not approved: {0}' -Language $script:Language -MessagesPath $script:MessagesPath) -f $branch.Name) -ForegroundColor DarkYellow
+                    Write-Host ((Get-LocalizedText -Text 'Removal was not approved: {0}' -Language $Language -MessagesPath $MessagesPath) -f $branch.Name) -ForegroundColor DarkYellow
                 }
             }
         }
@@ -185,17 +185,17 @@ try
                 Name = $branch.Name
                 Reason = $reason
             })
-            $message = Get-LocalizedText -Text "Could not remove branch '{0}': {1}" -Language $script:Language -MessagesPath $script:MessagesPath
+            $message = Get-LocalizedText -Text "Could not remove branch '{0}': {1}" -Language $Language -MessagesPath $MessagesPath
             Write-Warning ($message -f $branch.Name, $reason)
         }
     }
 
     Write-Host ''
-    Write-Host (Get-LocalizedText -Text '=== Summary ===' -Language $script:Language -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-    Write-Host ((Get-LocalizedText -Text 'Repository: {0}' -Language $script:Language -MessagesPath $script:MessagesPath) -f $repositoryRoot)
-    Write-Host ((Get-LocalizedText -Text 'Branches checked: {0}; obsolete candidates: {1}' -Language $script:Language -MessagesPath $script:MessagesPath) -f $branchCount, $candidateCount)
-    Write-Host ((Get-LocalizedText -Text 'Removed: {0}, previewed: {1}, skipped: {2}, failed: {3}' -Language $script:Language -MessagesPath $script:MessagesPath) -f $removedCount, $previewedCount, $skippedCount, $failedBranches.Count)
-    Write-Host (Get-LocalizedText -Text 'Failed branches:' -Language $script:Language -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText -Text '=== Summary ===' -Language $Language -MessagesPath $MessagesPath) -ForegroundColor Cyan
+    Write-Host ((Get-LocalizedText -Text 'Repository: {0}' -Language $Language -MessagesPath $MessagesPath) -f $repositoryRoot)
+    Write-Host ((Get-LocalizedText -Text 'Branches checked: {0}; obsolete candidates: {1}' -Language $Language -MessagesPath $MessagesPath) -f $branchCount, $candidateCount)
+    Write-Host ((Get-LocalizedText -Text 'Removed: {0}, previewed: {1}, skipped: {2}, failed: {3}' -Language $Language -MessagesPath $MessagesPath) -f $removedCount, $previewedCount, $skippedCount, $failedBranches.Count)
+    Write-Host (Get-LocalizedText -Text 'Failed branches:' -Language $Language -MessagesPath $MessagesPath)
 
     if ($failedBranches.Count -eq 0)
     {
@@ -216,7 +216,7 @@ try
 }
 catch
 {
-    $message = Get-LocalizedText -Text 'Fatal error: {0}' -Language $script:Language -MessagesPath $script:MessagesPath
+    $message = Get-LocalizedText -Text 'Fatal error: {0}' -Language $Language -MessagesPath $MessagesPath
     Write-Host ($message -f $_.Exception.Message) -ForegroundColor Red
     exit 1
 }

@@ -168,20 +168,20 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Invoke-PdfRotationOnly.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-PdfProcessing.ps1')
 
-$script:OutputLanguage = if (
+$OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 ) { 'en' } else { 'de' }
-$script:MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
+$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 
 # Default OCR language sequence: German, English, French, Italian, and Spanish.
-$script:DefaultLanguage = 'deu+eng+fra+ita+spa'
+$DefaultLanguage = 'deu+eng+fra+ita+spa'
 
 # Required languages: processing stops with a notice if deu or eng is missing.
-$script:RequiredLanguages = @('deu', 'eng')
+$RequiredLanguages = @('deu', 'eng')
 
 # Source for Tesseract language data (.traineddata), which users must download
 # and place in the local tessdata folder.
-$script:TessdataUrl = 'https://github.com/tesseract-ocr/tessdata_best'
+$TessdataUrl = 'https://github.com/tesseract-ocr/tessdata_best'
 
 
 
@@ -203,43 +203,43 @@ Write-Host ''
 foreach ($headerLine in $headerLines) {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText '  Adds OCR text layers, deskews pages and corrects page orientation.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText '  Adds OCR text layers, deskews pages and corrects page orientation.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 if (-not $ReplaceOriginal) {
-    Write-Host (Get-LocalizedText '  Originals are saved as _orig files.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText '  Originals are saved as _orig files.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 }
 else {
-    Write-Host (Get-LocalizedText '  Originals are replaced without a backup.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText '  Originals are replaced without a backup.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 }
 Write-Host ''
 
 # Check required programs and modules before processing.
 $pythonRuntime = Get-PdfPythonRuntime
-$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}' -Language $OutputLanguage -MessagesPath $MessagesPath
 $dependencyCheck = Get-MissingDependency -PythonRuntime $pythonRuntime `
     -TesseractPath (Get-ExecutablePath -Name 'tesseract') `
     -GhostscriptPath (Get-GhostscriptExecutablePath) -NoGhostscript $false `
-    -UiLanguage $script:OutputLanguage -MessagesPath $script:MessagesPath
+    -UiLanguage $OutputLanguage -MessagesPath $MessagesPath
 if ($dependencyCheck.Missing.Count -gt 0) {
     foreach ($dependency in $dependencyCheck.Missing)
     {
         $guidance = switch ($dependency)
         {
-            (Get-LocalizedText 'Python interpreter' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) {
-                Get-LocalizedText 'Install Python from https://www.python.org/downloads/.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+            (Get-LocalizedText 'Python interpreter' -Language $OutputLanguage -MessagesPath $MessagesPath) {
+                Get-LocalizedText 'Install Python from https://www.python.org/downloads/.' -Language $OutputLanguage -MessagesPath $MessagesPath
                 break
             }
             'Tesseract' {
-                Get-LocalizedText 'Install Tesseract with Chocolatey: choco install tesseract -y, or download from https://github.com/UB-Mannheim/tesseract/wiki.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+                Get-LocalizedText 'Install Tesseract with Chocolatey: choco install tesseract -y, or download from https://github.com/UB-Mannheim/tesseract/wiki.' -Language $OutputLanguage -MessagesPath $MessagesPath
                 break
             }
-            (Get-LocalizedText 'OCRmyPDF (Python module)' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) {
+            (Get-LocalizedText 'OCRmyPDF (Python module)' -Language $OutputLanguage -MessagesPath $MessagesPath) {
                 Get-LocalizedText -Text 'Install the Python module with the selected interpreter: "{0}" -m pip install {1}.' `
-                    -Arguments @($dependencyCheck.PythonPath, 'ocrmypdf') -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+                    -Arguments @($dependencyCheck.PythonPath, 'ocrmypdf') -Language $OutputLanguage -MessagesPath $MessagesPath
                 break
             }
-            (Get-LocalizedText 'pikepdf (Python module)' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) {
+            (Get-LocalizedText 'pikepdf (Python module)' -Language $OutputLanguage -MessagesPath $MessagesPath) {
                 Get-LocalizedText -Text 'Install the Python module with the selected interpreter: "{0}" -m pip install {1}.' `
-                    -Arguments @($dependencyCheck.PythonPath, 'pikepdf') -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+                    -Arguments @($dependencyCheck.PythonPath, 'pikepdf') -Language $OutputLanguage -MessagesPath $MessagesPath
                 break
             }
         }
@@ -254,22 +254,22 @@ if ($dependencyCheck.OptionalMissing.Count -gt 0) {
     foreach ($dependency in $dependencyCheck.OptionalMissing)
     {
         $report = Get-MissingDependencyReport -Dependency $dependency `
-            -Guidance (Get-LocalizedText 'Install Ghostscript with Chocolatey: choco install ghostscript -y, or download from https://ghostscript.com/releases/gsdnld.html.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) `
+            -Guidance (Get-LocalizedText 'Install Ghostscript with Chocolatey: choco install ghostscript -y, or download from https://ghostscript.com/releases/gsdnld.html.' -Language $OutputLanguage -MessagesPath $MessagesPath) `
             -MessageTemplate $missingDependencyTemplate
         Write-Host $report.Message -ForegroundColor DarkYellow
         Write-Host "  $( $report.Guidance )"
     }
-    Write-Host (Get-LocalizedText 'Open a new PowerShell session and restart the script.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText 'Open a new PowerShell session and restart the script.' -Language $OutputLanguage -MessagesPath $MessagesPath)
     Write-Host ''
 }
 
 # --- Get Tesseract languages and tessdata folder --------------------------
 $tesseractPath = Get-ExecutablePath -Name 'tesseract'
 try {
-    $tesseractInfo = Get-TesseractLanguage -TesseractPath $tesseractPath -UiLanguage $script:OutputLanguage -MessagesPath $script:MessagesPath
+    $tesseractInfo = Get-TesseractLanguage -TesseractPath $tesseractPath -UiLanguage $OutputLanguage -MessagesPath $MessagesPath
 }
 catch {
-    Write-Error (Get-LocalizedText -Text 'Could not get Tesseract languages. Check "tesseract --list-langs": {0}' -Arguments @($_.Exception.Message) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Error (Get-LocalizedText -Text 'Could not get Tesseract languages. Check "tesseract --list-langs": {0}' -Arguments @($_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath)
     exit 1
 }
 $installedLanguages = @($tesseractInfo.Languages)
@@ -280,23 +280,23 @@ try {
     $selectedPath = $InputPath
     if ([string]::IsNullOrWhiteSpace($selectedPath)) {
         Write-Host ''
-        Write-Host (Get-LocalizedText 'Available parameters:' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-        Write-Host (Get-LocalizedText '  -InputPath <path>       PDF file or folder; prompts if omitted.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-        Write-Host (Get-LocalizedText '  -Language <languages>  OCR languages, e.g. deu+eng (default: deu+eng+fra+ita+spa).' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-        Write-Host (Get-LocalizedText '  -NoDeskew              Disable deskewing on pages needing OCR (enabled by default).' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-        Write-Host (Get-LocalizedText '  -NoRotationOfPages     Disable rotation correction (enabled by default).' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-        Write-Host (Get-LocalizedText '  -ReplaceOriginal       Replace original without an _orig backup.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-        Write-Host (Get-LocalizedText '  -EnglishOutput         Force English console output.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-        Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
-        $selectedPath = Read-Host -Prompt (Get-LocalizedText 'Path to a PDF file or a folder containing PDFs' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        Write-Host (Get-LocalizedText 'Available parameters:' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+        Write-Host (Get-LocalizedText '  -InputPath <path>       PDF file or folder; prompts if omitted.' -Language $OutputLanguage -MessagesPath $MessagesPath)
+        Write-Host (Get-LocalizedText '  -Language <languages>  OCR languages, e.g. deu+eng (default: deu+eng+fra+ita+spa).' -Language $OutputLanguage -MessagesPath $MessagesPath)
+        Write-Host (Get-LocalizedText '  -NoDeskew              Disable deskewing on pages needing OCR (enabled by default).' -Language $OutputLanguage -MessagesPath $MessagesPath)
+        Write-Host (Get-LocalizedText '  -NoRotationOfPages     Disable rotation correction (enabled by default).' -Language $OutputLanguage -MessagesPath $MessagesPath)
+        Write-Host (Get-LocalizedText '  -ReplaceOriginal       Replace original without an _orig backup.' -Language $OutputLanguage -MessagesPath $MessagesPath)
+        Write-Host (Get-LocalizedText '  -EnglishOutput         Force English console output.' -Language $OutputLanguage -MessagesPath $MessagesPath)
+        Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
+        $selectedPath = Read-Host -Prompt (Get-LocalizedText 'Path to a PDF file or a folder containing PDFs' -Language $OutputLanguage -MessagesPath $MessagesPath)
     }
-    $inputSelection = Get-PdfInputFile -Path $selectedPath -UiLanguage $script:OutputLanguage -MessagesPath $script:MessagesPath
+    $inputSelection = Get-PdfInputFile -Path $selectedPath -UiLanguage $OutputLanguage -MessagesPath $MessagesPath
 }
 catch { Write-Error $_.Exception.Message; exit 1 }
 $pdfFiles = @($inputSelection.Files)
 if ($pdfFiles.Count -eq 0)
 {
-    Write-Host (Get-LocalizedText 'No PDFs found.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath); exit 0
+    Write-Host (Get-LocalizedText 'No PDFs found.' -Language $OutputLanguage -MessagesPath $MessagesPath); exit 0
 }
 $inputBasePath = $inputSelection.BasePath
 $summaryPathSegments = @($inputBasePath.TrimEnd('\') -split '[\\/]' | Where-Object { $_ })
@@ -315,18 +315,18 @@ if (-not [string]::IsNullOrWhiteSpace($Language)) {
     $languageSelection = $Language.Trim()
 }
 else {
-    $languageSelection = $script:DefaultLanguage
+    $languageSelection = $DefaultLanguage
 }
 
 # Preserve the requested order when passing languages to OCRmyPDF.
 $requestedLanguages = @($languageSelection -split '\+' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 
 # Stop and show the download instructions if a required language is missing.
-$missingRequired = @($requestedLanguages | Where-Object { $script:RequiredLanguages -contains $_ -and $installedLanguages -notcontains $_ })
+$missingRequired = @($requestedLanguages | Where-Object { $RequiredLanguages -contains $_ -and $installedLanguages -notcontains $_ })
 if ($missingRequired.Count -gt 0) {
     Write-Host ''
     Get-LanguageDownloadHint -MissingLanguages $missingRequired -TessdataPath $tesseractInfo.TessdataPath `
-        -TessdataUrl $script:TessdataUrl -UiLanguage $script:OutputLanguage -MessagesPath $script:MessagesPath |
+        -TessdataUrl $TessdataUrl -UiLanguage $OutputLanguage -MessagesPath $MessagesPath |
         ForEach-Object { Write-Host $_ }
     exit 1
 }
@@ -335,23 +335,23 @@ if ($missingRequired.Count -gt 0) {
 $availableLanguages = @($requestedLanguages | Where-Object { $installedLanguages -contains $_ })
 $droppedLanguages = @($requestedLanguages | Where-Object { $installedLanguages -notcontains $_ })
 if ($droppedLanguages.Count -gt 0) {
-    Write-Host (Get-LocalizedText -Text 'Notice: these languages are not installed and will be removed: {0}' -Arguments @(($droppedLanguages -join ', ')) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor DarkYellow
+    Write-Host (Get-LocalizedText -Text 'Notice: these languages are not installed and will be removed: {0}' -Arguments @(($droppedLanguages -join ', ')) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
 }
 if ($availableLanguages.Count -eq 0) {
-    Write-Error (Get-LocalizedText 'None of the requested languages is installed.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Error (Get-LocalizedText 'None of the requested languages is installed.' -Language $OutputLanguage -MessagesPath $MessagesPath)
     exit 1
 }
 $languageSelection = $availableLanguages -join '+'
 
 # Run summary header.
 Write-Host ''
-Write-Host (Get-LocalizedText '=== PDF OCR: processing started ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text 'Number of files: {0}' -Arguments @($pdfFiles.Count) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-Write-Host (Get-LocalizedText -Text 'Languages: {0}' -Arguments @($languageSelection) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-Write-Host (Get-LocalizedText -Text 'Deskew on pages needing OCR: {0}' -Arguments @(-not $NoDeskew) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-Write-Host (Get-LocalizedText -Text 'Rotation correction: {0}' -Arguments @(-not $NoRotationOfPages) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-Write-Host (Get-LocalizedText 'Existing OCR is preserved; page rotation is corrected without regenerating OCR.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-Write-Host (Get-LocalizedText 'Output format: standard PDF (version 1.5)' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+Write-Host (Get-LocalizedText '=== PDF OCR: processing started ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Number of files: {0}' -Arguments @($pdfFiles.Count) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Languages: {0}' -Arguments @($languageSelection) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Deskew on pages needing OCR: {0}' -Arguments @(-not $NoDeskew) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Rotation correction: {0}' -Arguments @(-not $NoRotationOfPages) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText 'Existing OCR is preserved; page rotation is corrected without regenerating OCR.' -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText 'Output format: standard PDF (version 1.5)' -Language $OutputLanguage -MessagesPath $MessagesPath)
 
 # --- Process PDFs ---------------------------------------------------------
 # Routes the processing messages to the console: warnings through Write-Warning,
@@ -366,13 +366,13 @@ $results = @()
 for ($i = 0; $i -lt $pdfFiles.Count; $i++) {
     $pdf = $pdfFiles[$i]
     Write-Host ''
-    Write-Host (Get-LocalizedText -Text '--- File {0}/{1}: {2} ---' -Arguments @(($i + 1), $pdfFiles.Count, $pdf.Name) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text '--- File {0}/{1}: {2} ---' -Arguments @(($i + 1), $pdfFiles.Count, $pdf.Name) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
     $r = Invoke-PdfProcessing -Pdf $pdf -PythonPath $dependencyCheck.PythonPath `
         -Language $languageSelection `
         -NoDeskew $NoDeskew.IsPresent -NoRotationOfPages $NoRotationOfPages.IsPresent `
         -ReplaceOriginal $ReplaceOriginal.IsPresent -GhostscriptPath $dependencyCheck.GhostscriptPath `
         -TesseractPath $tesseractPath `
-        -UiLanguage $script:OutputLanguage -MessagesPath $script:MessagesPath -Reporter $reporter
+        -UiLanguage $OutputLanguage -MessagesPath $MessagesPath -Reporter $reporter
     if ($null -ne $r) { $results += $r }
 }
 
@@ -390,37 +390,37 @@ $savedMb = ($sumOriginal - $sumResult) / 1MB
 $savedPct = if ($sumOriginal -gt 0) { (1 - ($sumResult / $sumOriginal)) * 100 } else { 0 }
 
 Write-Host ''
-Write-Host (Get-LocalizedText '=== Summary ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-Write-Host (Get-LocalizedText -Text 'Succeeded: {0}, skipped: {1}, failed: {2}' -Arguments @($successCount, $skippedCount, $failureCount) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Succeeded: {0}, skipped: {1}, failed: {2}' -Arguments @($successCount, $skippedCount, $failureCount) -Language $OutputLanguage -MessagesPath $MessagesPath)
 if ($successCount -gt 0) {
-    Write-Host (Get-LocalizedText -Text 'Original total: {0:N2} MB' -Arguments @(($sumOriginal / 1MB)) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText -Text 'Result total: {0:N2} MB' -Arguments @(($sumResult / 1MB)) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText -Text 'Total saved: {0:N2} MB ({1:N1}%)' -Arguments @($savedMb, $savedPct) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Original total: {0:N2} MB' -Arguments @(($sumOriginal / 1MB)) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Result total: {0:N2} MB' -Arguments @(($sumResult / 1MB)) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Total saved: {0:N2} MB ({1:N1}%)' -Arguments @($savedMb, $savedPct) -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 if (-not $ReplaceOriginal) {
-    Write-Host (Get-LocalizedText 'Originals are saved as _orig files; existing backups are preserved.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText 'Originals are saved as _orig files; existing backups are preserved.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 else {
-    Write-Host (Get-LocalizedText 'Originals were replaced.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText 'Originals were replaced.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 Write-Host ''
-Write-Host (Get-LocalizedText 'Failed files:' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Failed files:' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 if ($failedResults.Count -eq 0) {
-    Write-Host (Get-LocalizedText '  None.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText '  None.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 else {
     foreach ($failedFile in $failedResults) {
         $relativePath = $failedFile.FilePath.Substring($basePathPrefix.Length)
-        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $failedFile.FailureReason) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $failedFile.FailureReason) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
     }
 }
 Write-Host ''
 if ($warningResults.Count -gt 0) {
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Warnings:' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Warnings:' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
     foreach ($warningResult in $warningResults) {
         $relativePath = $warningResult.FilePath.Substring($basePathPrefix.Length)
-        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $warningResult.Warning) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $warningResult.Warning) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
     }
 }

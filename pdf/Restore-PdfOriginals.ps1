@@ -65,7 +65,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-EligibleOriginalPdf.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-OriginalPdfRestore.ps1')
 
-$script:OutputLanguage = if (
+$OutputLanguage = if (
 $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 )
 {
@@ -75,7 +75,7 @@ else
 {
     'de'
 }
-$script:MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
+$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 
 $headerLines = @(
     '       .-------------------------------------------.'
@@ -93,23 +93,23 @@ foreach ($headerLine in $headerLines)
 {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText 'Restores original PDFs and removes processed PDFs.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Restores original PDFs and removes processed PDFs.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 Write-Host ''
 
 if ( [string]::IsNullOrWhiteSpace($InputPath))
 {
-    Write-Host (Get-LocalizedText 'Enter the folder containing processed PDF files.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText 'Enter the folder containing processed PDF files.' -Language $OutputLanguage -MessagesPath $MessagesPath)
+    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 if ( [string]::IsNullOrWhiteSpace($InputPath))
 {
-    throw (Get-LocalizedText 'No folder was specified.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    throw (Get-LocalizedText 'No folder was specified.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 
 $InputPath = [Environment]::ExpandEnvironmentVariables($InputPath.Trim().Trim('"'))
 if (-not (Test-Path -LiteralPath $InputPath -PathType Container))
 {
-    throw (Get-LocalizedText -Text 'The specified folder was not found: {0}' -Arguments @($InputPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    throw (Get-LocalizedText -Text 'The specified folder was not found: {0}' -Arguments @($InputPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 
 $directory = Get-Item -LiteralPath $InputPath
@@ -133,18 +133,18 @@ $eligibleCount = $eligibleFiles.Count
 $restoredCount = 0
 $failedFiles = @()
 
-Write-Host (Get-LocalizedText -Text '  Folder: {0}' -Arguments @($directory.FullName) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-Write-Host (Get-LocalizedText -Text '  PDF pairs eligible for restoration: {0}' -Arguments @($eligibleCount) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+Write-Host (Get-LocalizedText -Text '  Folder: {0}' -Arguments @($directory.FullName) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text '  PDF pairs eligible for restoration: {0}' -Arguments @($eligibleCount) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
 
 if ($eligibleCount -eq 0)
 {
-    Write-Host (Get-LocalizedText 'No matching _orig PDFs with a processed PDF were found.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
+    Write-Host (Get-LocalizedText 'No matching _orig PDFs with a processed PDF were found.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Green
     Write-Host ''
-    Write-Host (Get-LocalizedText '=== Summary ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText 'Found: 0' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText 'Restored: 0' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText 'Failed: 0' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Found: 0' -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Restored: 0' -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Failed: 0' -Language $OutputLanguage -MessagesPath $MessagesPath)
     return
 }
 
@@ -160,13 +160,13 @@ foreach ($originalFile in $eligibleFiles)
 if ($WhatIfPreference)
 {
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Preview: no files were changed.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Preview: no files were changed.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
     Write-Host ''
-    Write-Host (Get-LocalizedText '=== Summary ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText 'Restored: 0' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText 'Failed: 0' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Restored: 0' -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Failed: 0' -Language $OutputLanguage -MessagesPath $MessagesPath)
     return
 }
 
@@ -176,7 +176,7 @@ foreach ($originalFile in $eligibleFiles)
     $processedBaseName = $originalFile.BaseName -replace '_orig$', ''
     $processedPath = Join-Path -Path $originalFile.DirectoryName -ChildPath ($processedBaseName + $originalFile.Extension)
     $relativeProcessedPath = $processedPath.Substring($basePathPrefix.Length)
-    $action = Get-LocalizedText -Text 'Restore original PDF and remove processed PDF: {0}' -Arguments @($relativeProcessedPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+    $action = Get-LocalizedText -Text 'Restore original PDF and remove processed PDF: {0}' -Arguments @($relativeProcessedPath) -Language $OutputLanguage -MessagesPath $MessagesPath
     if ( $PSCmdlet.ShouldProcess($relativeProcessedPath, $action))
     {
         $originalFile
@@ -187,7 +187,7 @@ foreach ($originalFile in $eligibleFiles)
 if ($approvedFiles.Count -gt 0)
 {
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Restoring original PDFs...' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Restoring original PDFs...' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 }
 
 foreach ($originalFile in $approvedFiles)
@@ -196,7 +196,7 @@ foreach ($originalFile in $approvedFiles)
     $result = Invoke-OriginalPdfRestore -OriginalFile $originalFile
     if ($result.Success)
     {
-        Write-Host (Get-LocalizedText -Text '  Restored: {0}' -Arguments @($result.ProcessedPath.Substring($basePathPrefix.Length)) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
+        Write-Host (Get-LocalizedText -Text '  Restored: {0}' -Arguments @($result.ProcessedPath.Substring($basePathPrefix.Length)) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Green
         $restoredCount++
     }
     else
@@ -205,21 +205,21 @@ foreach ($originalFile in $approvedFiles)
             Path = $relativeOriginalPath
             Reason = $result.Error
         }
-        Write-Warning (Get-LocalizedText -Text "Could not restore '{0}': {1}" -Arguments @($relativeOriginalPath, $result.Error) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        Write-Warning (Get-LocalizedText -Text "Could not restore '{0}': {1}" -Arguments @($relativeOriginalPath, $result.Error) -Language $OutputLanguage -MessagesPath $MessagesPath)
     }
 }
 
 Write-Host ''
-Write-Host (Get-LocalizedText '=== Summary ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-Write-Host (Get-LocalizedText -Text 'Restored: {0}' -Arguments @($restoredCount) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-Write-Host (Get-LocalizedText -Text 'Failed: {0}' -Arguments @($failedFiles.Count) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Restored: {0}' -Arguments @($restoredCount) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Failed: {0}' -Arguments @($failedFiles.Count) -Language $OutputLanguage -MessagesPath $MessagesPath)
 if ($failedFiles.Count -gt 0)
 {
-    Write-Host (Get-LocalizedText 'PDFs that could not be restored:' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor DarkYellow
+    Write-Host (Get-LocalizedText 'PDFs that could not be restored:' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
     foreach ($failedFile in $failedFiles)
     {
-        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($failedFile.Path, $failedFile.Reason) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor DarkYellow
+        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($failedFile.Path, $failedFile.Reason) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
     }
 }

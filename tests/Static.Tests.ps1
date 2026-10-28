@@ -86,6 +86,11 @@ Describe 'Script conventions' {
         $params = (Get-Ast -Path $Path).Ast.ParamBlock.Parameters.Name.VariablePath.UserPath
         $params | Should -Contain 'EnglishOutput'
     }
+
+    It '<Name> avoids unnecessary script scope in its top-level flow' -ForEach $script:TopLevelScripts {
+        $text = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+        $text | Should -Not -Match '\$script:'
+    }
 }
 
 Describe 'Function conventions' {

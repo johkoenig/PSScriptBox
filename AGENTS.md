@@ -25,10 +25,14 @@ Repository guidance, especially for PowerShell scripts.
 
 ## Code structure and testability
 - Every tool folder has a top-level script for the user-facing flow. The script contains only parameter handling, the console flow, and calls to functions. Load helpers by dot-sourcing them with paths relative to `$PSScriptRoot`.
+- Production PowerShell code must not use `$script:` scope. Pass data explicitly through parameters and return values
+  instead of relying on script-scoped state. Tests may use `$script:` when necessary, such as to share fixtures across
+  Pester scopes.
 - Every other function lives in its own file in the tool folder's `internal` subfolder, or in `common\internal` when shared (see below). The file contains exactly one function and is named after it (`Verb-Noun.ps1`). Do not define functions inside top-level scripts.
 - Internal functions used by more than one tool folder live in `common\internal\` (one function per file, same `Verb-Noun.ps1` rule). Their mirror tests live in `tests\common\internal\`. Internal functions used by only one tool folder stay in that folder's `internal\`.
 - Internal functions are written for testability:
-  - All inputs are parameters, and all results are returned as objects. Do not read `$script:` variables, environment variables, or user profile folders inside a function; pass those values in explicitly. Callers may gather them.
+  - All inputs are parameters, and all results are returned as objects. Do not read environment variables or user
+    profile folders inside a function; pass those values in explicitly. Callers may gather them.
   - Do not write to the console or prompt the user inside an internal function (no `Write-Host` and no `Read-Host`). Console output and prompts belong to the top-level script, which reports the returned results.
   - Keep side effects (file system, processes, registry, network) in narrow functions. Logic that only transforms data must not touch the file system or processes, so tests need little or no mocking.
 - Every internal file has exactly one mirror test file at `tests\<tool>\internal\<Verb-Noun>.Tests.ps1`. New internal code aims for near 100% coverage; existing code is covered step by step.
@@ -95,7 +99,8 @@ Repository guidance, especially for PowerShell scripts.
 - Every production `.ps1` file has exactly one mirror test file. `tests\Static.Tests.ps1` enforces this.
 - Global tests, such as repository-wide code analysis, stay directly in `tests`, but only if they apply to all files.
 - Shared test helpers (for example `tests\TestHelpers.ps1`) stay in `tests`.
-- Functions in `internal` must be testable: pass all inputs and outputs explicitly (parameters and return values) so that little or no mocking is needed. Avoid reading `$script:` state or user folders inside helpers.
+- Functions in `internal` must be testable: pass all inputs and outputs explicitly (parameters and return values) so
+  that little or no mocking is needed. Avoid reading user folders inside helpers.
 - New code aims for near 100% coverage. Existing code is covered step by step. Legacy scripts with top-level flow have a skipped placeholder test until they are refactored into functions.
 - Run `tests\Invoke-Tests.ps1` (add `-Coverage` for coverage of `internal` files). The tests must pass on Windows PowerShell 5.1 and PowerShell 7.
 - Every `.ps1` file, including tests, is saved with a UTF-8 BOM.

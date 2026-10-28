@@ -90,10 +90,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$script:OutputLanguage = if (
+$OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 ) { 'en' } else { 'de' }
-$script:MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
+$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-GitCommand.ps1')
@@ -143,13 +143,13 @@ $gitCommand = Get-Command -Name 'git.exe' -ErrorAction SilentlyContinue |
 if ($null -eq $gitCommand)
 {
     $report = Get-MissingDependencyReport -Dependency 'Git for Windows' `
-        -Guidance (Get-LocalizedText 'Install Git for Windows from https://git-scm.com/download/win, or run: choco install git.install -y.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) `
-        -MessageTemplate (Get-LocalizedText -Text 'Missing dependency: {0}' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        -Guidance (Get-LocalizedText 'Install Git for Windows from https://git-scm.com/download/win, or run: choco install git.install -y.' -Language $OutputLanguage -MessagesPath $MessagesPath) `
+        -MessageTemplate (Get-LocalizedText -Text 'Missing dependency: {0}' -Language $OutputLanguage -MessagesPath $MessagesPath)
     Write-Host $report.Message -ForegroundColor Yellow
     Write-Host "  $( $report.Guidance )"
     exit 1
 }
-Write-Host (Get-LocalizedText '  Sets the Git author identity and configures recommended standard settings.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText '  Sets the Git author identity and configures recommended standard settings.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 Write-Host ''
 
 try {
@@ -158,16 +158,16 @@ try {
     if ($Scope -eq 'Local') {
         $RepositoryPath = [Environment]::ExpandEnvironmentVariables($RepositoryPath.Trim().Trim('"'))
         if (-not (Test-Path -LiteralPath $RepositoryPath -PathType Container)) {
-            throw (Get-LocalizedText -Text 'Repository path not found: {0}' -Arguments @($RepositoryPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+            throw (Get-LocalizedText -Text 'Repository path not found: {0}' -Arguments @($RepositoryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
         }
-        $repositoryRoot = (Invoke-GitCommand -Repository $RepositoryPath -Arguments @('rev-parse', '--show-toplevel') -Language $script:OutputLanguage -MessagesPath $script:MessagesPath | Select-Object -First 1).Trim()
+        $repositoryRoot = (Invoke-GitCommand -Repository $RepositoryPath -Arguments @('rev-parse', '--show-toplevel') -Language $OutputLanguage -MessagesPath $MessagesPath | Select-Object -First 1).Trim()
     }
 
     # --- Fill identity values -------------------------------------------------
-Write-Host (Get-LocalizedText -Text 'Checking Git identity ({0} scope).' -Arguments @($Scope) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Checking Git identity ({0} scope).' -Arguments @($Scope) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
     $provided = @{ 'user.name' = $Name; 'user.email' = $Email }
     foreach ($key in @('user.name', 'user.email')) {
-        $current = Get-GitConfigValue -Key $key -Scope $Scope -Repository $repositoryRoot -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+        $current = Get-GitConfigValue -Key $key -Scope $Scope -Repository $repositoryRoot -Language $OutputLanguage -MessagesPath $MessagesPath
         $value = $null
         if (-not [string]::IsNullOrWhiteSpace($provided[$key])) {
             $value = $provided[$key].Trim()
@@ -178,9 +178,9 @@ Write-Host (Get-LocalizedText -Text 'Checking Git identity ({0} scope).' -Argume
             $entries = Get-IdentitySourceEntry -Key $key -Scope $Scope -Repository $repositoryRoot `
                 -UserName ([Environment]::UserName) -UserDomainName ([Environment]::UserDomainName) `
                 -MachineName ([Environment]::MachineName) -DirectoryInfo $directory `
-                -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+                -Language $OutputLanguage -MessagesPath $MessagesPath
             $candidates = @(Get-IdentityCandidate -Key $key -Entries $entries `
-                    -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+                    -Language $OutputLanguage -MessagesPath $MessagesPath)
             $customPrompt = Get-LocalizedText $( if ($key -eq 'user.name')
             {
                 'Enter the Git author name'
@@ -188,7 +188,7 @@ Write-Host (Get-LocalizedText -Text 'Checking Git identity ({0} scope).' -Argume
             else
             {
                 'Enter the Git author email'
-            } ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+            } ) -Language $OutputLanguage -MessagesPath $MessagesPath
             $invalidMessage = Get-LocalizedText $( if ($key -eq 'user.name')
             {
                 'Git author name cannot be empty.'
@@ -196,7 +196,7 @@ Write-Host (Get-LocalizedText -Text 'Checking Git identity ({0} scope).' -Argume
             else
             {
                 'Enter a non-empty, valid email address.'
-            } ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+            } ) -Language $OutputLanguage -MessagesPath $MessagesPath
 
             if ($candidates.Count -gt 0) {
                 Write-Host (Get-LocalizedText $( if ($key -eq 'user.name')
@@ -206,16 +206,16 @@ Write-Host (Get-LocalizedText -Text 'Checking Git identity ({0} scope).' -Argume
                 else
                 {
                     'Choose the Git author email:'
-                } ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+                } ) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
                 for ($index = 0; $index -lt $candidates.Count; $index++) {
                     Write-Host ('  [{0}] {1} ({2})' -f ($index + 1), $candidates[$index].Value, $candidates[$index].Source)
                 }
-                Write-Host ('  [{0}] {1}' -f ($candidates.Count + 1), (Get-LocalizedText 'Enter a custom value' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath))
+                Write-Host ('  [{0}] {1}' -f ($candidates.Count + 1), (Get-LocalizedText 'Enter a custom value' -Language $OutputLanguage -MessagesPath $MessagesPath))
                 do {
-                    $choice = Select-IdentityValue -Candidates $candidates -Answer (Read-Host -Prompt (Get-LocalizedText 'Selection (default: 1)' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath))
+                    $choice = Select-IdentityValue -Candidates $candidates -Answer (Read-Host -Prompt (Get-LocalizedText 'Selection (default: 1)' -Language $OutputLanguage -MessagesPath $MessagesPath))
                     if ($choice.Kind -eq 'Invalid')
                     {
-                        Write-Warning (Get-LocalizedText 'Invalid selection.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+                        Write-Warning (Get-LocalizedText 'Invalid selection.' -Language $OutputLanguage -MessagesPath $MessagesPath)
                     }
                 } while ($choice.Kind -eq 'Invalid')
                 if ($choice.Kind -eq 'Candidate') { $value = $choice.Value }
@@ -234,74 +234,74 @@ Write-Host (Get-LocalizedText -Text 'Checking Git identity ({0} scope).' -Argume
             else
             {
                 'Enter a non-empty, valid email address.'
-            } ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+            } ) -Language $OutputLanguage -MessagesPath $MessagesPath)
         }
         if ($value -ceq $current) {
-            Write-Host (Get-LocalizedText -Text 'Preserving existing {0}: {1}' -Arguments @($key, $current) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+            Write-Host (Get-LocalizedText -Text 'Preserving existing {0}: {1}' -Arguments @($key, $current) -Language $OutputLanguage -MessagesPath $MessagesPath)
             continue
         }
         $configured = Set-GitConfigValue -Key $key -Value $value -Scope $Scope `
-            -Repository $repositoryRoot -Language $script:OutputLanguage -MessagesPath $script:MessagesPath `
+            -Repository $repositoryRoot -Language $OutputLanguage -MessagesPath $MessagesPath `
             @shouldProcessParameters
         if ($configured)
         {
-            Write-Host (Get-LocalizedText -Text 'Configured {0}: {1}' -Arguments @($key, $value) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
+            Write-Host (Get-LocalizedText -Text 'Configured {0}: {1}' -Arguments @($key, $value) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Green
         }
         elseif ($WhatIfPreference)
         {
-            Write-Host (Get-LocalizedText -Text 'Would configure {0}: {1}' -Arguments @($key, $value) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+            Write-Host (Get-LocalizedText -Text 'Would configure {0}: {1}' -Arguments @($key, $value) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
         }
         else
         {
-            Write-Host (Get-LocalizedText -Text 'Configuration was not approved: {0}' -Arguments @($key, $value) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor DarkYellow
+            Write-Host (Get-LocalizedText -Text 'Configuration was not approved: {0}' -Arguments @($key, $value) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
         }
     }
 
     # --- Recommended standard settings ----------------------------------------
-Write-Host (Get-LocalizedText -Text 'Confirm recommended Git settings ({0} scope). Enter keeps the default, - skips.' -Arguments @($Scope) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Confirm recommended Git settings ({0} scope). Enter keeps the default, - skips.' -Arguments @($Scope) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 foreach ($setting in Get-RecommendedGitSetting)
 {
-    $current = Get-GitConfigValue -Key $setting.Key -Scope $Scope -Repository $repositoryRoot -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+    $current = Get-GitConfigValue -Key $setting.Key -Scope $Scope -Repository $repositoryRoot -Language $OutputLanguage -MessagesPath $MessagesPath
         $default = if ($current) { $current } else { $setting.Value }
         $options = @(Get-RecommendedSettingOption -Options $setting.Options -Current $current `
-                -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+                -Language $OutputLanguage -MessagesPath $MessagesPath)
 
         Write-Host ''
         Write-Host $setting.Key -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText $setting.Description -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText $setting.Description -Language $OutputLanguage -MessagesPath $MessagesPath)
         foreach ($option in $options) {
             Write-Host ('  [{0}] {1}' -f $option.Value, $option.Text)
         }
         if ($current -and $current -cne $setting.Value) {
-            Write-Host (Get-LocalizedText -Text 'Recommended value: {0}' -Arguments @($setting.Value) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+            Write-Host (Get-LocalizedText -Text 'Recommended value: {0}' -Arguments @($setting.Value) -Language $OutputLanguage -MessagesPath $MessagesPath)
         }
 
         do {
-            $answer = Read-Host -Prompt (Get-LocalizedText -Text 'Selection (default: {0})' -Arguments @($default) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+            $answer = Read-Host -Prompt (Get-LocalizedText -Text 'Selection (default: {0})' -Arguments @($default) -Language $OutputLanguage -MessagesPath $MessagesPath)
             $choice = Resolve-RecommendedSettingAnswer -Answer $answer -Default $default -Options $options `
                 -AllowCustom:($setting.ContainsKey('AllowCustom') -and [bool] $setting.AllowCustom)
             if ($choice.Kind -eq 'Invalid')
             {
-                Write-Warning (Get-LocalizedText 'Invalid selection.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+                Write-Warning (Get-LocalizedText 'Invalid selection.' -Language $OutputLanguage -MessagesPath $MessagesPath)
             }
         } while ($choice.Kind -eq 'Invalid')
 
         $change = [pscustomobject]@{ Key = $setting.Key; Value = $choice.Value }
         foreach ($result in Set-RecommendedGitSetting -Changes @($change) -Scope $Scope -Repository $repositoryRoot `
-                -Language $script:OutputLanguage -MessagesPath $script:MessagesPath @shouldProcessParameters)
+                -Language $OutputLanguage -MessagesPath $MessagesPath @shouldProcessParameters)
         {
             switch ($result.Status) {
                 'Preserved' {
-                    Write-Host (Get-LocalizedText -Text 'Preserving existing {0}: {1}' -Arguments @($result.Key, $result.Current) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+                    Write-Host (Get-LocalizedText -Text 'Preserving existing {0}: {1}' -Arguments @($result.Key, $result.Current) -Language $OutputLanguage -MessagesPath $MessagesPath)
                 }
                 'Configured' {
-                    Write-Host (Get-LocalizedText -Text 'Configured {0}: {1}' -Arguments @($result.Key, $result.Value) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
+                    Write-Host (Get-LocalizedText -Text 'Configured {0}: {1}' -Arguments @($result.Key, $result.Value) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Green
                 }
                 'WouldConfigure' {
-                    Write-Host (Get-LocalizedText -Text 'Would configure {0}: {1}' -Arguments @($result.Key, $result.Value) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+                    Write-Host (Get-LocalizedText -Text 'Would configure {0}: {1}' -Arguments @($result.Key, $result.Value) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
                 }
                 'Declined' {
-                    Write-Host (Get-LocalizedText -Text 'Configuration was not approved: {0}' -Arguments @($result.Key, $result.Value) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor DarkYellow
+                    Write-Host (Get-LocalizedText -Text 'Configuration was not approved: {0}' -Arguments @($result.Key, $result.Value) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
                 }
             }
         }

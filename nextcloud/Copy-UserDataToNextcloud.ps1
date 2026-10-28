@@ -78,10 +78,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$script:OutputLanguage = if (
+$OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 ) { 'en' } else { 'de' }
-$script:MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
+$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-UserSpecialFolderPath.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-UserFolder.ps1')
@@ -119,12 +119,12 @@ Write-Host ''
 foreach ($headerLine in $headerLines) {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText '  Copies Windows user folders to a Nextcloud sync folder.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-Write-Host (Get-LocalizedText '  Source files are never deleted.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText '  Copies Windows user folders to a Nextcloud sync folder.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText '  Source files are never deleted.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 Write-Host ''
 
 try {
-    Write-Warning (Get-LocalizedText 'Pause the Nextcloud sync client during bulk copy to avoid sync conflicts.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Warning (Get-LocalizedText 'Pause the Nextcloud sync client during bulk copy to avoid sync conflicts.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 
     # --- Resolve target and source folders -----------------------------------
     if ([string]::IsNullOrWhiteSpace($NextcloudPath)) {
@@ -134,27 +134,27 @@ try {
             $NextcloudPath = $defaultPath
         }
         else {
-        $NextcloudPath = Read-Host -Prompt (Get-LocalizedText 'Enter the Nextcloud synchronization folder path' -Language $script: OutputLanguage -MessagesPath $script: MessagesPath)
+        $NextcloudPath = Read-Host -Prompt (Get-LocalizedText 'Enter the Nextcloud synchronization folder path' -Language $OutputLanguage -MessagesPath $MessagesPath)
         }
     }
     if ([string]::IsNullOrWhiteSpace($NextcloudPath)) {
-        throw (Get-LocalizedText 'No Nextcloud path was specified.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        throw (Get-LocalizedText 'No Nextcloud path was specified.' -Language $OutputLanguage -MessagesPath $MessagesPath)
     }
     $NextcloudPath = [Environment]::ExpandEnvironmentVariables($NextcloudPath.Trim().Trim('"'))
     $nextcloudFullPath = [System.IO.Path]::GetFullPath($NextcloudPath)
     if (-not (Test-Path -LiteralPath $nextcloudFullPath -PathType Container)) {
-        throw (Get-LocalizedText -Text 'Nextcloud destination does not exist: {0}' -Arguments @($nextcloudFullPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        throw (Get-LocalizedText -Text 'Nextcloud destination does not exist: {0}' -Arguments @($nextcloudFullPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
     }
 
-    $userFolders = @(Get-UserFolder -Names @($Folders | Select-Object -Unique) -FolderPaths (Get-UserSpecialFolderPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    $userFolders = @(Get-UserFolder -Names @($Folders | Select-Object -Unique) -FolderPaths (Get-UserSpecialFolderPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
     if ($userFolders.Count -eq 0) {
-        Write-Warning (Get-LocalizedText 'No selected Windows user folders were found.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        Write-Warning (Get-LocalizedText 'No selected Windows user folders were found.' -Language $OutputLanguage -MessagesPath $MessagesPath)
         return
     }
-    Write-Host (Get-LocalizedText '=== Nextcloud copy: processing started ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText -Text 'Nextcloud destination: {0}' -Arguments @($nextcloudFullPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText -Text 'Number of folders: {0}' -Arguments @($userFolders.Count) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText -Text 'Selected folders: {0}' -Arguments @(($userFolders.Name -join ', ')) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText '=== Nextcloud copy: processing started ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text 'Nextcloud destination: {0}' -Arguments @($nextcloudFullPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Number of folders: {0}' -Arguments @($userFolders.Count) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Selected folders: {0}' -Arguments @(($userFolders.Name -join ', ')) -Language $OutputLanguage -MessagesPath $MessagesPath)
 
     # --- Plan copies and check read access -----------------------------------
     $results = [System.Collections.Generic.List[object]]::new()
@@ -163,14 +163,14 @@ try {
         $sourcePath = [System.IO.Path]::GetFullPath($folder.SourcePath).TrimEnd('\', '/')
         $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $nextcloudFullPath $folder.TargetName)).TrimEnd('\', '/')
         if ($sourcePath.Equals($destinationPath, [System.StringComparison]::OrdinalIgnoreCase)) {
-            $results.Add([pscustomobject]@{ Name = $folder.Name; Status = 'Skipped'; Reason = (Get-LocalizedText 'Already at the Nextcloud destination' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath); Files = 0; Bytes = [long]0 })
+            $results.Add([pscustomobject]@{ Name = $folder.Name; Status = 'Skipped'; Reason = (Get-LocalizedText 'Already at the Nextcloud destination' -Language $OutputLanguage -MessagesPath $MessagesPath); Files = 0; Bytes = [long]0 })
             continue
         }
         $sourcePrefix = $sourcePath + [System.IO.Path]::DirectorySeparatorChar
         $destinationPrefix = $destinationPath + [System.IO.Path]::DirectorySeparatorChar
         if ($destinationPath.StartsWith($sourcePrefix, [System.StringComparison]::OrdinalIgnoreCase) -or
             $sourcePath.StartsWith($destinationPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-            $results.Add([pscustomobject]@{ Name = $folder.Name; Status = 'Skipped'; Reason = (Get-LocalizedText 'Source and destination overlap' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath); Files = 0; Bytes = [long]0 })
+            $results.Add([pscustomobject]@{ Name = $folder.Name; Status = 'Skipped'; Reason = (Get-LocalizedText 'Source and destination overlap' -Language $OutputLanguage -MessagesPath $MessagesPath); Files = 0; Bytes = [long]0 })
             continue
         }
         $migrations.Add([pscustomobject]@{
@@ -185,31 +185,31 @@ try {
     # Verify read access before any folder is copied.
     $accessProblems = [System.Collections.Generic.List[object]]::new()
     foreach ($migration in $migrations) {
-        Write-Host (Get-LocalizedText -Text 'Checking source folder: {0}' -Arguments @($migration.SourcePath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        Write-Host (Get-LocalizedText -Text 'Checking source folder: {0}' -Arguments @($migration.SourcePath) -Language $OutputLanguage -MessagesPath $MessagesPath)
         try {
             $migration.SourceInventory = Get-FolderInventory -Path $migration.SourcePath
         }
         catch {
             $accessProblems.Add([pscustomobject]@{
                 Path = $migration.SourcePath
-                Reason = (Get-LocalizedText -Text 'Folder cannot be read: {0}' -Arguments @($_.Exception.Message) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+                Reason = (Get-LocalizedText -Text 'Folder cannot be read: {0}' -Arguments @($_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath)
             })
         }
         if (-not (Test-Path -LiteralPath $migration.DestinationPath -PathType Container)) {
             $accessProblems.Add([pscustomobject]@{
                 Path = $migration.DestinationPath
-                Reason = Get-LocalizedText 'Destination folder does not exist' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+                Reason = Get-LocalizedText 'Destination folder does not exist' -Language $OutputLanguage -MessagesPath $MessagesPath
             })
             continue
         }
-        Write-Host (Get-LocalizedText -Text 'Checking destination folder: {0}' -Arguments @($migration.DestinationPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        Write-Host (Get-LocalizedText -Text 'Checking destination folder: {0}' -Arguments @($migration.DestinationPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
         try {
             $migration.DestinationInventory = Get-FolderInventory -Path $migration.DestinationPath
         }
         catch {
             $accessProblems.Add([pscustomobject]@{
                 Path = $migration.DestinationPath
-                Reason = (Get-LocalizedText -Text 'Folder cannot be read: {0}' -Arguments @($_.Exception.Message) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+                Reason = (Get-LocalizedText -Text 'Folder cannot be read: {0}' -Arguments @($_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath)
             })
         }
         if ($null -eq $migration.SourceInventory -or $null -eq $migration.DestinationInventory) {
@@ -217,14 +217,14 @@ try {
         }
         foreach ($file in $migration.SourceInventory.Files) {
             $filePath = Join-Path $migration.SourcePath $file.RelativePath
-            foreach ($problem in @(Test-FileReadAccess -Path $filePath -Language $script:OutputLanguage -MessagesPath $script:MessagesPath))
+            foreach ($problem in @(Test-FileReadAccess -Path $filePath -Language $OutputLanguage -MessagesPath $MessagesPath))
             {
                 $accessProblems.Add($problem)
             }
         }
         foreach ($file in $migration.DestinationInventory.Files) {
             $filePath = Join-Path $migration.DestinationPath $file.RelativePath
-            foreach ($problem in @(Test-FileReadAccess -Path $filePath -Language $script:OutputLanguage -MessagesPath $script:MessagesPath))
+            foreach ($problem in @(Test-FileReadAccess -Path $filePath -Language $OutputLanguage -MessagesPath $MessagesPath))
             {
                 $accessProblems.Add($problem)
             }
@@ -233,15 +233,15 @@ try {
     if ($accessProblems.Count -gt 0) {
         $maxListed = 50
         Write-Host ''
-        Write-Host (Get-LocalizedText -Text 'Read access problems for {0} item(s):' -Arguments @($accessProblems.Count) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+        Write-Host (Get-LocalizedText -Text 'Read access problems for {0} item(s):' -Arguments @($accessProblems.Count) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
         foreach ($problem in ($accessProblems | Select-Object -First $maxListed)) {
-            Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($problem.Path, $problem.Reason) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+            Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($problem.Path, $problem.Reason) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
         }
         if ($accessProblems.Count -gt $maxListed) {
-            Write-Host (Get-LocalizedText -Text '  ... and {0} more' -Arguments @($accessProblems.Count - $maxListed) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+            Write-Host (Get-LocalizedText -Text '  ... and {0} more' -Arguments @($accessProblems.Count - $maxListed) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
         }
         Write-Host ''
-        Write-Host (Get-LocalizedText 'Copy not started: fix the read access problems listed above or exclude the affected folders with -Folders.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Red
+        Write-Host (Get-LocalizedText 'Copy not started: fix the read access problems listed above or exclude the affected folders with -Folders.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Red
         exit 1
     }
 
@@ -249,11 +249,11 @@ try {
     $syncPaused = $true
     if (-not $WhatIfPreference -and $migrations.Count -gt 0) {
         Write-Host ''
-        Write-Host (Get-LocalizedText '=== Confirm the Nextcloud sync client is paused ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-        $answer = (Read-Host -Prompt (Get-LocalizedText 'Confirm the Nextcloud sync client is paused. Continue? [y/N]' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)).Trim()
+        Write-Host (Get-LocalizedText '=== Confirm the Nextcloud sync client is paused ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+        $answer = (Read-Host -Prompt (Get-LocalizedText 'Confirm the Nextcloud sync client is paused. Continue? [y/N]' -Language $OutputLanguage -MessagesPath $MessagesPath)).Trim()
         $syncPaused = $answer -match '^(?i:y|yes|j|ja)$'
         if (-not $syncPaused) {
-            Write-Host (Get-LocalizedText 'Copy cancelled; no folders were changed.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+            Write-Host (Get-LocalizedText 'Copy cancelled; no folders were changed.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
         }
     }
 
@@ -266,30 +266,30 @@ try {
         $result = [pscustomobject]@{ Name = $folder.Name; Status = 'Failed'; Reason = ''; Files = 0; Bytes = [long]0 }
         $results.Add($result)
         Write-Host ''
-        Write-Host (Get-LocalizedText -Text '--- Folder {0}/{1}: {2} ---' -Arguments @(($i + 1), $migrations.Count, $folder.Name) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+        Write-Host (Get-LocalizedText -Text '--- Folder {0}/{1}: {2} ---' -Arguments @(($i + 1), $migrations.Count, $folder.Name) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
         try {
             $sourceInventory = $migration.SourceInventory
             Write-Host (Get-LocalizedText -Text 'Selected {0}: {1} files, {2:N2} MB' -Arguments @(
                 $folder.Name, $sourceInventory.Files.Count, ($sourceInventory.TotalBytes / 1MB)
-            ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+            ) -Language $OutputLanguage -MessagesPath $MessagesPath)
             $sizeMb = $sourceInventory.TotalBytes / 1MB
-            $copyAction = Get-LocalizedText -Text 'Copy folder from {0} ({1:N2} MB)' -Arguments @($sourcePath, $sizeMb) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+            $copyAction = Get-LocalizedText -Text 'Copy folder from {0} ({1:N2} MB)' -Arguments @($sourcePath, $sizeMb) -Language $OutputLanguage -MessagesPath $MessagesPath
             $copyApproved = $PSCmdlet.ShouldProcess($destinationPath, $copyAction)
             if (-not $copyApproved) {
                 $result.Status = 'Skipped'
-                $result.Reason = Get-LocalizedText 'Not performed (preview or declined)' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+                $result.Reason = Get-LocalizedText 'Not performed (preview or declined)' -Language $OutputLanguage -MessagesPath $MessagesPath
                 continue
             }
 
             $copyResult = Copy-ChangedFile -Source $sourcePath -Destination $destinationPath `
                 -SourceInventory $sourceInventory -DestinationInventory $migration.DestinationInventory `
-                -FolderName $folder.Name -Language $script:OutputLanguage -MessagesPath $script:MessagesPath `
+                -FolderName $folder.Name -Language $OutputLanguage -MessagesPath $MessagesPath `
                 -ProgressReporter $progressWriter
-            Write-Host (Get-LocalizedText -Text 'Copied folder verified: {0}' -Arguments @($folder.Name) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Green
+            Write-Host (Get-LocalizedText -Text 'Copied folder verified: {0}' -Arguments @($folder.Name) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Green
             $result.Status = 'Success'
             Write-Host (Get-LocalizedText -Text 'Copied: {0} files; matching content was already in the destination for {1} files.' -Arguments @(
                 $copyResult.CopiedFiles, $copyResult.IdenticalFiles
-            ) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+            ) -Language $OutputLanguage -MessagesPath $MessagesPath)
             $result.Files = $copyResult.CopiedFiles
             $result.Bytes = [long]$copyResult.CopiedBytes
 
@@ -297,7 +297,7 @@ try {
         catch {
             $result.Status = 'Failed'
             $result.Reason = $_.Exception.Message
-            Write-Warning (Get-LocalizedText -Text 'Error for ''{0}'': {1}' -Arguments @($folder.Name, $_.Exception.Message) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+            Write-Warning (Get-LocalizedText -Text 'Error for ''{0}'': {1}' -Arguments @($folder.Name, $_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath)
         }
     }
 
@@ -312,7 +312,7 @@ try {
             $results.Add([pscustomobject]@{
                 Name = $migration.Folder.Name
                 Status = 'Skipped'
-                Reason = Get-LocalizedText 'Copy cancelled; sync client was not confirmed paused' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath
+                Reason = Get-LocalizedText 'Copy cancelled; sync client was not confirmed paused' -Language $OutputLanguage -MessagesPath $MessagesPath
                 Files = 0
                 Bytes = [long]0
             })
@@ -321,35 +321,35 @@ try {
     }
 
     Write-Host ''
-    Write-Host (Get-LocalizedText '=== Summary ===' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($nextcloudFullPath) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
-    Write-Host (Get-LocalizedText -Text 'Succeeded: {0}, skipped: {1}, failed: {2}' -Arguments @($successResults.Count, $skippedResults.Count, $failedResults.Count) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+    Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($nextcloudFullPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Succeeded: {0}, skipped: {1}, failed: {2}' -Arguments @($successResults.Count, $skippedResults.Count, $failedResults.Count) -Language $OutputLanguage -MessagesPath $MessagesPath)
     if ($successResults.Count -gt 0) {
-        Write-Host (Get-LocalizedText -Text 'Copied total: {0} files, {1:N2} MB' -Arguments @($copiedFiles, ($copiedBytes / 1MB)) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        Write-Host (Get-LocalizedText -Text 'Copied total: {0} files, {1:N2} MB' -Arguments @($copiedFiles, ($copiedBytes / 1MB)) -Language $OutputLanguage -MessagesPath $MessagesPath)
     }
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Failed folders:' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Failed folders:' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
     if ($failedResults.Count -eq 0) {
-        Write-Host (Get-LocalizedText '  None.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        Write-Host (Get-LocalizedText '  None.' -Language $OutputLanguage -MessagesPath $MessagesPath)
     }
     else {
         foreach ($failedResult in $failedResults) {
-            Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($failedResult.Name, $failedResult.Reason) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+            Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($failedResult.Name, $failedResult.Reason) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
         }
     }
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Skipped folders:' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Skipped folders:' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
     if ($skippedResults.Count -eq 0) {
-        Write-Host (Get-LocalizedText '  None.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath)
+        Write-Host (Get-LocalizedText '  None.' -Language $OutputLanguage -MessagesPath $MessagesPath)
     }
     else {
         foreach ($skippedResult in $skippedResults) {
-            Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($skippedResult.Name, $skippedResult.Reason) -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Yellow
+            Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($skippedResult.Name, $skippedResult.Reason) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
         }
     }
     if (-not $WhatIfPreference -and $syncPaused) {
         Write-Host ''
-        Write-Host (Get-LocalizedText 'Copy finished. Enable the Nextcloud sync client and wait until synchronization completes before running Remove-MigratedUserData.ps1.' -Language $script:OutputLanguage -MessagesPath $script:MessagesPath) -ForegroundColor Cyan
+        Write-Host (Get-LocalizedText 'Copy finished. Enable the Nextcloud sync client and wait until synchronization completes before running Remove-MigratedUserData.ps1.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
     }
 }
 catch {
