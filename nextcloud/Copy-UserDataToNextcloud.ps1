@@ -12,7 +12,8 @@
     the script checks read access, the user confirms that the Nextcloud sync
     client is paused, and each folder is approved individually. Files with
     matching SHA-256 hashes anywhere in the destination are skipped. Remaining
-    files are copied with Robocopy's restartable mode and shown progress.
+    files are copied to same-directory .part files, verified, and moved into
+    their final names with progress.
     The script never mirrors or deletes unrelated destination content or
     source data. After copying, it reminds the user to enable synchronization
     and wait for completion before running Remove-MigratedUserData.ps1.
@@ -78,7 +79,7 @@ else { @{} }
 . (Join-Path $PSScriptRoot 'internal\Get-FolderInventory.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-FileSha256.ps1')
 . (Join-Path $PSScriptRoot 'internal\Test-FileReadAccess.ps1')
-. (Join-Path $PSScriptRoot 'internal\Invoke-RobocopyFile.ps1')
+. (Join-Path $PSScriptRoot 'internal\Copy-FileToStaging.ps1')
 . (Join-Path $PSScriptRoot 'internal\Copy-ChangedFiles.ps1')
 
 $progressWriter = {

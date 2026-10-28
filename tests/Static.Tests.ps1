@@ -2,12 +2,13 @@
 # Copyright (c) 2026 scriptbox contributors
 <#
 .SYNOPSIS
-    Static checks for all PowerShell files in the repository (test step 1).
+    Static checks for production PowerShell files in the repository (test step 1).
 
 .DESCRIPTION
     Verifies syntax, UTF-8 BOM, StrictMode, comment-based help, approved verbs,
     the -EnglishOutput switch, and that every localized message used in code
-    has a German entry in the area's message catalog. No script is executed.
+    has a German entry in the area's message catalog. Archived legacy scripts
+    are excluded. No script is executed.
 
 .NOTES
     Dependencies: Pester 5 or later. Run through tests\Invoke-Tests.ps1.
@@ -16,7 +17,7 @@
 BeforeDiscovery {
     $repoRoot = Split-Path -Parent $PSScriptRoot
     $allFiles = @(Get-ChildItem -LiteralPath $repoRoot -Recurse -Filter '*.ps1' -File |
-            Where-Object { $_.FullName -notmatch '\\(\.git|tests)\\' })
+            Where-Object { $_.FullName -notmatch '\\(\.git|tests|legacy)\\' })
 
     $script:Files = @($allFiles | ForEach-Object {
             @{

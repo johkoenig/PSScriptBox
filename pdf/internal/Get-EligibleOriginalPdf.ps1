@@ -15,6 +15,8 @@
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
 
+. (Join-Path $PSScriptRoot '..\..\common\internal\Get-EligibleOriginalBackup.ps1')
+
 <#
 .SYNOPSIS
     Finds original PDF backups that have a processed PDF next to them.
@@ -36,14 +38,8 @@ function Get-EligibleOriginalPdf {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string] $RootPath)
 
-    $originalFiles = @(Get-ChildItem -LiteralPath $RootPath -File -Recurse -Force |
-        Where-Object { $_.Extension -ieq '.pdf' -and $_.BaseName -match '_orig$' })
-
-    foreach ($originalFile in $originalFiles) {
-        $processedBaseName = $originalFile.BaseName -replace '_orig$', ''
-        $processedPath = Join-Path -Path $originalFile.DirectoryName -ChildPath ($processedBaseName + $originalFile.Extension)
-        if (Test-Path -LiteralPath $processedPath -PathType Leaf) {
-            $originalFile
-        }
+    foreach ($backup in Get-EligibleOriginalBackup -RootPath $RootPath -Extensions @('.pdf'))
+    {
+        $backup.BackupFile
     }
 }

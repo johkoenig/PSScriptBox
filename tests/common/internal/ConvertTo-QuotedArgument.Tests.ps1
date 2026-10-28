@@ -2,7 +2,7 @@
 # Copyright (c) 2026 scriptbox contributors
 <#
 .SYNOPSIS
-    Unit tests for pdf\internal\ConvertTo-QuotedArgument.ps1.
+    Unit tests for common\internal\ConvertTo-QuotedArgument.ps1.
 
 .DESCRIPTION
     Checks quoting of plain values, embedded quotation marks, and trailing
@@ -13,7 +13,7 @@
 #>
 
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\ConvertTo-QuotedArgument.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\common\internal\ConvertTo-QuotedArgument.ps1')
 }
 
 Describe 'ConvertTo-QuotedArgument' {

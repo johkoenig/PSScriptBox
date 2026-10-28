@@ -43,9 +43,44 @@ Die [PDF-Anleitung](pdf/README.de.md) beschreibt das Verhalten der Parameter, Be
 
 Führe die Skripte in PowerShell aus. Bei deutscher Windows-Anzeigesprache erscheinen deutsche Konsolentexte, sonst englische. `-EnglishOutput` erzwingt Englisch.
 
-## Tests
+## Medienwerkzeuge
 
-Der GitHub-Actions-Workflow führt `tests/Invoke-Tests.ps1` bei Pull Requests mit Ziel `main` unter Windows PowerShell 5.1 und PowerShell 7 aus. Dieselbe Testsuite lässt sich lokal im Repository-Stamm mit `.\tests\Invoke-Tests.ps1` starten; erforderlich ist Pester 5 oder höher.
+`media/Optimize-MediaSize.ps1` kodiert geeignete `.mov`- und `.mp4`-Videos als 720p-H.265/HEVC-MP4 mit einer
+durchschnittlichen Video-Bitrate von 1,9 Mb/s und 96 kb/s Audio. Querformat wird auf 1280x720 und Hochformat auf
+720x1280 begrenzt; ein sechsminütiges Video zielt auf ungefähr 90 MB, die tatsächliche Größe variiert jedoch. H.264 bis
+einschließlich 1,9 Mb/s sowie HEVC-, AV1- und VP9-Quelldateien werden übersprungen.
+JPEG-Fotos über 6 MB werden proportional auf eine geschätzte Ausgabegröße von 5 MB verkleinert und mit hoher Qualität
+neu kodiert; die tatsächliche Größe hängt von den Bilddetails ab. Kleinere Fotos werden übersprungen.
+Ergebnisse werden nur übernommen, wenn sie kleiner sind; unterstützte Dateizeitstempel sowie eingebettete EXIF-/XMP-
+und Container-Aufnahmedaten werden vor dem Ersetzen geprüft. Erstellungs- und Änderungszeiten einzelner Tracks werden
+nicht verglichen. Der interne Samsung-Maker-Note-Zeitstempel `TimeStamp` und das nicht aufnahmerelevante EXIF-Feld
+`IFD0:ModifyDate` werden ebenfalls nicht verglichen.
+Standardmäßig wird das Original als `<Name>_orig` mit seiner ursprünglichen Erweiterung gesichert.
+Die Kodierung ist verlustbehaftet und kann keine unmerkliche Qualitätsänderung garantieren. FFmpeg (einschließlich
+FFprobe) mit `libx265`- und MJPEG-Encodern sowie ExifTool müssen über `PATH` verfügbar sein.
+`media/Remove-MediaBackups.ps1` entfernt interaktiv `_orig`-Sicherungen nur, wenn die bearbeitete Datei vorhanden ist;
+eine MOV-Sicherung wird der MP4-Ausgabe zugeordnet.
+`media/Remove-LivePhotos.ps1` entfernt ein MOV-Video nur, wenn im selben Ordner ein gleichnamiges JPG-Foto vorhanden
+ist;
+das JPG bleibt erhalten und `.jpeg` gilt nicht als Treffer. Das Skript unterstützt `-WhatIf` und fragt vor jeder
+Löschung nach.
+
+`media/Restore-MediaDate.ps1` stellt Datumsangaben in dieser Reihenfolge wieder her: Dateiname, EXIF
+`DateTimeOriginal`, `CreateDate`, dann `ModifyDate`. Das Skript benennt unterstützte Mediendateien nach
+`YY-MM-DD HH-mm-ss XXXX.ext` um, aktualisiert Erstellungs- und Änderungszeit sowie unterstützte eingebettete Daten
+nur dann, wenn sie vom ausgewählten Datum abweichen, und bietet mit `-WhatIf` eine Vorschau. Namen, die bereits dem
+Muster entsprechen, bleiben erhalten. ExifTool muss über `PATH` verfügbar sein; Windows erlaubt keine Änderung der
+niedrigstufigen NTFS-Änderungszeit.
+
+| Skript                    | Parameter und Schalter                                                            |
+|---------------------------|-----------------------------------------------------------------------------------|
+| `Optimize-MediaSize.ps1`  | `-InputPath <Pfad>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
+| `Remove-MediaBackups.ps1` | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
+| `Remove-LivePhotos.ps1`   | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
+| `Restore-MediaDate.ps1`   | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
+
+Die [Anleitung zu den Medienwerkzeugen](media/README.de.md) enthält Beispiele, Abhängigkeiten und Einschränkungen beim
+Erhalt von Datumsangaben.
 
 ## Git-Werkzeuge
 
@@ -68,7 +103,13 @@ Parameter und Beispiele stehen in der [Git-Anleitung](git/README.de.md).
 
 ## Nextcloud-Dateikopie und lokale Bereinigung
 
-Der Ablauf verwendet zwei Skripte: `nextcloud/Copy-UserDataToNextcloud.ps1` kopiert ausgewählte Windows-Benutzerordner in vorhandene Nextcloud-Zielordner und löscht niemals Quelldaten. Nach abgeschlossener Synchronisierung zum Server kann `nextcloud/Remove-MigratedUserData.ps1` lokale Dateien löschen, deren SHA-256-Hash mit einer Datei im zugeordneten Nextcloud-Zielordner übereinstimmt, sowie leere lokale Unterordner, wenn der entsprechende Nextcloud-Ordner existiert. Vor dem Löschen bestätigt der Benutzer die vollständige Synchronisierung und genehmigt die Bereinigung für jeden Hauptordner separat.
+Der Ablauf verwendet zwei Skripte: `nextcloud/Copy-UserDataToNextcloud.ps1` kopiert ausgewählte Windows-Benutzerordner
+in vorhandene Nextcloud-Zielordner und löscht niemals Quelldaten. Dateiübertragungen werden in `.part`-Dateien
+zwischengespeichert und erst nach Abschluss unter den endgültigen Namen verschoben. Nach abgeschlossener
+Synchronisierung zum Server kann `nextcloud/Remove-MigratedUserData.ps1` lokale Dateien löschen, deren SHA-256-Hash mit
+einer Datei im zugeordneten Nextcloud-Zielordner übereinstimmt, sowie leere lokale Unterordner, wenn der entsprechende
+Nextcloud-Ordner existiert. Vor dem Löschen bestätigt der Benutzer die vollständige Synchronisierung und genehmigt die
+Bereinigung für jeden Hauptordner separat.
 
 | Skript | Parameter und Schalter |
 | --- | --- |
@@ -77,9 +118,11 @@ Der Ablauf verwendet zwei Skripte: `nextcloud/Copy-UserDataToNextcloud.ps1` kopi
 
 Details und Beispiele stehen in der [Nextcloud-Anleitung](nextcloud/README.de.md).
 
-## Offene Punkte
+## Tests
 
-Geplante Arbeiten stehen in [open-issues.md](open-issues.md) (englisch).
+Der GitHub-Actions-Workflow führt `tests/Invoke-Tests.ps1` bei Pull Requests mit Ziel `main` unter Windows PowerShell
+5.1 und PowerShell 7 aus. Dieselbe Testsuite lässt sich lokal im Repository-Stamm mit `.\tests\Invoke-Tests.ps1`
+starten; erforderlich ist Pester 5 oder höher.
 
 ## Lizenz
 

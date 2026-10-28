@@ -41,9 +41,36 @@ See the [PDF tools guide](pdf/README.md) for parameter behavior, examples, setup
 
 Run scripts from PowerShell. The scripts select German console messages on a German Windows UI and English messages otherwise; `-EnglishOutput` forces English.
 
-## Testing
+## Media tools
 
-The GitHub Actions workflow runs `tests/Invoke-Tests.ps1` with Windows PowerShell 5.1 and PowerShell 7 for pull requests targeting `main`. To run the same test suite locally, use `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5 or later is required.
+`media/Optimize-MediaSize.ps1` re-encodes eligible `.mov` and `.mp4` videos as 720p H.265/HEVC MP4 using a 1.9 Mb/s
+average video bitrate and 96 kb/s audio. Landscape output is limited to 1280x720 and portrait output to 720x1280; a
+six-minute video is targeted at roughly 90 MB, though actual size varies. H.264 at or below 1.9 Mb/s and HEVC, AV1, or
+VP9 sources are skipped. JPEG photos over 6 MB are proportionally scaled using an estimated output size of 5 MB and
+re-encoded at high quality; actual size varies with image detail. Smaller photos are skipped. Results are kept only when
+smaller, with supported file timestamps and embedded EXIF/XMP and container capture dates verified before replacement.
+Per-track timestamps, Samsung maker-note `TimeStamp`, and non-capture EXIF `IFD0:ModifyDate` are excluded from
+verification. By default, the original is saved as `<Name>_orig` with its original extension. Encoding is lossy and
+cannot guarantee imperceptible changes. FFmpeg (including FFprobe) with `libx265` and MJPEG encoders, plus ExifTool,
+must be available in `PATH`. `media/Remove-MediaBackups.ps1` interactively removes `_orig` backups only when their
+processed counterpart exists; a MOV backup is matched to its MP4 output.
+`media/Remove-LivePhotos.ps1` removes a MOV video only when a same-name JPG still image exists in the same folder; the
+JPG is kept, and `.jpeg` is not considered a match. It supports `-WhatIf` and confirms each deletion.
+
+`media/Restore-MediaDate.ps1` restores dates in this order: filename, EXIF `DateTimeOriginal`, `CreateDate`, then
+`ModifyDate`. It renames supported media to `YY-MM-DD HH-mm-ss XXXX.ext`, updates filesystem creation and last-write
+times plus supported embedded dates only when they differ from the selected date, and uses `-WhatIf` for preview.
+Names that already match the pattern are retained. ExifTool must be available in `PATH`; Windows does not permit
+setting the low-level NTFS change time.
+
+| Script                    | Parameters and switches                                                           |
+|---------------------------|-----------------------------------------------------------------------------------|
+| `Optimize-MediaSize.ps1`  | `-InputPath <path>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
+| `Remove-MediaBackups.ps1` | `-InputPath <folder>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
+| `Remove-LivePhotos.ps1`   | `-InputPath <folder>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
+| `Restore-MediaDate.ps1`   | `-InputPath <folder>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
+
+See the [Media tools guide](media/README.md) for examples, dependencies, and date-preservation limits.
 
 ## Git tools
 
@@ -65,7 +92,12 @@ See the [Git tool guide](git/README.md) for parameters and examples.
 
 ## Nextcloud file copy and local cleanup
 
-The workflow uses two scripts: `nextcloud/Copy-UserDataToNextcloud.ps1` copies selected Windows user folders into existing Nextcloud destination folders and never deletes source data. After synchronization to the server is complete, `nextcloud/Remove-MigratedUserData.ps1` can delete local files whose SHA-256 hash matches a file in the corresponding Nextcloud destination folder, as well as empty local subfolders when the corresponding Nextcloud folder exists. Before deletion, the user confirms that synchronization is complete and approves cleanup separately for each main folder.
+The workflow uses two scripts: `nextcloud/Copy-UserDataToNextcloud.ps1` copies selected Windows user folders into
+existing Nextcloud destination folders and never deletes source data. File transfers are staged as `.part` files and
+moved into their final names only when complete. After synchronization to the server is complete,
+`nextcloud/Remove-MigratedUserData.ps1` can delete local files whose SHA-256 hash matches a file in the corresponding
+Nextcloud destination folder, as well as empty local subfolders when the corresponding Nextcloud folder exists. Before
+deletion, the user confirms that synchronization is complete and approves cleanup separately for each main folder.
 
 | Script | Parameters and switches |
 | --- | --- |
@@ -74,9 +106,11 @@ The workflow uses two scripts: `nextcloud/Copy-UserDataToNextcloud.ps1` copies s
 
 See the [Nextcloud tool guide](nextcloud/README.md) for details and examples.
 
-## Open issues
+## Testing
 
-Planned work is listed in [open-issues.md](open-issues.md).
+The GitHub Actions workflow runs `tests/Invoke-Tests.ps1` with Windows PowerShell 5.1 and PowerShell 7 for pull requests
+targeting `main`. To run the same test suite locally, use `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5
+or later is required.
 
 ## License
 

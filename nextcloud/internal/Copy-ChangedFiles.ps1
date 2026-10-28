@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Defines Copy-ChangedFiles. Requires Get-LocalizedText.ps1, Get-FileSha256.ps1,
-    and Invoke-RobocopyFile.ps1 from the same folder.
+    and Copy-FileToStaging.ps1 from the same folder.
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7.
@@ -22,8 +22,9 @@
 .DESCRIPTION
     Skips a source file when any file in the destination has the same SHA-256
     hash, and also skips a source file whose content is already planned for
-    copying from an earlier source file. Transfers other files with Robocopy
-    and verifies copied content by hash. Creates missing destination folders.
+    copying from an earlier source file. Copies other files through same-folder
+    staging files with a .part extension and verifies their hashes before
+    publishing. Creates missing destination folders.
     Progress is passed to the ProgressReporter callback instead of being written
     to the console.
 
@@ -58,7 +59,7 @@
 
 .NOTES
     Throws when a source file changes during the identical-content check or when
-    a copied file does not match its source hash.
+    a staged file does not match its expected hash before publication.
 #>
 function Copy-ChangedFiles {
     [CmdletBinding()]
@@ -144,17 +145,11 @@ function Copy-ChangedFiles {
         $sourceFileDirectory = [System.IO.Path]::GetDirectoryName($sourceFilePath)
         $sourceFileName = [System.IO.Path]::GetFileName($sourceFilePath)
         $destinationFileDirectory = [System.IO.Path]::GetDirectoryName($destinationFilePath)
-        Invoke-RobocopyFile -SourceDirectory $sourceFileDirectory `
+        Copy-FileToStaging -SourceDirectory $sourceFileDirectory `
             -DestinationDirectory $destinationFileDirectory -FileName $sourceFileName `
-            -RelativePath $file.RelativePath -FileLength ([long]$file.Length) `
+            -RelativePath $file.RelativePath -FileLength ([long]$file.Length) -ExpectedHash $copyItem.Hash `
             -CompletedBytes $completedBytes -TotalBytes ([long]$SourceInventory.TotalBytes) `
             -FolderName $FolderName -Language $Language -Messages $Messages -ProgressReporter $ProgressReporter
-        $sourceHashAfterCopy = Get-FileSha256 -Path $sourceFilePath
-        $destinationHash = Get-FileSha256 -Path $destinationFilePath
-        if ($sourceHashAfterCopy -ne $copyItem.Hash -or $destinationHash -ne $copyItem.Hash) {
-            throw (Get-LocalizedText -Text 'File content does not match at destination: {0}' `
-                    -Arguments @($file.RelativePath) -Language $Language -Messages $Messages)
-        }
         $copiedFiles++
         $copiedBytes += [long]$file.Length
         $completedBytes += [long]$file.Length

@@ -103,7 +103,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-GhostscriptExecutablePath.ps1')
 . (Join-Path $PSScriptRoot 'internal\Test-PythonModule.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-PdfInputFile.ps1')
-. (Join-Path $PSScriptRoot 'internal\ConvertTo-QuotedArgument.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\ConvertTo-QuotedArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\Optimize-WithGhostscript.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-PdfSizeOptimization.ps1')
 

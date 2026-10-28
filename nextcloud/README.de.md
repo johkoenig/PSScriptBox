@@ -28,7 +28,10 @@ Dieser Ordner enthält zwei PowerShell-Skripte: Das eine kopiert ausgewählte Wi
 
 ## Abhängigkeiten einrichten
 
-Der Nextcloud-Synchronisierungsclient muss installiert und eingerichtet sein. Der Synchronisierungsordner ist standardmäßig `%USERPROFILE%\Nextcloud` oder der mit `-NextcloudPath` angegebene Pfad. Der Nextcloud-Stammordner und jeder ausgewählte Zielordner müssen bereits existieren; benötigte Unterordner werden angelegt. Das Kopierskript verwendet Robocopy, das in Windows enthalten ist.
+Der Nextcloud-Synchronisierungsclient muss installiert und eingerichtet sein. Der Synchronisierungsordner ist
+standardmäßig `%USERPROFILE%\Nextcloud` oder der mit `-NextcloudPath` angegebene Pfad. Der Nextcloud-Stammordner und
+jeder ausgewählte Zielordner müssen bereits existieren; benötigte Unterordner werden angelegt. Zum Kopieren werden die
+integrierten PowerShell- und .NET-APIs verwendet; ein externes Kopierprogramm ist nicht erforderlich.
 
 ## Skripte und Schalter
 
@@ -38,7 +41,12 @@ Kopiert die ausgewählten Benutzerordner (Desktop, Documents, Pictures, Music, V
 
 Die Skripte ermitteln die tatsächlichen Windows-Spezialordner des aktuellen Benutzers, auch wenn diese umgeleitet sind.
 
-Das Kopierskript prüft nur Leseberechtigungen. Dateien, deren SHA-256-Hash bereits irgendwo im jeweiligen Nextcloud-Zielordner vorkommt, werden ohne Einzelwarnung übersprungen. Die Inventarisierung berücksichtigt Nextcloud-Platzhalter und durchläuft keine symbolischen Links oder Junctions; für den Hash-Vergleich werden Platzhalter bei Bedarf vom Server geladen. Die übrigen Dateien kopiert Robocopy im fortsetzbaren Modus mit Wiederholungsversuchen; während der Übertragung wird ein Fortschrittsbalken angezeigt.
+Das Kopierskript prüft nur Leseberechtigungen. Dateien, deren SHA-256-Hash bereits irgendwo im jeweiligen
+Nextcloud-Zielordner vorkommt, werden ohne Einzelwarnung übersprungen. Die Inventarisierung berücksichtigt
+Nextcloud-Platzhalter und durchläuft keine symbolischen Links oder Junctions; für den Hash-Vergleich werden Platzhalter
+bei Bedarf vom Server geladen. Die übrigen Dateien werden in Blöcken mit Wiederholungsversuchen kopiert; während der
+Übertragung wird ein Fortschrittsbalken angezeigt. Jede Datei wird zunächst in eine `.part`-Datei im selben Ordner
+kopiert. Quell- und Zwischendatei werden per Hash geprüft, bevor die fertige Datei verschoben oder atomar ersetzt wird.
 
 | Parameter / Schalter | Beschreibung |
 | --- | --- |
@@ -88,7 +96,9 @@ Beide Skripte verwenden `SupportsShouldProcess`; daher stehen `-WhatIf` und `-Co
 - Zielinhalte werden weder gespiegelt noch bereinigt.
 - Das Kopierskript prüft nur Leseberechtigungen. Dateien, deren SHA-256-Hash bereits irgendwo im jeweiligen Zielordner vorkommt, werden ohne Einzelwarnung übersprungen.
 - Unmittelbar vor jeder Löschung vergleicht das Bereinigungsskript den lokalen Hash erneut mit den zuvor gefundenen passenden Zieldateien. Geänderte, fehlende oder nicht mehr inhaltsgleiche Dateien bleiben erhalten.
-- Robocopy überträgt die übrigen Dateien im fortsetzbaren Modus mit Wiederholungsversuchen und zeigt einen Fortschrittsbalken an.
+- Dateiübertragungen erfolgen in Blöcken mit Wiederholungsversuchen in `.part`-Zwischendateien im selben Ordner. Quell-
+  und Zwischendatei werden vor der Veröffentlichung per Hash geprüft. Die fertige Datei wird anschließend verschoben
+  oder ersetzt atomar die Zieldatei, damit der Synchronisierungsclient keine unvollständige endgültige Datei sieht.
 - Die Bestätigung der Synchronisierung ist eine Nutzeraussage. Das Bereinigungsskript kann den Serverzustand nicht unabhängig prüfen.
 - Das Projekt steht unter der [MIT-Lizenz](../LICENSE.md).
 - Hinweise zum Mitwirken stehen in [CONTRIBUTING.md](../CONTRIBUTING.md).

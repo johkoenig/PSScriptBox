@@ -13,7 +13,7 @@
 #>
 
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\ConvertTo-QuotedArgument.ps1')
+    . (Join-Path $PSScriptRoot '..\..\..\common\internal\ConvertTo-QuotedArgument.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Get-ExecutablePath.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Start-ElevatedSetup.ps1')
 }

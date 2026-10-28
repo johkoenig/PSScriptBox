@@ -42,7 +42,7 @@ function Invoke-OriginalPdfRestore
     $processedBaseName = $OriginalFile.BaseName -replace '_orig$', ''
     $processedPath = Join-Path -Path $OriginalFile.DirectoryName -ChildPath ($processedBaseName + $OriginalFile.Extension)
     $processedBackupPath = Join-Path -Path $OriginalFile.DirectoryName -ChildPath (
-    '.' + $processedBaseName + '.' + [guid]::NewGuid().ToString('N') + '.restore.bak'
+    '.' + $processedBaseName + '.' + [guid]::NewGuid().ToString('N') + '.restore.bak.part'
     )
     $replacementCompleted = $false
 

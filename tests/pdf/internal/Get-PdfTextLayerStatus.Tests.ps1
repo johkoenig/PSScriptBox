@@ -16,7 +16,7 @@
 BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..')).Path
     . (Join-Path $script:RepoRoot 'common\internal\Get-LocalizedText.ps1')
-    . (Join-Path $script:RepoRoot 'pdf\internal\ConvertTo-QuotedArgument.ps1')
+    . (Join-Path $script:RepoRoot 'common\internal\ConvertTo-QuotedArgument.ps1')
     . (Join-Path $script:RepoRoot 'pdf\internal\Invoke-PythonCommand.ps1')
     . (Join-Path $script:RepoRoot 'pdf\internal\Get-PdfTextLayerStatus.ps1')
 

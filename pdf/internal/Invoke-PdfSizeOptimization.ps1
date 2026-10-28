@@ -79,9 +79,9 @@ function Invoke-PdfSizeOptimization
 
     $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $tempStem = '.{0}' -f [guid]::NewGuid().ToString('N')
-    $candidatePath = Join-Path $Pdf.DirectoryName ($tempStem + '.pdf')
-    $checkPath = Join-Path $Pdf.DirectoryName ($tempStem + '.check.py')
-    $replaceBackupPath = Join-Path $Pdf.DirectoryName ($tempStem + '.bak')
+    $candidatePath = Join-Path $Pdf.DirectoryName ($tempStem + '.pdf.part')
+    $checkPath = Join-Path $Pdf.DirectoryName ($tempStem + '.check.py.part')
+    $replaceBackupPath = Join-Path $Pdf.DirectoryName ($tempStem + '.bak.part')
     $originalPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
     $backupWarning = $null
     $failureReason = $null

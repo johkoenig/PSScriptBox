@@ -47,7 +47,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-PdfPythonRuntime.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
-. (Join-Path $PSScriptRoot 'internal\ConvertTo-QuotedArgument.ps1')
+. (Join-Path $PSScriptRoot '..\common\internal\ConvertTo-QuotedArgument.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-PythonCommand.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-PdfTextLayerStatus.ps1')
 

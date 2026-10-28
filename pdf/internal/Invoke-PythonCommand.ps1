@@ -8,7 +8,7 @@
 
 .NOTES
     Dependencies: Windows PowerShell 5.1 or PowerShell 7. Requires
-    ConvertTo-QuotedArgument and Get-LocalizedText to be dot-sourced by the caller.
+    ConvertTo-QuotedArgument and Get-LocalizedText from common\internal.
 #>
 
 # SPDX-License-Identifier: MIT

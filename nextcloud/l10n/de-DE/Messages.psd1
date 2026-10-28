@@ -5,7 +5,6 @@
 
 @{
     'The Windows folder could not be found and will be skipped: {0}' = 'Der Windows-Ordner wurde nicht gefunden und wird übersprungen: {0}'
-    'File content does not match at destination: {0}' = 'Dateiinhalt stimmt am Ziel nicht überein: {0}'
     'Enter the Nextcloud synchronization folder path' = 'Pfad zum Nextcloud-Synchronisierungsordner eingeben'
     'No Nextcloud path was specified.' = 'Es wurde kein Nextcloud-Pfad angegeben.'
     'No selected Windows user folders were found.' = 'Keine der ausgewählten Windows-Benutzerordner wurde gefunden.'
@@ -40,10 +39,10 @@
     '=== Confirm the Nextcloud sync client is paused ===' = '=== Bestätigung des pausierten Nextcloud-Clients ==='
     'Copying folder {0}' = 'Kopiere Ordner {0}'
     'Copying file: {0}' = 'Kopiere Datei: {0}'
-    'Could not start Robocopy for {0}.' = 'Robocopy konnte für {0} nicht gestartet werden.'
-    'Robocopy failed for {0} (exit code {1}): {2}' = 'Robocopy ist bei {0} mit Exitcode {1} fehlgeschlagen: {2}'
-    'Robocopy did not create the destination file: {0}' = 'Robocopy hat die Zieldatei nicht erstellt: {0}'
-    'No diagnostic output was returned.' = 'Das Kopierprogramm hat keine Fehlerdetails ausgegeben.'
+    'Source file changed before copying: {0}' = 'Quelldatei wurde vor dem Kopieren geändert: {0}'
+    'Could not copy {0} to a temporary file after {1} attempts: {2}' = '{0} konnte nach {1} Versuchen nicht in eine temporäre Datei kopiert werden: {2}'
+    'Source or staged file changed during copy: {0}' = 'Quelldatei oder Zwischendatei wurde während des Kopierens geändert: {0}'
+    'Could not publish the completed file {0}: {1}' = 'Die fertige Datei {0} konnte nicht veröffentlicht werden: {1}'
     'Source file changed while checking for identical content: {0}' = 'Quelldatei wurde während der Prüfung auf identische Inhalte geändert: {0}'
     'Checking files for identical content' = 'Prüfe Dateien auf identische Inhalte'
     'Copy folder from {0} ({1:N2} MB)' = 'Ordner aus {0} kopieren ({1:N2} MB)'
