@@ -40,8 +40,8 @@
 .PARAMETER UiLanguage
     Language of error messages: 'de' selects German, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with FilePath and WarningMessages properties.
@@ -55,10 +55,8 @@ function Invoke-MediaDateRestoration
         [Parameter(Mandatory)][datetime] $DateTime,
         [Parameter(Mandatory)][string] $ExifToolPath,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ }
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $targetName = [System.IO.Path]::GetFileName($TargetPath)
     if (-not [string]::Equals($File.FullName, $TargetPath, [System.StringComparison]::Ordinal))
     {
@@ -73,13 +71,13 @@ function Invoke-MediaDateRestoration
     {
         $dateArguments = @(
             Get-MediaDateUpdateArgument -Path $TargetPath -DateTime $DateTime `
-                -ExifToolPath $ExifToolPath -UiLanguage $UiLanguage -Messages $Messages
+                -ExifToolPath $ExifToolPath -UiLanguage $UiLanguage -MessagesPath $MessagesPath
         )
         if ($dateArguments.Count -gt 0)
         {
             $arguments = @('-overwrite_original') + $dateArguments + @($TargetPath)
             $result = Invoke-MediaTool -ExecutablePath $ExifToolPath -Arguments $arguments `
-                -UiLanguage $UiLanguage -Messages $Messages
+                -UiLanguage $UiLanguage -MessagesPath $MessagesPath
             $outputLines = @(
             @($result.StdOut -split "`r?`n") + @($result.StdErr -split "`r?`n") |
                     Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
@@ -87,9 +85,9 @@ function Invoke-MediaDateRestoration
             if ($result.ExitCode -ne 0)
             {
                 $details = $outputLines -join [Environment]::NewLine
-                $updateFailure = Get-LocalizedText @localization -Text 'ExifTool failed to update date metadata for {0} (exit code {1}): {2}' -Arguments @(
+                $updateFailure = Get-LocalizedText -Text 'ExifTool failed to update date metadata for {0} (exit code {1}): {2}' -Arguments @(
                     $TargetPath, $result.ExitCode, $details
-                )
+                ) -Language $UiLanguage -MessagesPath $MessagesPath
             }
             else
             {
@@ -111,9 +109,9 @@ function Invoke-MediaDateRestoration
     }
     catch
     {
-        $timestampFailures += Get-LocalizedText @localization -Text 'Could not set CreationTime for {0}: {1}' -Arguments @(
+        $timestampFailures += Get-LocalizedText -Text 'Could not set CreationTime for {0}: {1}' -Arguments @(
             $TargetPath, $_.Exception.Message
-        )
+        ) -Language $UiLanguage -MessagesPath $MessagesPath
     }
     try
     {
@@ -124,16 +122,16 @@ function Invoke-MediaDateRestoration
     }
     catch
     {
-        $timestampFailures += Get-LocalizedText @localization -Text 'Could not set LastWriteTime for {0}: {1}' -Arguments @(
+        $timestampFailures += Get-LocalizedText -Text 'Could not set LastWriteTime for {0}: {1}' -Arguments @(
             $TargetPath, $_.Exception.Message
-        )
+        ) -Language $UiLanguage -MessagesPath $MessagesPath
     }
 
     if ($updateFailure -and $timestampFailures.Count -gt 0)
     {
-        throw (Get-LocalizedText @localization -Text '{0}; {1}' -Arguments @(
+        throw (Get-LocalizedText -Text '{0}; {1}' -Arguments @(
             $updateFailure, ($timestampFailures -join [Environment]::NewLine)
-        ))
+        ) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
     if ($updateFailure)
     {

@@ -18,10 +18,7 @@ BeforeAll {
         [pscustomobject]@{ Value = 'true'; Text = 'Enables it' }
         [pscustomobject]@{ Value = 'false'; Text = 'Disables it' }
     )
-    $script:Catalog = @{
-        'Current value (unchanged)' = 'Aktueller Wert (unverändert)'
-        'Enables it'                = 'Aktiviert es'
-    }
+    $script:Catalog = Join-Path $PSScriptRoot '..\..\..\git\l10n\de-DE\Messages.psd1'
 }
 
 Describe 'Get-RecommendedSettingOption' {
@@ -53,9 +50,9 @@ Describe 'Get-RecommendedSettingOption' {
     }
 
     It 'localizes the option and current texts when the language is de' {
-        $options = @(Get-RecommendedSettingOption -Options $script:Options -Current 'maybe' -Language 'de' -Messages $script:Catalog)
+        $options = @(Get-RecommendedSettingOption -Options $script:Options -Current 'maybe' -Language 'de' -MessagesPath $script:Catalog)
         $options[0].Text | Should -Be 'Aktueller Wert (unverändert)'
-        $options[1].Text | Should -Be 'Aktiviert es'
+        $options[1].Text | Should -Be 'Enables it'
         $options[2].Text | Should -Be 'Disables it'
     }
 }

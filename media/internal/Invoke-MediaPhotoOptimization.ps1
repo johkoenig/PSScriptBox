@@ -63,8 +63,8 @@
 .PARAMETER UiLanguage
     Language of messages: 'de' selects the German catalog, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .PARAMETER Reporter
     Receives regular and warning messages for display by the caller.
@@ -87,11 +87,9 @@ function Invoke-MediaPhotoOptimization
         [ValidateRange(2, 31)][int] $JpegQuality = 2,
         [hashtable] $OriginalTimestamps,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ },
+        [string]$MessagesPath = '',
         [scriptblock] $Reporter = { }
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $photoPath = $Photo.FullName
     $backupPath = Join-Path $Photo.DirectoryName ($Photo.BaseName + '_orig' + $Photo.Extension)
     $temporaryPath = Join-Path $Photo.DirectoryName ('.optimize-{0}.jpg.part' -f [guid]::NewGuid().ToString('N'))
@@ -108,7 +106,7 @@ function Invoke-MediaPhotoOptimization
     {
         if ($Photo.Extension -notin @('.jpg', '.jpeg'))
         {
-            throw (Get-LocalizedText @localization -Text 'Only JPEG photos are supported: {0}' -Arguments @($photoPath))
+            throw (Get-LocalizedText -Text 'Only JPEG photos are supported: {0}' -Arguments @($photoPath) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         $source = Get-Item -LiteralPath $photoPath -ErrorAction Stop
@@ -129,22 +127,22 @@ function Invoke-MediaPhotoOptimization
         if ($originalBytes -le $TargetSizeBytes)
         {
             $skipped = $true
-            $failureReason = Get-LocalizedText @localization -Text 'JPEG size {0:N1} MB is at or below the {1:N1} MB optimization threshold.' -Arguments @(
+            $failureReason = Get-LocalizedText -Text 'JPEG size {0:N1} MB is at or below the {1:N1} MB optimization threshold.' -Arguments @(
                 ($originalBytes / 1MB), ($TargetSizeBytes / 1MB)
-            )
+            ) -Language $UiLanguage -MessagesPath $MessagesPath
             & $Reporter 'Host' 'DarkYellow' $failureReason
         }
         elseif (-not $ReplaceOriginal -and (Test-Path -LiteralPath $backupPath))
         {
-            throw (Get-LocalizedText @localization -Text 'Original backup already exists: {0}' -Arguments @($backupPath))
+            throw (Get-LocalizedText -Text 'Original backup already exists: {0}' -Arguments @($backupPath) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         else
         {
-            & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Optimizing: {0}' -Arguments @($Photo.Name))
+            & $Reporter 'Host' $null (Get-LocalizedText -Text 'Optimizing: {0}' -Arguments @($Photo.Name) -Language $UiLanguage -MessagesPath $MessagesPath)
             $dimensionResult = Invoke-MediaTool -ExecutablePath $FFprobePath -Arguments @(
                 '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height',
                 '-of', 'json', $photoPath
-            ) -UiLanguage $UiLanguage -Messages $Messages
+            ) -UiLanguage $UiLanguage -MessagesPath $MessagesPath
             if ($dimensionResult.ExitCode -ne 0)
             {
                 $details = if ( [string]::IsNullOrWhiteSpace($dimensionResult.StdErr))
@@ -155,9 +153,9 @@ function Invoke-MediaPhotoOptimization
                 {
                     $dimensionResult.StdErr.Trim()
                 }
-                throw (Get-LocalizedText @localization -Text 'FFprobe failed to read JPEG dimensions for {0} (exit code {1}): {2}' -Arguments @(
+                throw (Get-LocalizedText -Text 'FFprobe failed to read JPEG dimensions for {0} (exit code {1}): {2}' -Arguments @(
                     $photoPath, $dimensionResult.ExitCode, $details
-                ))
+                ) -Language $UiLanguage -MessagesPath $MessagesPath)
             }
 
             try
@@ -179,9 +177,9 @@ function Invoke-MediaPhotoOptimization
             }
             catch
             {
-                throw (Get-LocalizedText @localization -Text 'FFprobe returned invalid JPEG dimensions for {0}: {1}' -Arguments @(
+                throw (Get-LocalizedText -Text 'FFprobe returned invalid JPEG dimensions for {0}: {1}' -Arguments @(
                     $photoPath, $_.Exception.Message
-                ))
+                ) -Language $UiLanguage -MessagesPath $MessagesPath)
             }
 
             $scaleFactor = [Math]::Sqrt($EstimatedOutputSizeBytes / [double]$originalBytes)
@@ -190,18 +188,18 @@ function Invoke-MediaPhotoOptimization
             $targetWidth -= $targetWidth % 2
             $targetHeight -= $targetHeight % 2
             $scaleFilter = 'scale={0}:{1}:force_original_aspect_ratio=decrease:force_divisible_by=2' -f $targetWidth, $targetHeight
-            & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Estimated JPEG dimensions: {0} x {1} -> {2} x {3} pixels (target {4:N1} MB).' -Arguments @(
+            & $Reporter 'Host' $null (Get-LocalizedText -Text 'Estimated JPEG dimensions: {0} x {1} -> {2} x {3} pixels (target {4:N1} MB).' -Arguments @(
                 $sourceWidth, $sourceHeight, $targetWidth, $targetHeight, ($EstimatedOutputSizeBytes / 1MB)
-            ))
+            ) -Language $UiLanguage -MessagesPath $MessagesPath)
             $sourceDateMetadata = Get-MediaDateTag -Path $photoPath -ExifToolPath $ExifToolPath `
-                -UiLanguage $UiLanguage -Messages $Messages
+                -UiLanguage $UiLanguage -MessagesPath $MessagesPath
 
             $encodeResult = Invoke-MediaTool -ExecutablePath $FFmpegPath -Arguments @(
                 '-nostdin', '-hide_banner', '-loglevel', 'error', '-y', '-noautorotate',
                 '-i', $photoPath, '-map_metadata', '0', '-frames:v', '1',
                 '-vf', $scaleFilter, '-c:v', 'mjpeg', '-q:v', [string]$JpegQuality,
                 '-pix_fmt', 'yuvj420p', '-f', 'image2', $temporaryPath
-            ) -UiLanguage $UiLanguage -Messages $Messages
+            ) -UiLanguage $UiLanguage -MessagesPath $MessagesPath
             if ($encodeResult.ExitCode -ne 0)
             {
                 $details = if ( [string]::IsNullOrWhiteSpace($encodeResult.StdErr))
@@ -212,20 +210,20 @@ function Invoke-MediaPhotoOptimization
                 {
                     $encodeResult.StdErr.Trim()
                 }
-                throw (Get-LocalizedText @localization -Text 'FFmpeg failed (exit code {0}): {1}' -Arguments @($encodeResult.ExitCode, $details))
+                throw (Get-LocalizedText -Text 'FFmpeg failed (exit code {0}): {1}' -Arguments @($encodeResult.ExitCode, $details) -Language $UiLanguage -MessagesPath $MessagesPath)
             }
             if (-not (Test-Path -LiteralPath $temporaryPath -PathType Leaf))
             {
-                throw (Get-LocalizedText @localization -Text 'FFmpeg did not create an output file.')
+                throw (Get-LocalizedText -Text 'FFmpeg did not create an output file.' -Language $UiLanguage -MessagesPath $MessagesPath)
             }
             if ((Get-Item -LiteralPath $temporaryPath -ErrorAction Stop).Length -le 0)
             {
-                throw (Get-LocalizedText @localization -Text 'FFmpeg created an empty output file.')
+                throw (Get-LocalizedText -Text 'FFmpeg created an empty output file.' -Language $UiLanguage -MessagesPath $MessagesPath)
             }
 
             $copyResult = Invoke-MediaTool -ExecutablePath $ExifToolPath -Arguments @(
                 '-overwrite_original', '-P', '-TagsFromFile', $photoPath, '-all:all', $temporaryPath
-            ) -UiLanguage $UiLanguage -Messages $Messages
+            ) -UiLanguage $UiLanguage -MessagesPath $MessagesPath
             if ($copyResult.ExitCode -ne 0)
             {
                 $details = if ( [string]::IsNullOrWhiteSpace($copyResult.StdErr))
@@ -236,13 +234,13 @@ function Invoke-MediaPhotoOptimization
                 {
                     $copyResult.StdErr.Trim()
                 }
-                throw (Get-LocalizedText @localization -Text 'ExifTool could not copy metadata (exit code {0}): {1}' -Arguments @($copyResult.ExitCode, $details))
+                throw (Get-LocalizedText -Text 'ExifTool could not copy metadata (exit code {0}): {1}' -Arguments @($copyResult.ExitCode, $details) -Language $UiLanguage -MessagesPath $MessagesPath)
             }
 
             Set-MediaFileTimestamp -Path $temporaryPath @sourceTimestamps `
-                -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
+                -UiLanguage $UiLanguage -MessagesPath $MessagesPath -Confirm:$false -WhatIf:$false
             $outputDateMetadata = Get-MediaDateTag -Path $temporaryPath -ExifToolPath $ExifToolPath `
-                -UiLanguage $UiLanguage -Messages $Messages
+                -UiLanguage $UiLanguage -MessagesPath $MessagesPath
             $changedTags = [System.Collections.Generic.List[string]]::new()
             foreach ($tagName in $sourceDateMetadata.Keys)
             {
@@ -262,15 +260,15 @@ function Invoke-MediaPhotoOptimization
             if ($changedTags.Count -gt 0)
             {
                 $tagList = ($changedTags | Sort-Object -Unique) -join ', '
-                throw (Get-LocalizedText @localization -Text 'Date metadata changed during encoding; the original was not replaced. Tags: {0}' -Arguments @($tagList))
+                throw (Get-LocalizedText -Text 'Date metadata changed during encoding; the original was not replaced. Tags: {0}' -Arguments @($tagList) -Language $UiLanguage -MessagesPath $MessagesPath)
             }
 
             $candidateBytes = [long](Get-Item -LiteralPath $temporaryPath -ErrorAction Stop).Length
             if ($candidateBytes -ge $originalBytes)
             {
                 $skipped = $true
-                $failureReason = Get-LocalizedText @localization -Text 'No size reduction'
-                & $Reporter 'Host' 'DarkYellow' (Get-LocalizedText @localization -Text 'The optimized file was not smaller; the source was left unchanged.')
+                $failureReason = Get-LocalizedText -Text 'No size reduction' -Language $UiLanguage -MessagesPath $MessagesPath
+                & $Reporter 'Host' 'DarkYellow' (Get-LocalizedText -Text 'The optimized file was not smaller; the source was left unchanged.' -Language $UiLanguage -MessagesPath $MessagesPath)
             }
             else
             {
@@ -294,7 +292,7 @@ function Invoke-MediaPhotoOptimization
                     [System.IO.File]::Move($temporaryPath, $photoPath)
                     $outputCreated = $true
                     Set-MediaFileTimestamp -Path $photoPath @sourceTimestamps `
-                        -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
+                        -UiLanguage $UiLanguage -MessagesPath $MessagesPath -Confirm:$false -WhatIf:$false
 
                     if ($ReplaceOriginal)
                     {
@@ -332,26 +330,26 @@ function Invoke-MediaPhotoOptimization
                     }
                     if ($rollbackErrors.Count -gt 0)
                     {
-                        throw (Get-LocalizedText @localization -Text 'Commit failed: {0}; rollback also failed: {1}' -Arguments @(
+                        throw (Get-LocalizedText -Text 'Commit failed: {0}; rollback also failed: {1}' -Arguments @(
                             $commitError, ($rollbackErrors -join '; ')
-                        ))
+                        ) -Language $UiLanguage -MessagesPath $MessagesPath)
                     }
                     throw $commitError
                 }
 
                 $success = $true
                 $resultBytes = $candidateBytes
-                & $Reporter 'Host' 'Green' (Get-LocalizedText @localization -Text 'Optimized: {0:N1} MB -> {1:N1} MB' -Arguments @(
+                & $Reporter 'Host' 'Green' (Get-LocalizedText -Text 'Optimized: {0:N1} MB -> {1:N1} MB' -Arguments @(
                     ($originalBytes / 1MB), ($resultBytes / 1MB)
-                ))
-                & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Created: {0}' -Arguments @($photoPath))
+                ) -Language $UiLanguage -MessagesPath $MessagesPath)
+                & $Reporter 'Host' $null (Get-LocalizedText -Text 'Created: {0}' -Arguments @($photoPath) -Language $UiLanguage -MessagesPath $MessagesPath)
             }
         }
     }
     catch
     {
         $failureReason = $_.Exception.Message
-        & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Could not optimize '{0}':`n{1}" -Arguments @($Photo.Name, $failureReason))
+        & $Reporter 'Warning' $null (Get-LocalizedText -Text "Could not optimize '{0}':`n{1}" -Arguments @($Photo.Name, $failureReason) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
     finally
     {
@@ -373,7 +371,7 @@ function Invoke-MediaPhotoOptimization
             try
             {
                 Set-MediaFileTimestamp -Path $timestampPath @sourceTimestamps `
-                    -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
+                    -UiLanguage $UiLanguage -MessagesPath $MessagesPath -Confirm:$false -WhatIf:$false
             }
             catch
             {
@@ -385,7 +383,7 @@ function Invoke-MediaPhotoOptimization
         {
             $success = $false
             $skipped = $false
-            $cleanupMessage = Get-LocalizedText @localization -Text 'Cleanup or timestamp restoration failed: {0}' -Arguments @($cleanupErrors -join '; ')
+            $cleanupMessage = Get-LocalizedText -Text 'Cleanup or timestamp restoration failed: {0}' -Arguments @($cleanupErrors -join '; ') -Language $UiLanguage -MessagesPath $MessagesPath
             if ($failureReason)
             {
                 $failureReason = '{0}; {1}' -f $failureReason, $cleanupMessage

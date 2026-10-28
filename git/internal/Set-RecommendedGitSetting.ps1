@@ -37,7 +37,7 @@
 .PARAMETER Language
     Language code used for error messages from the git helpers.
 
-.PARAMETER Messages
+.PARAMETER MessagesPath
     Message catalog hashtable passed to the git helpers.
 
 .OUTPUTS
@@ -52,12 +52,12 @@ function Set-RecommendedGitSetting
         [Parameter(Mandatory)][ValidateSet('Local', 'Global')][string] $Scope,
         [string] $Repository,
         [string] $Language = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
 
     $results = [System.Collections.Generic.List[object]]::new()
     foreach ($change in $Changes) {
-        $current = Get-GitConfigValue -Key $change.Key -Scope $Scope -Repository $Repository -Language $Language -Messages $Messages
+        $current = Get-GitConfigValue -Key $change.Key -Scope $Scope -Repository $Repository -Language $Language -MessagesPath $MessagesPath
         if ($null -eq $change.Value) {
             $status = 'Skipped'
         }
@@ -66,11 +66,11 @@ function Set-RecommendedGitSetting
         }
         else {
             $action = Get-LocalizedText -Text 'Set Git configuration value {0} to {1}' `
-                -Arguments @($change.Key, $change.Value) -Language $Language -Messages $Messages
+                -Arguments @($change.Key, $change.Value) -Language $Language -MessagesPath $MessagesPath
             if ( $PSCmdlet.ShouldProcess("$Scope $( $change.Key )", $action))
             {
                 Set-GitConfigValue -Key $change.Key -Value $change.Value -Scope $Scope `
-                    -Repository $Repository -Language $Language -Messages $Messages `
+                    -Repository $Repository -Language $Language -MessagesPath $MessagesPath `
                     -Confirm:$false -WhatIf:$false | Out-Null
                 $status = 'Configured'
             }

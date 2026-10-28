@@ -33,8 +33,8 @@
 .PARAMETER Language
     'de' selects German error text; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     System.String[]. Lines emitted by Git.
@@ -45,7 +45,7 @@ function Invoke-GitCommand {
         [string] $Repository,
         [Parameter(Mandatory)][string[]] $Arguments,
         [string] $Language = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
 
     $prefix = if ($Repository) { @('-C', $Repository) } else { @() }
@@ -61,7 +61,7 @@ function Invoke-GitCommand {
     }
     if ($exitCode -ne 0) {
         $details = ($output | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
-        throw (Get-LocalizedText -Text 'Git command failed (exit code {0}): {1}' -Arguments @($exitCode, $details) -Language $Language -Messages $Messages)
+        throw (Get-LocalizedText -Text 'Git command failed (exit code {0}): {1}' -Arguments @($exitCode, $details) -Language $Language -MessagesPath $MessagesPath)
     }
     return $output
 }

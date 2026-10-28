@@ -15,6 +15,7 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Invoke-SetupProcess.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\pdf\internal\Get-TesseractTrainingStatus.ps1')
+    $script:MessagesPath = Join-Path $PSScriptRoot '..\..\..\pdf\l10n\de-DE\Messages.psd1'
 }
 
 Describe 'Get-TesseractTrainingStatus' {
@@ -55,10 +56,10 @@ Describe 'Get-TesseractTrainingStatus' {
     }
 
     It 'passes the UI language and messages to the process runner' {
-        $messages = @{ 'x' = 'y' }
-        Get-TesseractTrainingStatus -TesseractPath 'C:\Tess\tesseract.exe' -UiLanguage 'de' -Messages $messages | Out-Null
+        Get-TesseractTrainingStatus -TesseractPath 'C:\Tess\tesseract.exe' -UiLanguage 'de' `
+            -MessagesPath $script:MessagesPath | Out-Null
         Should -Invoke Invoke-SetupProcess -Times 1 -Exactly -ParameterFilter {
-            $Arguments -contains '--list-langs' -and $UiLanguage -eq 'de' -and $Messages['x'] -eq 'y'
+            $Arguments -contains '--list-langs' -and $UiLanguage -eq 'de' -and $MessagesPath -eq $script:MessagesPath
         }
     }
 }

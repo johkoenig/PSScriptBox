@@ -34,8 +34,8 @@
 .PARAMETER UiLanguage
     'de' selects German messages; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with ExitCode, StdOut, and StdErr.
@@ -46,11 +46,8 @@ function Invoke-SetupProcess {
         [Parameter(Mandatory)][string] $FilePath,
         [Parameter(Mandatory)][string[]] $Arguments,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
-
     # ProcessStartInfo is used directly instead of Start-Process so that stderr
     # stays a plain string and is not turned into a PowerShell error record.
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
@@ -65,7 +62,7 @@ function Invoke-SetupProcess {
     $process.StartInfo = $startInfo
     try {
         if (-not $process.Start()) {
-            throw (Get-LocalizedText @localization -Text 'Could not start process: {0}' -Arguments @($FilePath))
+            throw (Get-LocalizedText -Text 'Could not start process: {0}' -Arguments @($FilePath) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
         $stderrTask = $process.StandardError.ReadToEndAsync()

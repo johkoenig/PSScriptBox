@@ -14,7 +14,7 @@
 
 BeforeAll {
     $script:OutputLanguage = 'en'
-    $script:GermanMessages = @{}
+    $script:MessagesPath = ''
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\nextcloud\internal\Test-FileReadAccess.ps1')
 }
@@ -51,10 +51,10 @@ Describe 'Test-FileReadAccess' {
     It 'uses the German catalog when Language is de' {
         $path = Join-Path $TestDrive 'german.txt'
         [System.IO.File]::WriteAllText($path, 'data')
-        $messages = @{ 'No read permission on file' = 'Keine Leseberechtigung für Datei' }
+        $messages = Join-Path $PSScriptRoot '..\..\..\nextcloud\l10n\de-DE\Messages.psd1'
         $directory = Join-Path $TestDrive 'german-folder'
         New-Item -ItemType Directory -Path $directory | Out-Null
-        $problem = Test-FileReadAccess -Path $directory -Language 'de' -Messages $messages
-        $problem.Reason | Should -Be 'Keine Leseberechtigung für Datei'
+        $problem = Test-FileReadAccess -Path $directory -Language 'de' -MessagesPath $messages
+        $problem.Reason | Should -Be 'Keine Leseberechtigung für die Datei'
     }
 }

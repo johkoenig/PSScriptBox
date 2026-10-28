@@ -86,6 +86,11 @@ Describe 'Script conventions' {
         $params = (Get-Ast -Path $Path).Ast.ParamBlock.Parameters.Name.VariablePath.UserPath
         $params | Should -Contain 'EnglishOutput'
     }
+
+    It '<Name> avoids unnecessary script scope in its top-level flow' -ForEach $script:TopLevelScripts {
+        $text = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+        $text | Should -Not -Match '\$script:'
+    }
 }
 
 Describe 'Function conventions' {
@@ -113,6 +118,22 @@ Describe 'Function conventions' {
 }
 
 Describe 'Localization catalog' {
+    It 'passes a catalog path to every Get-LocalizedText call in <Name>' -ForEach $script:Files {
+        $calls = (Get-Ast -Path $Path).Ast.FindAll({
+            param($node)
+            $node -is [System.Management.Automation.Language.CommandAst] -and
+                    $node.GetCommandName() -eq 'Get-LocalizedText'
+        }, $true)
+
+        foreach ($call in $calls)
+        {
+            $parameters = @($call.CommandElements | Where-Object {
+                $_ -is [System.Management.Automation.Language.CommandParameterAst]
+            } | ForEach-Object ParameterName)
+            $parameters | Should -Contain 'MessagesPath' -Because "Get-LocalizedText at line $( $call.Extent.StartLineNumber ) must receive its catalog path"
+        }
+    }
+
     It 'every Get-LocalizedText key in <Name> exists in its German catalog' -ForEach $script:Files {
         $areaDirectory = Split-Path -Parent $Path
         if ($areaDirectory -like '*\internal') { $areaDirectory = Split-Path -Parent $areaDirectory }
@@ -137,5 +158,11 @@ Describe 'Localization catalog' {
             if ($null -eq $firstArgument) { continue }
             $catalog.ContainsKey($firstArgument.Value) | Should -BeTrue -Because "missing German text for '$($firstArgument.Value)'"
         }
+    }
+
+    It 'keeps Get-LocalizedText independent of script-scoped state' {
+        $helperPath = Join-Path $script:RepoRoot 'common\internal\Get-LocalizedText.ps1'
+        $text = Get-Content -LiteralPath $helperPath -Raw -Encoding UTF8
+        $text | Should -Not -Match '\$script:'
     }
 }

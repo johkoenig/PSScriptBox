@@ -37,8 +37,8 @@
 .PARAMETER UiLanguage
     'de' selects German messages; any other value selects English.
 
-.PARAMETER Messages
-    German catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with FilePath, PageCount, TextPageCount, Status, and Error.
@@ -49,11 +49,8 @@ function Get-PdfTextLayerStatus {
         [Parameter(Mandatory)][System.IO.FileInfo] $Pdf,
         [Parameter(Mandatory)][string] $PythonPath,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
-
     # The inspection runs as an embedded script so that no helper file is needed beside the PDF.
     $pythonCode = @'
 import sys
@@ -115,22 +112,22 @@ except Exception as error:
 '@
 
     $result = Invoke-PythonCommand -PythonPath $PythonPath -Arguments @('-c', $pythonCode, $Pdf.FullName) `
-        -UiLanguage $UiLanguage -Messages $Messages
+        -UiLanguage $UiLanguage -MessagesPath $MessagesPath
     if ($result.ExitCode -ne 0) {
         $details = $result.StdErr.Trim()
         if (-not $details) { $details = $result.StdOut.Trim() }
-        throw (Get-LocalizedText @localization -Text 'PDF check failed (exit code {0}): {1}' -Arguments @($result.ExitCode, $details))
+        throw (Get-LocalizedText -Text 'PDF check failed (exit code {0}): {1}' -Arguments @($result.ExitCode, $details) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
 
     $values = $result.StdOut.Trim() -split "`t"
     if ($values.Count -ne 2 -or $values[0] -notmatch '^\d+$' -or $values[1] -notmatch '^\d+$') {
-        throw (Get-LocalizedText @localization -Text 'Python returned an invalid check result for ''{0}''.' -Arguments @($Pdf.FullName))
+        throw (Get-LocalizedText -Text 'Python returned an invalid check result for ''{0}''.' -Arguments @($Pdf.FullName) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
 
     $pageCount = [int]$values[0]
     $textPageCount = [int]$values[1]
     if ($pageCount -eq 0) {
-        throw (Get-LocalizedText @localization 'The PDF file contains no pages.')
+        throw (Get-LocalizedText 'The PDF file contains no pages.' -Language $UiLanguage -MessagesPath $MessagesPath)
     }
 
     $status = if ($textPageCount -eq 0) {

@@ -39,8 +39,8 @@
 .PARAMETER Language
     'de' selects German error text; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     System.Boolean. True when the value was written; false when WhatIf or a
@@ -54,11 +54,11 @@ function Set-GitConfigValue {
         [Parameter(Mandatory)][ValidateSet('Local', 'Global')][string] $Scope,
         [string] $Repository,
         [string] $Language = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
 
     $action = Get-LocalizedText -Text 'Set Git configuration value {0} to {1}' `
-        -Arguments @($Key, $Value) -Language $Language -Messages $Messages
+        -Arguments @($Key, $Value) -Language $Language -MessagesPath $MessagesPath
     if (-not $PSCmdlet.ShouldProcess("$Scope $Key", $action))
     {
         return $false
@@ -67,6 +67,6 @@ function Set-GitConfigValue {
     $repositoryArgument = if ($Scope -eq 'Local') { $Repository } else { '' }
     Invoke-GitCommand -Repository $repositoryArgument `
         -Arguments @('config', ('--' + $Scope.ToLowerInvariant()), $Key, $Value) `
-        -Language $Language -Messages $Messages | Out-Null
+        -Language $Language -MessagesPath $MessagesPath | Out-Null
     return $true
 }

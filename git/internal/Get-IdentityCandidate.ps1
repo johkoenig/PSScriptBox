@@ -35,8 +35,8 @@
 .PARAMETER Language
     'de' selects German source labels; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject[] with Value and Source properties. Empty when no entry is valid.
@@ -48,7 +48,7 @@ function Get-IdentityCandidate
         [Parameter(Mandatory)][ValidateSet('user.name', 'user.email')][string] $Key,
         [AllowEmptyCollection()][object[]] $Entries = @(),
         [string] $Language = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
 
     $found = [System.Collections.Generic.List[object]]::new()
@@ -60,7 +60,7 @@ function Get-IdentityCandidate
         if (@($found | Where-Object { $_.Value -ieq $value }).Count) { continue }
         $found.Add([pscustomobject]@{
                 Value  = $value
-                Source = Get-LocalizedText -Text $entry.Source -Arguments @($entry.SourceArguments) -Language $Language -Messages $Messages
+                Source = Get-LocalizedText -Text $entry.Source -Arguments @($entry.SourceArguments) -Language $Language -MessagesPath $MessagesPath
             })
     }
     return $found.ToArray()

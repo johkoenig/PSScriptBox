@@ -20,7 +20,7 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\git\internal\Get-ObsoleteGitBranch.ps1')
 
     $script:Language = 'en-US'
-    $script:Messages = @{ }
+    $script:MessagesPath = ''
 
     function Invoke-TestGit
     {

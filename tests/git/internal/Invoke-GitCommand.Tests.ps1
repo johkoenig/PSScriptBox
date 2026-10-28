@@ -15,7 +15,7 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\git\internal\Invoke-GitCommand.ps1')
-    $script:Catalog = @{ 'Git command failed (exit code {0}): {1}' = 'Git-Befehl fehlgeschlagen (Exit-Code {0}): {1}' }
+    $script:Catalog = Join-Path $PSScriptRoot '..\..\..\git\l10n\de-DE\Messages.psd1'
 
     function New-TestRepository {
         $path = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
@@ -59,7 +59,7 @@ Describe 'Invoke-GitCommand' {
 
     It 'throws the German error text when the language is de' {
         $repository = New-TestRepository
-        { Invoke-GitCommand -Repository $repository -Arguments @('rev-parse', '--verify', 'no-such-ref') -Language 'de' -Messages $script:Catalog } |
+        { Invoke-GitCommand -Repository $repository -Arguments @('rev-parse', '--verify', 'no-such-ref') -Language 'de' -MessagesPath $script:Catalog } |
             Should -Throw -ExpectedMessage 'Git-Befehl fehlgeschlagen*'
     }
 }

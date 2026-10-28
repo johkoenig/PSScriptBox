@@ -15,10 +15,7 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\git\internal\Test-IdentityValue.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\git\internal\Get-IdentityCandidate.ps1')
-    $script:Catalog = @{
-        'Existing Git setting ({0})' = 'Vorhandene Git-Einstellung ({0})'
-        'Windows display name'       = 'Windows-Anzeigename'
-    }
+    $script:Catalog = Join-Path $PSScriptRoot '..\..\..\git\l10n\de-DE\Messages.psd1'
 
     function New-Entry {
         param([object] $Value, [string] $Source, [object[]] $SourceArguments = @())
@@ -77,7 +74,7 @@ Describe 'Get-IdentityCandidate' {
             New-Entry -Value 'Ann' -Source 'Existing Git setting ({0})' -SourceArguments @('Local')
             New-Entry -Value 'Bea' -Source 'Windows display name'
         )
-        $candidates = @(Get-IdentityCandidate -Key 'user.name' -Entries $entries -Language 'de' -Messages $script:Catalog)
+        $candidates = @(Get-IdentityCandidate -Key 'user.name' -Entries $entries -Language 'de' -MessagesPath $script:Catalog)
         $candidates[0].Source | Should -Be 'Vorhandene Git-Einstellung (Local)'
         $candidates[1].Source | Should -Be 'Windows-Anzeigename'
     }

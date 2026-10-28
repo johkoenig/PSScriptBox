@@ -107,7 +107,8 @@ Describe 'Get-PdfSetupState' {
     }
 
     It 'passes the UI language and messages to the process runner' {
-        Get-PdfSetupState -ToolLocation $script:FullLocation -UiLanguage 'de' -Messages @{} | Out-Null
+        Get-PdfSetupState -ToolLocation $script:FullLocation -UiLanguage 'de' `
+            -MessagesPath (Join-Path $PSScriptRoot '..\..\..\pdf\l10n\de-DE\Messages.psd1') | Out-Null
         Should -Invoke Invoke-SetupProcess -Times 6 -Exactly -ParameterFilter { $UiLanguage -eq 'de' }
     }
 }

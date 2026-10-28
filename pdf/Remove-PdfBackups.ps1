@@ -65,13 +65,10 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-EligibleOriginalPdf.ps1')
 
-$script:OutputLanguage = if (
+$OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 ) { 'en' } else { 'de' }
-$script:GermanMessages = if ($script:OutputLanguage -eq 'de') {
-    Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1')
-}
-else { @{} }
+$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 
 $headerLines = @(
     '       .-------------------------------------------.'
@@ -88,20 +85,20 @@ Write-Host ''
 foreach ($headerLine in $headerLines) {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText 'Removes eligible original PDF backups.') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Removes eligible original PDF backups.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 Write-Host ''
 
 if ([string]::IsNullOrWhiteSpace($InputPath)) {
-    Write-Host (Get-LocalizedText 'Enter the folder containing original PDF backups.')
-    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath')
+    Write-Host (Get-LocalizedText 'Enter the folder containing original PDF backups.' -Language $OutputLanguage -MessagesPath $MessagesPath)
+    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 if ([string]::IsNullOrWhiteSpace($InputPath)) {
-    throw (Get-LocalizedText 'No folder was specified.')
+    throw (Get-LocalizedText 'No folder was specified.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 
 $InputPath = [Environment]::ExpandEnvironmentVariables($InputPath.Trim().Trim('"'))
 if (-not (Test-Path -LiteralPath $InputPath -PathType Container)) {
-    throw (Get-LocalizedText -Text 'The specified folder was not found: {0}' -Arguments @($InputPath))
+    throw (Get-LocalizedText -Text 'The specified folder was not found: {0}' -Arguments @($InputPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 
 $directory = Get-Item -LiteralPath $InputPath
@@ -116,16 +113,16 @@ $eligibleFiles = @(Get-EligibleOriginalPdf -RootPath $directory.FullName)
 $eligibleCount = $eligibleFiles.Count
 $deletedCount = 0
 
-Write-Host (Get-LocalizedText -Text '  Folder: {0}' -Arguments @($directory.FullName))
-Write-Host (Get-LocalizedText -Text '  Original PDF backups eligible for deletion: {0}' -Arguments @($eligibleCount)) -ForegroundColor Yellow
+Write-Host (Get-LocalizedText -Text '  Folder: {0}' -Arguments @($directory.FullName) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text '  Original PDF backups eligible for deletion: {0}' -Arguments @($eligibleCount) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
 
 if ($eligibleCount -eq 0) {
-    Write-Host (Get-LocalizedText 'No matching _orig PDFs with a processed PDF were found.') -ForegroundColor Green
+    Write-Host (Get-LocalizedText 'No matching _orig PDFs with a processed PDF were found.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Green
     Write-Host ''
-    Write-Host (Get-LocalizedText '=== Summary ===') -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath))
-    Write-Host (Get-LocalizedText 'Found: 0')
-    Write-Host (Get-LocalizedText 'Deleted: 0')
+    Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Found: 0' -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Deleted: 0' -Language $OutputLanguage -MessagesPath $MessagesPath)
     return
 }
 
@@ -137,12 +134,12 @@ foreach ($originalFile in $eligibleFiles) {
 
 if ($WhatIfPreference) {
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Preview: no files were deleted.') -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Preview: no files were deleted.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
     Write-Host ''
-    Write-Host (Get-LocalizedText '=== Summary ===') -ForegroundColor Cyan
-    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath))
-    Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount))
-    Write-Host (Get-LocalizedText 'Deleted: 0')
+    Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Deleted: 0' -Language $OutputLanguage -MessagesPath $MessagesPath)
     return
 }
 
@@ -152,7 +149,7 @@ $approvedFiles = @(
         $processedPath = Join-Path -Path $originalFile.DirectoryName -ChildPath ($processedBaseName + $originalFile.Extension)
         $relativePath = $originalFile.FullName.Substring($basePathPrefix.Length)
         $relativeProcessedPath = $processedPath.Substring($basePathPrefix.Length)
-        $action = Get-LocalizedText -Text 'Delete original PDF backup; keep processed PDF: {0}' -Arguments @($relativeProcessedPath)
+        $action = Get-LocalizedText -Text 'Delete original PDF backup; keep processed PDF: {0}' -Arguments @($relativeProcessedPath) -Language $OutputLanguage -MessagesPath $MessagesPath
         if ($PSCmdlet.ShouldProcess($relativePath, $action)) {
             $originalFile
         }
@@ -161,18 +158,18 @@ $approvedFiles = @(
 
 if ($approvedFiles.Count -gt 0) {
     Write-Host ''
-    Write-Host (Get-LocalizedText 'Deleting original PDF backups...') -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText 'Deleting original PDF backups...' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 }
 
 foreach ($originalFile in $approvedFiles) {
     $relativePath = $originalFile.FullName.Substring($basePathPrefix.Length)
     Remove-Item -LiteralPath $originalFile.FullName -Force
-    Write-Host (Get-LocalizedText -Text '  Deleted: {0}' -Arguments @($relativePath)) -ForegroundColor Green
+    Write-Host (Get-LocalizedText -Text '  Deleted: {0}' -Arguments @($relativePath) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Green
     $deletedCount++
 }
 
 Write-Host ''
-Write-Host (Get-LocalizedText '=== Summary ===') -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath))
-Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount))
-Write-Host (Get-LocalizedText -Text 'Deleted: {0}' -Arguments @($deletedCount))
+Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Deleted: {0}' -Arguments @($deletedCount) -Language $OutputLanguage -MessagesPath $MessagesPath)

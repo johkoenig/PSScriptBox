@@ -87,7 +87,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaSizeOptimization.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaPhotoOptimization.ps1')
 
-$script:OutputLanguage = if (
+$OutputLanguage = if (
 $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 )
 {
@@ -97,14 +97,7 @@ else
 {
     'de'
 }
-$script:GermanMessages = if ($script:OutputLanguage -eq 'de')
-{
-    Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1')
-}
-else
-{
-    @{ }
-}
+$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 
 $headerLines = @(
     '       .-------------------------------------------.'
@@ -121,11 +114,11 @@ foreach ($headerLine in $headerLines)
 {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText 'Optimizes inefficient videos and large JPEG photos.') -ForegroundColor Cyan
-Write-Host (Get-LocalizedText 'Preserves supported file timestamps and verified capture dates.') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Optimizes inefficient videos and large JPEG photos.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Preserves supported file timestamps and verified capture dates.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 Write-Host ''
 
-$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}'
+$missingDependencyTemplate = Get-LocalizedText -Text 'Missing dependency: {0}' -Language $OutputLanguage -MessagesPath $MessagesPath
 $ffmpegCommand = Get-Command -Name 'ffmpeg.exe', 'ffmpeg' -ErrorAction SilentlyContinue |
         Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
 $ffprobeCommand = Get-Command -Name 'ffprobe.exe', 'ffprobe' -ErrorAction SilentlyContinue |
@@ -151,11 +144,11 @@ if ($missingDependencies.Count -gt 0)
     {
         $guidance = if ($dependency -eq 'ExifTool')
         {
-            Get-LocalizedText 'Install ExifTool with Chocolatey: choco install exiftool -y, or download from https://exiftool.org/.'
+            Get-LocalizedText 'Install ExifTool with Chocolatey: choco install exiftool -y, or download from https://exiftool.org/.' -Language $OutputLanguage -MessagesPath $MessagesPath
         }
         else
         {
-            Get-LocalizedText 'Install FFmpeg (including FFprobe) with Chocolatey: choco install ffmpeg -y.'
+            Get-LocalizedText 'Install FFmpeg (including FFprobe) with Chocolatey: choco install ffmpeg -y.' -Language $OutputLanguage -MessagesPath $MessagesPath
         }
         $report = Get-MissingDependencyReport -Dependency $dependency -Guidance $guidance `
             -MessageTemplate $missingDependencyTemplate
@@ -167,25 +160,25 @@ if ($missingDependencies.Count -gt 0)
 
 if ( [string]::IsNullOrWhiteSpace($InputPath))
 {
-    Write-Host (Get-LocalizedText 'Enter the path to a MOV, MP4, JPG, or JPEG file or a folder containing these files.')
-    Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.') -ForegroundColor Yellow
-    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath')
+    Write-Host (Get-LocalizedText 'Enter the path to a MOV, MP4, JPG, or JPEG file or a folder containing these files.' -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Press Ctrl+C to cancel input.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
+    $InputPath = Read-Host -Prompt (Get-LocalizedText 'InputPath' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 
 try
 {
-    $inputSelection = Get-MediaInputFile -Path $InputPath -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
+    $inputSelection = Get-MediaInputFile -Path $InputPath -UiLanguage $OutputLanguage -MessagesPath $MessagesPath
 }
 catch
 {
-    Write-Host (Get-LocalizedText -Text 'Error: {0}' -Arguments @($_.Exception.Message)) -ForegroundColor Red
+    Write-Host (Get-LocalizedText -Text 'Error: {0}' -Arguments @($_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Red
     exit 1
 }
 
 $mediaFiles = @($inputSelection.Files)
 if ($mediaFiles.Count -eq 0)
 {
-    Write-Host (Get-LocalizedText 'No supported media files found.')
+    Write-Host (Get-LocalizedText 'No supported media files found.' -Language $OutputLanguage -MessagesPath $MessagesPath)
     exit 0
 }
 $videoFiles = @($mediaFiles | Where-Object { $_.Extension -in @('.mov', '.mp4') })
@@ -201,25 +194,25 @@ $summaryPathSegments = @($basePath.TrimEnd('\') -split '[\\/]' | Where-Object { 
 $summaryPath = '.\' + ((@($summaryPathSegments | Select-Object -Last 3)) -join '\') + '\'
 
 Write-Host ''
-Write-Host (Get-LocalizedText '=== Media size optimization: processing started ===') -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($basePath))
-Write-Host (Get-LocalizedText -Text 'Number of files: {0}' -Arguments @($mediaFiles.Count))
+Write-Host (Get-LocalizedText '=== Media size optimization: processing started ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($basePath) -Language $OutputLanguage -MessagesPath $MessagesPath)
+Write-Host (Get-LocalizedText -Text 'Number of files: {0}' -Arguments @($mediaFiles.Count) -Language $OutputLanguage -MessagesPath $MessagesPath)
 if ($videoFiles.Count -gt 0)
 {
-    Write-Host (Get-LocalizedText 'Video encoder: H.265 (HEVC/libx265), maximum 720p, target 1.9 Mb/s; preset medium')
-    Write-Host (Get-LocalizedText 'Audio bitrate: 96 kb/s')
+    Write-Host (Get-LocalizedText 'Video encoder: H.265 (HEVC/libx265), maximum 720p, target 1.9 Mb/s; preset medium' -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Audio bitrate: 96 kb/s' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 if ($photoFiles.Count -gt 0)
 {
-    Write-Host (Get-LocalizedText 'Photo profile: 6 MB threshold, estimated 5 MB output, proportional pixel scaling, high JPEG quality')
+    Write-Host (Get-LocalizedText 'Photo profile: 6 MB threshold, estimated 5 MB output, proportional pixel scaling, high JPEG quality' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 if ($ReplaceOriginal)
 {
-    Write-Host (Get-LocalizedText 'Sources will be replaced after successful verification.')
+    Write-Host (Get-LocalizedText 'Sources will be replaced after successful verification.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 else
 {
-    Write-Host (Get-LocalizedText 'Sources will be saved as _orig backups.')
+    Write-Host (Get-LocalizedText 'Sources will be saved as _orig backups.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 
 $reporter = {
@@ -254,7 +247,7 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
     {
         $photoIndex++
         Write-Host ''
-        Write-Host (Get-LocalizedText -Text '--- Photo {0}/{1}: {2} ---' -Arguments @($photoIndex, $photoFiles.Count, $relativePath)) -ForegroundColor Cyan
+        Write-Host (Get-LocalizedText -Text '--- Photo {0}/{1}: {2} ---' -Arguments @($photoIndex, $photoFiles.Count, $relativePath) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 
         $photo = $mediaFile
         $photoTimestamps = $null
@@ -270,7 +263,7 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
         catch
         {
             $failureReason = $_.Exception.Message
-            Write-Warning (Get-LocalizedText -Text "Could not inspect '{0}':`n{1}" -Arguments @($relativePath, $failureReason))
+            Write-Warning (Get-LocalizedText -Text "Could not inspect '{0}':`n{1}" -Arguments @($relativePath, $failureReason) -Language $OutputLanguage -MessagesPath $MessagesPath)
             $results += [pscustomobject]@{
                 Success = $false
                 Skipped = $false
@@ -286,18 +279,18 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
         {
             $skipReason = Get-LocalizedText -Text 'JPEG size {0:N1} MB is at or below the {1:N1} MB optimization threshold.' -Arguments @(
                 ($photo.Length / 1MB), ($photoTargetSizeBytes / 1MB)
-            )
+            ) -Language $OutputLanguage -MessagesPath $MessagesPath
             Write-Host $skipReason -ForegroundColor DarkYellow
             continue
         }
 
         $photoAction = if ($ReplaceOriginal)
         {
-            Get-LocalizedText -Text 'Optimize JPEG and replace source: {0}' -Arguments @($photo.FullName)
+            Get-LocalizedText -Text 'Optimize JPEG and replace source: {0}' -Arguments @($photo.FullName) -Language $OutputLanguage -MessagesPath $MessagesPath
         }
         else
         {
-            Get-LocalizedText -Text 'Optimize JPEG and back up source: {0}' -Arguments @($photo.FullName)
+            Get-LocalizedText -Text 'Optimize JPEG and back up source: {0}' -Arguments @($photo.FullName) -Language $OutputLanguage -MessagesPath $MessagesPath
         }
         if (-not $PSCmdlet.ShouldProcess($photo.FullName, $photoAction))
         {
@@ -305,7 +298,7 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
                 Success = $false
                 Skipped = $true
                 FilePath = $photo.FullName
-                FailureReason = Get-LocalizedText 'Preview only; no files were changed.'
+                FailureReason = Get-LocalizedText 'Preview only; no files were changed.' -Language $OutputLanguage -MessagesPath $MessagesPath
                 OriginalBytes = [long]0
                 ResultBytes = [long]0
             }
@@ -319,12 +312,12 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
                 -ReplaceOriginal $ReplaceOriginal.IsPresent -TargetSizeBytes $photoTargetSizeBytes `
                 -EstimatedOutputSizeBytes $photoEstimatedOutputSizeBytes `
                 -JpegQuality $photoJpegQuality -OriginalTimestamps $photoTimestamps `
-                -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages -Reporter $reporter
+                -UiLanguage $OutputLanguage -MessagesPath $MessagesPath -Reporter $reporter
         }
         catch
         {
             $failureReason = $_.Exception.Message
-            Write-Warning (Get-LocalizedText -Text "Could not optimize '{0}':`n{1}" -Arguments @($relativePath, $failureReason))
+            Write-Warning (Get-LocalizedText -Text "Could not optimize '{0}':`n{1}" -Arguments @($relativePath, $failureReason) -Language $OutputLanguage -MessagesPath $MessagesPath)
             $results += [pscustomobject]@{
                 Success = $false
                 Skipped = $false
@@ -340,7 +333,7 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
     $videoIndex++
     $video = $mediaFile
     Write-Host ''
-    Write-Host (Get-LocalizedText -Text '--- Video {0}/{1}: {2} ---' -Arguments @($videoIndex, $videoFiles.Count, $relativePath)) -ForegroundColor Cyan
+    Write-Host (Get-LocalizedText -Text '--- Video {0}/{1}: {2} ---' -Arguments @($videoIndex, $videoFiles.Count, $relativePath) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 
     $videoTimestamps = $null
     try
@@ -352,9 +345,9 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
             LastAccessTimeUtc = $sourceFile.LastAccessTimeUtc
         }
         $videoInfo = Get-MediaVideoInfo -Path $video.FullName -FFprobePath $ffprobeCommand.Source `
-            -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages
+            -UiLanguage $OutputLanguage -MessagesPath $MessagesPath
         Set-MediaFileTimestamp -Path $video.FullName @videoTimestamps `
-            -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages -Confirm:$false -WhatIf:$false
+            -UiLanguage $OutputLanguage -MessagesPath $MessagesPath -Confirm:$false -WhatIf:$false
     }
     catch
     {
@@ -364,16 +357,16 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
             try
             {
                 Set-MediaFileTimestamp -Path $video.FullName @videoTimestamps `
-                    -UiLanguage $script:OutputLanguage -Messages $script:GermanMessages -Confirm:$false -WhatIf:$false
+                    -UiLanguage $OutputLanguage -MessagesPath $MessagesPath -Confirm:$false -WhatIf:$false
             }
             catch
             {
                 $restorationError = Get-LocalizedText -Text 'Timestamp restoration failed: {0}' `
-                    -Arguments @($_.Exception.Message)
+                    -Arguments @($_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath
                 $inspectionError = '{0}; {1}' -f $inspectionError, $restorationError
             }
         }
-        Write-Warning (Get-LocalizedText -Text "Could not inspect '{0}':`n{1}" -Arguments @($relativePath, $inspectionError))
+        Write-Warning (Get-LocalizedText -Text "Could not inspect '{0}':`n{1}" -Arguments @($relativePath, $inspectionError) -Language $OutputLanguage -MessagesPath $MessagesPath)
         $results += [pscustomobject]@{
             Success = $false
             Skipped = $false
@@ -400,21 +393,21 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
     {
         if ($codec -eq 'h264' -and $hasOriginalBackup)
         {
-            $skipReason = Get-LocalizedText 'An _orig backup already exists; skipping to prevent repeat re-encoding.'
+            $skipReason = Get-LocalizedText 'An _orig backup already exists; skipping to prevent repeat re-encoding.' -Language $OutputLanguage -MessagesPath $MessagesPath
         }
         elseif ($codec -eq 'h264' -and $videoBitrate -eq 0)
         {
-            $skipReason = Get-LocalizedText 'H.264 bitrate is unavailable; skipping to avoid unnecessary re-encoding.'
+            $skipReason = Get-LocalizedText 'H.264 bitrate is unavailable; skipping to avoid unnecessary re-encoding.' -Language $OutputLanguage -MessagesPath $MessagesPath
         }
         elseif ($codec -eq 'h264')
         {
             $skipReason = Get-LocalizedText -Text 'H.264 bitrate {0:N1} Mb/s is at or below the {1:N1} Mb/s threshold.' -Arguments @(
                 ($videoBitrate / 1000000), 1.9
-            )
+            ) -Language $OutputLanguage -MessagesPath $MessagesPath
         }
         else
         {
-            $skipReason = Get-LocalizedText -Text 'Already uses an efficient video codec ({0}).' -Arguments @($codec)
+            $skipReason = Get-LocalizedText -Text 'Already uses an efficient video codec ({0}).' -Arguments @($codec) -Language $OutputLanguage -MessagesPath $MessagesPath
         }
         Write-Host $skipReason -ForegroundColor DarkYellow
         $results += [pscustomobject]@{
@@ -432,17 +425,17 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
     {
         Write-Host (Get-LocalizedText -Text 'High-bitrate H.264 ({0:N1} Mb/s); converting to 720p H.265 at 1.9 Mb/s.' -Arguments @(
             ($videoBitrate / 1000000)
-        )) -ForegroundColor DarkYellow
+        ) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
     }
 
     $outputPath = Join-Path $video.DirectoryName ($video.BaseName + '.mp4')
     $action = if ($ReplaceOriginal)
     {
-        Get-LocalizedText -Text 'Create optimized MP4 and replace source: {0}' -Arguments @($outputPath)
+        Get-LocalizedText -Text 'Create optimized MP4 and replace source: {0}' -Arguments @($outputPath) -Language $OutputLanguage -MessagesPath $MessagesPath
     }
     else
     {
-        Get-LocalizedText -Text 'Create optimized MP4 and back up source: {0}' -Arguments @($outputPath)
+        Get-LocalizedText -Text 'Create optimized MP4 and back up source: {0}' -Arguments @($outputPath) -Language $OutputLanguage -MessagesPath $MessagesPath
     }
 
     if (-not $PSCmdlet.ShouldProcess($video.FullName, $action))
@@ -451,7 +444,7 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
             Success = $false
             Skipped = $true
             FilePath = $video.FullName
-            FailureReason = Get-LocalizedText 'Preview only; no files were changed.'
+            FailureReason = Get-LocalizedText 'Preview only; no files were changed.' -Language $OutputLanguage -MessagesPath $MessagesPath
             OriginalBytes = [long]0
             ResultBytes = [long]0
         }
@@ -462,12 +455,12 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
     {
         $results += Invoke-MediaSizeOptimization -Video $video -FFmpegPath $ffmpegCommand.Source `
             -ExifToolPath $exifToolCommand.Source -ReplaceOriginal $ReplaceOriginal.IsPresent `
-            -VideoBitrateKbps 1900 -OriginalTimestamps $videoTimestamps -UiLanguage $script:OutputLanguage `
-            -Messages $script:GermanMessages -Reporter $reporter
+            -VideoBitrateKbps 1900 -OriginalTimestamps $videoTimestamps -UiLanguage $OutputLanguage `
+            -MessagesPath $MessagesPath -Reporter $reporter
     }
     catch
     {
-        Write-Warning (Get-LocalizedText -Text "Could not optimize '{0}':`n{1}" -Arguments @($relativePath, $_.Exception.Message))
+        Write-Warning (Get-LocalizedText -Text "Could not optimize '{0}':`n{1}" -Arguments @($relativePath, $_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath)
         $results += [pscustomobject]@{
             Success = $false
             Skipped = $false
@@ -495,50 +488,50 @@ else
 }
 
 Write-Host ''
-Write-Host (Get-LocalizedText '=== Summary ===') -ForegroundColor Cyan
-Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath))
+Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
 Write-Host (Get-LocalizedText -Text 'Succeeded: {0}, skipped: {1}, failed: {2}' -Arguments @(
     $successfulResults.Count, $skippedResults.Count, $failedResults.Count
-))
+) -Language $OutputLanguage -MessagesPath $MessagesPath)
 if ($successfulResults.Count -gt 0)
 {
-    Write-Host (Get-LocalizedText -Text 'Original total: {0:N2} MB' -Arguments @(($originalTotal / 1MB)))
-    Write-Host (Get-LocalizedText -Text 'Result total: {0:N2} MB' -Arguments @(($resultTotal / 1MB)))
-    Write-Host (Get-LocalizedText -Text 'Total saved: {0:N2} MB ({1:N1}%)' -Arguments @($savedMb, $savedPercent))
+    Write-Host (Get-LocalizedText -Text 'Original total: {0:N2} MB' -Arguments @(($originalTotal / 1MB)) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Result total: {0:N2} MB' -Arguments @(($resultTotal / 1MB)) -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText -Text 'Total saved: {0:N2} MB ({1:N1}%)' -Arguments @($savedMb, $savedPercent) -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 if ($ReplaceOriginal)
 {
-    Write-Host (Get-LocalizedText 'Original files were replaced after successful verification.')
+    Write-Host (Get-LocalizedText 'Original files were replaced after successful verification.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 else
 {
-    Write-Host (Get-LocalizedText 'Original files are saved as _orig backups; existing backups are preserved.')
+    Write-Host (Get-LocalizedText 'Original files are saved as _orig backups; existing backups are preserved.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 Write-Host ''
-Write-Host (Get-LocalizedText 'Failed files:') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Failed files:' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 if ($failedResults.Count -eq 0)
 {
-    Write-Host (Get-LocalizedText '  None.')
+    Write-Host (Get-LocalizedText '  None.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 else
 {
     foreach ($result in $failedResults)
     {
         $relativePath = $result.FilePath.Substring($basePathPrefix.Length)
-        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $result.FailureReason)) -ForegroundColor Yellow
+        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $result.FailureReason) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
     }
 }
 Write-Host ''
-Write-Host (Get-LocalizedText 'Skipped files:') -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Skipped files:' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 if ($skippedResults.Count -eq 0)
 {
-    Write-Host (Get-LocalizedText '  None.')
+    Write-Host (Get-LocalizedText '  None.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 else
 {
     foreach ($result in $skippedResults)
     {
         $relativePath = $result.FilePath.Substring($basePathPrefix.Length)
-        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $result.FailureReason)) -ForegroundColor DarkYellow
+        Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $result.FailureReason) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
     }
 }

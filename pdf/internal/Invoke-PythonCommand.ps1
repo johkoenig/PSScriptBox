@@ -34,8 +34,8 @@
 .PARAMETER UiLanguage
     'de' selects German messages; any other value selects English.
 
-.PARAMETER Messages
-    German catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with ExitCode, StdOut, and StdErr.
@@ -46,10 +46,8 @@ function Invoke-PythonCommand {
         [Parameter(Mandatory)][string] $PythonPath,
         [Parameter(Mandatory)][string[]] $Arguments,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $PythonPath
     $startInfo.Arguments = ($Arguments | ForEach-Object { ConvertTo-QuotedArgument -Value $_ }) -join ' '
@@ -65,7 +63,7 @@ function Invoke-PythonCommand {
     $process.StartInfo = $startInfo
     try {
         if (-not $process.Start()) {
-            throw (Get-LocalizedText @localization -Text 'Python could not be started: {0}' -Arguments @($PythonPath))
+            throw (Get-LocalizedText -Text 'Python could not be started: {0}' -Arguments @($PythonPath) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         # Start the reads before WaitForExit so a full output pipe cannot block the process.

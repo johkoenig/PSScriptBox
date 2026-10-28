@@ -35,8 +35,8 @@
 .PARAMETER UiLanguage
     Language of the messages: 'de' selects the German catalog, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     System.String[]. The notice lines in display order.
@@ -48,13 +48,11 @@ function Get-LanguageDownloadHint {
         [Parameter(Mandatory)][string] $TessdataPath,
         [Parameter(Mandatory)][string] $TessdataUrl,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     return @(
-        (Get-LocalizedText @localization -Text 'Missing required language data: {0}.' -Arguments @(($MissingLanguages -join ', '))),
-        (Get-LocalizedText @localization -Text 'Download the required .traineddata files from {0}' -Arguments @($TessdataUrl)),
-        (Get-LocalizedText @localization -Text 'and place them in the local tessdata folder: {0}' -Arguments @($TessdataPath))
+        (Get-LocalizedText -Text 'Missing required language data: {0}.' -Arguments @(($MissingLanguages -join ', ')) -Language $UiLanguage -MessagesPath $MessagesPath),
+        (Get-LocalizedText -Text 'Download the required .traineddata files from {0}' -Arguments @($TessdataUrl) -Language $UiLanguage -MessagesPath $MessagesPath),
+        (Get-LocalizedText -Text 'and place them in the local tessdata folder: {0}' -Arguments @($TessdataPath) -Language $UiLanguage -MessagesPath $MessagesPath)
     )
 }

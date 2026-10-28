@@ -31,8 +31,8 @@
 .PARAMETER Language
     'de' selects German problem texts; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with Path and Reason for each problem. Nothing is returned
@@ -43,7 +43,7 @@ function Test-FileReadAccess {
     param(
         [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string] $Path,
         [string] $Language = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
 
     $stream = $null
@@ -54,14 +54,14 @@ function Test-FileReadAccess {
     catch [System.UnauthorizedAccessException] {
         [pscustomobject]@{
             Path = $Path
-            Reason = (Get-LocalizedText -Text 'No read permission on file' -Language $Language -Messages $Messages)
+            Reason = (Get-LocalizedText -Text 'No read permission on file' -Language $Language -MessagesPath $MessagesPath)
         }
     }
     catch [System.IO.IOException] {
         [pscustomobject]@{
             Path = $Path
             Reason = (Get-LocalizedText -Text 'File cannot be read: {0}' -Arguments @($_.Exception.Message) `
-                    -Language $Language -Messages $Messages)
+                    -Language $Language -MessagesPath $MessagesPath)
         }
     }
     finally {

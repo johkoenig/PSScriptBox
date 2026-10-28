@@ -40,8 +40,8 @@
 .PARAMETER UiLanguage
     Language of the messages: 'de' selects the German catalog, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with PythonPath, PythonScope, GhostscriptPath, Missing (list of
@@ -55,15 +55,16 @@ function Get-MissingDependency {
         [AllowNull()][string] $GhostscriptPath,
         [bool] $NoGhostscript = $false,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $missing = [System.Collections.Generic.List[string]]::new()
     $optionalMissing = [System.Collections.Generic.List[string]]::new()
 
     $pythonPath = if ($PythonRuntime) { $PythonRuntime.Path } else { $null }
-    if (-not $pythonPath) { $missing.Add((Get-LocalizedText @localization -Text 'Python interpreter')) }
+    if (-not $pythonPath)
+    {
+        $missing.Add((Get-LocalizedText -Text 'Python interpreter' -Language $UiLanguage -MessagesPath $MessagesPath))
+    }
     if (-not $TesseractPath) { $missing.Add('Tesseract') }
 
     # Ghostscript is optional for basic OCR but supports rotation-only processing
@@ -72,17 +73,17 @@ function Get-MissingDependency {
     if (-not $NoGhostscript) {
         $resolvedGhostscriptPath = $GhostscriptPath
         if (-not $resolvedGhostscriptPath) {
-            $optionalMissing.Add((Get-LocalizedText @localization -Text 'Ghostscript (used for rotation-only processing when existing OCR is found)'))
+            $optionalMissing.Add((Get-LocalizedText -Text 'Ghostscript (used for rotation-only processing when existing OCR is found)' -Language $UiLanguage -MessagesPath $MessagesPath))
         }
     }
 
     # pngquant is optional for OCRmyPDF optimization and must not block the run.
     # jbig2 is intentionally not used; it is relevant only for monochrome images.
     if ($pythonPath -and -not (Test-PythonModule -PythonPath $pythonPath -ModuleName 'ocrmypdf')) {
-        $missing.Add((Get-LocalizedText @localization -Text 'OCRmyPDF (Python module)'))
+        $missing.Add((Get-LocalizedText -Text 'OCRmyPDF (Python module)' -Language $UiLanguage -MessagesPath $MessagesPath))
     }
     if ($pythonPath -and -not (Test-PythonModule -PythonPath $pythonPath -ModuleName 'pikepdf')) {
-        $missing.Add((Get-LocalizedText @localization -Text 'pikepdf (Python module)'))
+        $missing.Add((Get-LocalizedText -Text 'pikepdf (Python module)' -Language $UiLanguage -MessagesPath $MessagesPath))
     }
 
     [pscustomobject]@{

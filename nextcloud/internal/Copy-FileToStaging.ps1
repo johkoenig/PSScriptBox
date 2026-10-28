@@ -56,8 +56,8 @@
 .PARAMETER Language
     'de' selects German messages; anything else selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .PARAMETER ProgressReporter
     Optional callback invoked with -Activity, -Status, and -PercentComplete
@@ -80,11 +80,9 @@ function Copy-FileToStaging
         [Parameter(Mandatory)][long] $TotalBytes,
         [Parameter(Mandatory)][string] $FolderName,
         [string] $Language = 'en',
-        [hashtable] $Messages = @{ },
+        [string]$MessagesPath = '',
         [AllowNull()][scriptblock] $ProgressReporter
     )
-
-    $localization = @{ Language = $Language; Messages = $Messages }
     [System.IO.Directory]::CreateDirectory($DestinationDirectory) | Out-Null
     $sourcePath = Join-Path $SourceDirectory $FileName
     $destinationPath = Join-Path $DestinationDirectory $FileName
@@ -96,7 +94,7 @@ function Copy-FileToStaging
     $source = Get-Item -LiteralPath $sourcePath -ErrorAction Stop
     if ($source.Length -ne $FileLength)
     {
-        throw (Get-LocalizedText @localization -Text 'Source file changed before copying: {0}' -Arguments @($RelativePath))
+        throw (Get-LocalizedText -Text 'Source file changed before copying: {0}' -Arguments @($RelativePath) -Language $Language -MessagesPath $MessagesPath)
     }
 
     $sourceTimestamps = @{
@@ -105,8 +103,8 @@ function Copy-FileToStaging
         LastAccessTimeUtc = $source.LastAccessTimeUtc
         Attributes = $source.Attributes
     }
-    $activity = Get-LocalizedText @localization -Text 'Copying folder {0}' -Arguments @($FolderName)
-    $status = Get-LocalizedText @localization -Text 'Copying file: {0}' -Arguments @($RelativePath)
+    $activity = Get-LocalizedText -Text 'Copying folder {0}' -Arguments @($FolderName) -Language $Language -MessagesPath $MessagesPath
+    $status = Get-LocalizedText -Text 'Copying file: {0}' -Arguments @($RelativePath) -Language $Language -MessagesPath $MessagesPath
     $copyError = $null
 
     try
@@ -196,9 +194,9 @@ function Copy-FileToStaging
 
         if ($copyError)
         {
-            throw (Get-LocalizedText @localization -Text 'Could not copy {0} to a temporary file after {1} attempts: {2}' -Arguments @(
+            throw (Get-LocalizedText -Text 'Could not copy {0} to a temporary file after {1} attempts: {2}' -Arguments @(
                 $RelativePath, 3, $copyError
-            ))
+            ) -Language $Language -MessagesPath $MessagesPath)
         }
 
         $stagedFile = Get-Item -LiteralPath $temporaryPath -ErrorAction Stop
@@ -206,7 +204,7 @@ function Copy-FileToStaging
                 (Get-FileSha256 -Path $sourcePath) -ne $ExpectedHash -or
                 (Get-FileSha256 -Path $temporaryPath) -ne $ExpectedHash)
         {
-            throw (Get-LocalizedText @localization -Text 'Source or staged file changed during copy: {0}' -Arguments @($RelativePath))
+            throw (Get-LocalizedText -Text 'Source or staged file changed during copy: {0}' -Arguments @($RelativePath) -Language $Language -MessagesPath $MessagesPath)
         }
 
         try
@@ -232,9 +230,9 @@ function Copy-FileToStaging
         }
         catch
         {
-            throw (Get-LocalizedText @localization -Text 'Could not publish the completed file {0}: {1}' -Arguments @(
+            throw (Get-LocalizedText -Text 'Could not publish the completed file {0}: {1}' -Arguments @(
                 $RelativePath, $_.Exception.Message
-            ))
+            ) -Language $Language -MessagesPath $MessagesPath)
         }
     }
     finally

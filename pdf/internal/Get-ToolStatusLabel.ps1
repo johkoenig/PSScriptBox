@@ -34,8 +34,8 @@
 .PARAMETER UiLanguage
     'de' selects German messages; any other value selects English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     System.String. The localized status label.
@@ -46,11 +46,15 @@ function Get-ToolStatusLabel {
         [Parameter(Mandatory)][bool] $Available,
         [string] $Path,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{}
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
-    if ($Available) { return Get-LocalizedText @localization -Text 'Present' }
-    if ($Path) { return Get-LocalizedText @localization -Text 'Found but failed its validation check' }
-    return Get-LocalizedText @localization -Text 'Missing'
+    if ($Available)
+    {
+        return Get-LocalizedText -Text 'Present' -Language $UiLanguage -MessagesPath $MessagesPath
+    }
+    if ($Path)
+    {
+        return Get-LocalizedText -Text 'Found but failed its validation check' -Language $UiLanguage -MessagesPath $MessagesPath
+    }
+    return Get-LocalizedText -Text 'Missing' -Language $UiLanguage -MessagesPath $MessagesPath
 }

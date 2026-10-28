@@ -56,8 +56,8 @@
 .PARAMETER UiLanguage
     Language of messages: 'de' selects the German catalog, anything else English.
 
-.PARAMETER Messages
-    German message catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .PARAMETER Reporter
     Receives regular and warning messages for display by the caller.
@@ -77,11 +77,9 @@ function Invoke-MediaSizeOptimization
         [ValidateRange(500, 10000)][int] $VideoBitrateKbps = 1900,
         [hashtable] $OriginalTimestamps,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ },
+        [string]$MessagesPath = '',
         [scriptblock] $Reporter = { }
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $outputPath = Join-Path $Video.DirectoryName ($Video.BaseName + '.mp4')
     $backupPath = Join-Path $Video.DirectoryName ($Video.BaseName + '_orig' + $Video.Extension)
     $temporaryPath = Join-Path $Video.DirectoryName ('.optimize-{0}.mp4.part' -f [guid]::NewGuid().ToString('N'))
@@ -118,16 +116,16 @@ function Invoke-MediaSizeOptimization
 
         if (-not $samePathOutput -and (Test-Path -LiteralPath $outputPath))
         {
-            throw (Get-LocalizedText @localization -Text 'Output already exists: {0}' -Arguments @($outputPath))
+            throw (Get-LocalizedText -Text 'Output already exists: {0}' -Arguments @($outputPath) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         if (-not $ReplaceOriginal -and (Test-Path -LiteralPath $backupPath))
         {
-            throw (Get-LocalizedText @localization -Text 'Original backup already exists: {0}' -Arguments @($backupPath))
+            throw (Get-LocalizedText -Text 'Original backup already exists: {0}' -Arguments @($backupPath) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
-        & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Optimizing: {0}' -Arguments @($Video.Name))
+        & $Reporter 'Host' $null (Get-LocalizedText -Text 'Optimizing: {0}' -Arguments @($Video.Name) -Language $UiLanguage -MessagesPath $MessagesPath)
         $sourceDateMetadata = Get-MediaDateTag -Path $Video.FullName -ExifToolPath $ExifToolPath `
-            -UiLanguage $UiLanguage -Messages $Messages
+            -UiLanguage $UiLanguage -MessagesPath $MessagesPath
 
         $scaleFilter = "scale=w='if(gte(iw,ih),min(1280,iw),-2)':h='if(gte(iw,ih),-2,min(1280,ih))'"
         $encodeResult = Invoke-MediaTool -ExecutablePath $FFmpegPath -Arguments @(
@@ -138,7 +136,7 @@ function Invoke-MediaSizeOptimization
             '-b:v', ('{0}k' -f $VideoBitrateKbps), '-preset', 'medium', '-b:a', '96k',
             '-f', 'mp4',
             $temporaryPath
-        ) -UiLanguage $UiLanguage -Messages $Messages
+        ) -UiLanguage $UiLanguage -MessagesPath $MessagesPath
         if ($encodeResult.ExitCode -ne 0)
         {
             $details = if ( [string]::IsNullOrWhiteSpace($encodeResult.StdErr))
@@ -149,20 +147,20 @@ function Invoke-MediaSizeOptimization
             {
                 $encodeResult.StdErr.Trim()
             }
-            throw (Get-LocalizedText @localization -Text 'FFmpeg failed (exit code {0}): {1}' -Arguments @($encodeResult.ExitCode, $details))
+            throw (Get-LocalizedText -Text 'FFmpeg failed (exit code {0}): {1}' -Arguments @($encodeResult.ExitCode, $details) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         if (-not (Test-Path -LiteralPath $temporaryPath -PathType Leaf))
         {
-            throw (Get-LocalizedText @localization -Text 'FFmpeg did not create an output file.')
+            throw (Get-LocalizedText -Text 'FFmpeg did not create an output file.' -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         if ((Get-Item -LiteralPath $temporaryPath -ErrorAction Stop).Length -le 0)
         {
-            throw (Get-LocalizedText @localization -Text 'FFmpeg created an empty output file.')
+            throw (Get-LocalizedText -Text 'FFmpeg created an empty output file.' -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         $copyResult = Invoke-MediaTool -ExecutablePath $ExifToolPath -Arguments @(
             '-overwrite_original', '-P', '-TagsFromFile', $Video.FullName, '-all:all', $temporaryPath
-        ) -UiLanguage $UiLanguage -Messages $Messages
+        ) -UiLanguage $UiLanguage -MessagesPath $MessagesPath
         if ($copyResult.ExitCode -ne 0)
         {
             $details = if ( [string]::IsNullOrWhiteSpace($copyResult.StdErr))
@@ -173,13 +171,13 @@ function Invoke-MediaSizeOptimization
             {
                 $copyResult.StdErr.Trim()
             }
-            throw (Get-LocalizedText @localization -Text 'ExifTool could not copy metadata (exit code {0}): {1}' -Arguments @($copyResult.ExitCode, $details))
+            throw (Get-LocalizedText -Text 'ExifTool could not copy metadata (exit code {0}): {1}' -Arguments @($copyResult.ExitCode, $details) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         Set-MediaFileTimestamp -Path $temporaryPath @sourceTimestamps `
-            -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
+            -UiLanguage $UiLanguage -MessagesPath $MessagesPath -Confirm:$false -WhatIf:$false
         $outputDateMetadata = Get-MediaDateTag -Path $temporaryPath -ExifToolPath $ExifToolPath `
-            -UiLanguage $UiLanguage -Messages $Messages
+            -UiLanguage $UiLanguage -MessagesPath $MessagesPath
         $changedTags = [System.Collections.Generic.List[string]]::new()
         foreach ($tagName in $sourceDateMetadata.Keys)
         {
@@ -199,15 +197,15 @@ function Invoke-MediaSizeOptimization
         if ($changedTags.Count -gt 0)
         {
             $tagList = ($changedTags | Sort-Object -Unique) -join ', '
-            throw (Get-LocalizedText @localization -Text 'Date metadata changed during encoding; the original was not replaced. Tags: {0}' -Arguments @($tagList))
+            throw (Get-LocalizedText -Text 'Date metadata changed during encoding; the original was not replaced. Tags: {0}' -Arguments @($tagList) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         $candidateBytes = [long](Get-Item -LiteralPath $temporaryPath -ErrorAction Stop).Length
         if ($candidateBytes -ge $originalBytes)
         {
             $skipped = $true
-            $failureReason = Get-LocalizedText @localization -Text 'No size reduction'
-            & $Reporter 'Host' 'DarkYellow' (Get-LocalizedText @localization -Text 'The MP4 was not smaller; the original was left unchanged.')
+            $failureReason = Get-LocalizedText -Text 'No size reduction' -Language $UiLanguage -MessagesPath $MessagesPath
+            & $Reporter 'Host' 'DarkYellow' (Get-LocalizedText -Text 'The MP4 was not smaller; the original was left unchanged.' -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         else
         {
@@ -231,7 +229,7 @@ function Invoke-MediaSizeOptimization
                 [System.IO.File]::Move($temporaryPath, $outputPath)
                 $outputCreated = $true
                 Set-MediaFileTimestamp -Path $outputPath @sourceTimestamps `
-                    -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
+                    -UiLanguage $UiLanguage -MessagesPath $MessagesPath -Confirm:$false -WhatIf:$false
 
                 if ($ReplaceOriginal -and $samePathOutput)
                 {
@@ -274,9 +272,9 @@ function Invoke-MediaSizeOptimization
                 }
                 if ($rollbackErrors.Count -gt 0)
                 {
-                    throw (Get-LocalizedText @localization -Text 'Commit failed: {0}; rollback also failed: {1}' -Arguments @(
+                    throw (Get-LocalizedText -Text 'Commit failed: {0}; rollback also failed: {1}' -Arguments @(
                         $commitError, ($rollbackErrors -join '; ')
-                    ))
+                    ) -Language $UiLanguage -MessagesPath $MessagesPath)
                 }
                 throw $commitError
             }
@@ -285,14 +283,14 @@ function Invoke-MediaSizeOptimization
             $resultBytes = $candidateBytes
             & $Reporter 'Host' 'Green' (Get-LocalizedText -Text 'Optimized: {0:N1} MB -> {1:N1} MB' -Arguments @(
                 ($originalBytes / 1MB), ($resultBytes / 1MB)
-            ))
-            & $Reporter 'Host' $null (Get-LocalizedText @localization -Text 'Created: {0}' -Arguments @($outputPath))
+            ) -Language $UiLanguage -MessagesPath $MessagesPath)
+            & $Reporter 'Host' $null (Get-LocalizedText -Text 'Created: {0}' -Arguments @($outputPath) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
     }
     catch
     {
         $failureReason = $_.Exception.Message
-        & $Reporter 'Warning' $null (Get-LocalizedText @localization -Text "Could not optimize '{0}':`n{1}" -Arguments @($Video.Name, $failureReason))
+        & $Reporter 'Warning' $null (Get-LocalizedText -Text "Could not optimize '{0}':`n{1}" -Arguments @($Video.Name, $failureReason) -Language $UiLanguage -MessagesPath $MessagesPath)
     }
     finally
     {
@@ -314,7 +312,7 @@ function Invoke-MediaSizeOptimization
             try
             {
                 Set-MediaFileTimestamp -Path $timestampPath @sourceTimestamps `
-                    -UiLanguage $UiLanguage -Messages $Messages -Confirm:$false -WhatIf:$false
+                    -UiLanguage $UiLanguage -MessagesPath $MessagesPath -Confirm:$false -WhatIf:$false
             }
             catch
             {
@@ -326,7 +324,7 @@ function Invoke-MediaSizeOptimization
         {
             $success = $false
             $skipped = $false
-            $cleanupMessage = Get-LocalizedText @localization -Text 'Cleanup or timestamp restoration failed: {0}' -Arguments @($cleanupErrors -join '; ')
+            $cleanupMessage = Get-LocalizedText -Text 'Cleanup or timestamp restoration failed: {0}' -Arguments @($cleanupErrors -join '; ') -Language $UiLanguage -MessagesPath $MessagesPath
             if ($failureReason)
             {
                 $failureReason = '{0}; {1}' -f $failureReason, $cleanupMessage

@@ -84,8 +84,8 @@ Describe 'Get-PdfSetupStateReport' {
     }
 
     It 'uses the German catalog when the UI language is de' {
-        $messages = @{ 'Current dependency state:' = 'Aktueller Abhaengigkeitsstatus:' }
-        $lines = Get-PdfSetupStateReport -State (New-ReportState) -UiLanguage 'de' -Messages $messages
-        ($lines | Where-Object Text -eq 'Aktueller Abhaengigkeitsstatus:') | Should -Not -BeNullOrEmpty
+        $messagesPath = Join-Path $PSScriptRoot '..\..\..\pdf\l10n\de-DE\Messages.psd1'
+        $lines = Get-PdfSetupStateReport -State (New-ReportState) -UiLanguage 'de' -MessagesPath $messagesPath
+        ($lines | Where-Object Text -eq 'Aktueller Abhängigkeitsstatus:') | Should -Not -BeNullOrEmpty
     }
 }

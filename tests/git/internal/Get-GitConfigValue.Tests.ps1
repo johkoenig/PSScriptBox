@@ -16,7 +16,7 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\..\..\common\internal\Get-LocalizedText.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\git\internal\Invoke-GitCommand.ps1')
     . (Join-Path $PSScriptRoot '..\..\..\git\internal\Get-GitConfigValue.ps1')
-    $script:Catalog = @{ 'Could not read Git setting: {0}' = 'Git-Einstellung konnte nicht gelesen werden: {0}' }
+    $script:Catalog = Join-Path $PSScriptRoot '..\..\..\git\l10n\de-DE\Messages.psd1'
 
     function New-TestRepository {
         $path = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
@@ -75,7 +75,7 @@ Describe 'Get-GitConfigValue' {
     It 'throws the German error text when the language is de' {
         $folder = Join-Path $TestDrive 'not-a-repository-de'
         New-Item -ItemType Directory -Path $folder | Out-Null
-        { Get-GitConfigValue -Key 'user.name' -Scope 'Local' -Repository $folder -Language 'de' -Messages $script:Catalog } |
+        { Get-GitConfigValue -Key 'user.name' -Scope 'Local' -Repository $folder -Language 'de' -MessagesPath $script:Catalog } |
             Should -Throw -ExpectedMessage 'Git-Einstellung konnte nicht gelesen werden*'
     }
 }

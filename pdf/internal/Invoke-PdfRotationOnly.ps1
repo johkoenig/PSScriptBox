@@ -51,8 +51,8 @@
 .PARAMETER UiLanguage
     'de' selects German messages; anything else selects English.
 
-.PARAMETER Messages
-    German catalog keyed by the English source text.
+.PARAMETER MessagesPath
+    Path to the German message catalog.
 
 .OUTPUTS
     PSCustomObject with ChangedPages and UndeterminedPages.
@@ -69,10 +69,8 @@ function Invoke-PdfRotationOnly
         [Parameter(Mandatory)][string] $OutputPath,
         [ValidateRange(0, 100)][double] $ConfidenceThreshold = 5,
         [string] $UiLanguage = 'en',
-        [hashtable] $Messages = @{ }
+        [string]$MessagesPath = ''
     )
-
-    $localization = @{ Language = $UiLanguage; Messages = $Messages }
     $temporaryDirectory = Join-Path $Pdf.DirectoryName ('.{0}.orientation.part' -f [guid]::NewGuid().ToString('N'))
     $renderPattern = Join-Path $temporaryDirectory 'page-%d.png.part'
     $rotationChanges = [System.Collections.Generic.List[object]]::new()
@@ -94,7 +92,7 @@ function Invoke-PdfRotationOnly
             $Pdf.FullName
         )
         $renderResult = Invoke-SetupProcess -FilePath $GhostscriptPath -Arguments $renderArguments `
-            -UiLanguage $UiLanguage -Messages $Messages
+            -UiLanguage $UiLanguage -MessagesPath $MessagesPath
         if ($renderResult.ExitCode -ne 0)
         {
             $renderDetails = if ($renderResult.StdErr)
@@ -105,7 +103,7 @@ function Invoke-PdfRotationOnly
             {
                 $renderResult.StdOut.Trim()
             }
-            throw (Get-LocalizedText @localization -Text 'Ghostscript rotation analysis failed (exit code {0}): {1}' -Arguments @($renderResult.ExitCode, $renderDetails))
+            throw (Get-LocalizedText -Text 'Ghostscript rotation analysis failed (exit code {0}): {1}' -Arguments @($renderResult.ExitCode, $renderDetails) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         $pageImages = @(
@@ -114,7 +112,7 @@ function Invoke-PdfRotationOnly
         )
         if ($pageImages.Count -ne $PageCount)
         {
-            throw (Get-LocalizedText -Text 'Ghostscript rendered {0} of {1} pages for rotation analysis.' -Arguments @($pageImages.Count, $PageCount))
+            throw (Get-LocalizedText -Text 'Ghostscript rendered {0} of {1} pages for rotation analysis.' -Arguments @($pageImages.Count, $PageCount) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         foreach ($pageImage in $pageImages)
@@ -122,7 +120,7 @@ function Invoke-PdfRotationOnly
             $pageNumber = [int]([regex]::Match($pageImage.Name, '^page-(\d+)\.png\.part$').Groups[1].Value)
             $orientationResult = Invoke-SetupProcess -FilePath $TesseractPath `
                 -Arguments @($pageImage.FullName, 'stdout', '-l', 'osd', '--psm', '0') `
-                -UiLanguage $UiLanguage -Messages $Messages
+                -UiLanguage $UiLanguage -MessagesPath $MessagesPath
 
             $orientationText = @($orientationResult.StdOut, $orientationResult.StdErr) -join "`n"
             $rotationMatch = [regex]::Match($orientationText, '(?m)^Rotate:\s*(\d+)\s*$')
@@ -133,7 +131,7 @@ function Invoke-PdfRotationOnly
                     $undeterminedPages.Add($pageNumber)
                     continue
                 }
-                throw (Get-LocalizedText -Text 'Tesseract orientation check failed for page {0}: {1}' -Arguments @($pageNumber,$orientationText.Trim()))
+                throw (Get-LocalizedText -Text 'Tesseract orientation check failed for page {0}: {1}' -Arguments @($pageNumber,$orientationText.Trim()) -Language $UiLanguage -MessagesPath $MessagesPath)
             }
             if (-not $rotationMatch.Success)
             {
@@ -144,13 +142,13 @@ function Invoke-PdfRotationOnly
             $confidenceMatch = [regex]::Match($orientationText, '(?m)^Orientation confidence:\s*([+-]?[0-9]+(?:\.[0-9]+)?)\s*$')
             if (-not $confidenceMatch.Success)
             {
-                throw (Get-LocalizedText -Text 'Tesseract returned no orientation confidence for page {0}.' -Arguments @($pageNumber))
+                throw (Get-LocalizedText -Text 'Tesseract returned no orientation confidence for page {0}.' -Arguments @($pageNumber) -Language $UiLanguage -MessagesPath $MessagesPath)
             }
             $confidence = [double]::Parse($confidenceMatch.Groups[1].Value, [System.Globalization.CultureInfo]::InvariantCulture)
             $rotation = [int]$rotationMatch.Groups[1].Value
             if ($rotation -notin @(0, 90, 180, 270))
             {
-                throw (Get-LocalizedText -Text 'Tesseract returned an invalid rotation for page {0}: {1}' -Arguments @($pageNumber, $rotation))
+                throw (Get-LocalizedText -Text 'Tesseract returned an invalid rotation for page {0}: {1}' -Arguments @($pageNumber, $rotation) -Language $UiLanguage -MessagesPath $MessagesPath)
             }
             if ($confidence -lt $ConfidenceThreshold)
             {
@@ -191,7 +189,7 @@ with pikepdf.open(input_path) as pdf:
         $rotationJson = ConvertTo-Json -InputObject @($rotationChanges) -Compress
         $writeResult = Invoke-PythonCommand -PythonPath $PythonPath `
             -Arguments @('-c', $pythonCode, $Pdf.FullName, $OutputPath, $rotationJson, [string]$PageCount) `
-            -UiLanguage $UiLanguage -Messages $Messages
+            -UiLanguage $UiLanguage -MessagesPath $MessagesPath
         if ($writeResult.ExitCode -ne 0)
         {
             $writeDetails = if ($writeResult.StdErr)
@@ -202,11 +200,11 @@ with pikepdf.open(input_path) as pdf:
             {
                 $writeResult.StdOut.Trim()
             }
-            throw (Get-LocalizedText -Text 'Could not apply detected page rotations (exit code {0}): {1}' -Arguments @($writeResult.ExitCode, $writeDetails))
+            throw (Get-LocalizedText -Text 'Could not apply detected page rotations (exit code {0}): {1}' -Arguments @($writeResult.ExitCode, $writeDetails) -Language $UiLanguage -MessagesPath $MessagesPath)
         }
         if (-not (Test-Path -LiteralPath $OutputPath -PathType Leaf))
         {
-            throw (Get-LocalizedText 'Python did not produce the rotated PDF.')
+            throw (Get-LocalizedText 'Python did not produce the rotated PDF.' -Language $UiLanguage -MessagesPath $MessagesPath)
         }
 
         return [pscustomobject]@{
