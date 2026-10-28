@@ -124,6 +124,11 @@ Der GitHub-Actions-Workflow führt `tests/Invoke-Tests.ps1` bei Pull Requests mi
 5.1 und PowerShell 7 aus. Dieselbe Testsuite lässt sich lokal im Repository-Stamm mit `.\tests\Invoke-Tests.ps1`
 starten; erforderlich ist Pester 5 oder höher.
 
+Für die lokale Analyse installierst du PSScriptAnalyzer mit
+`Install-Module PSScriptAnalyzer -MinimumVersion 1.21.0 -Scope CurrentUser` und startest anschließend
+`.\tests\Invoke-PSScriptAnalyzer.ps1`. Analysiert werden PowerShell-Produktionsskripte außerhalb von `tests`; die
+CI führt die Analyse mit PowerShell 7 aus.
+
 ## Lizenz
 
 Das Projekt steht unter der [MIT-Lizenz](LICENSE.md).

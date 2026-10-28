@@ -9,6 +9,34 @@ permissions:
   contents: read
 
 jobs:
+  script-analyzer:
+    name: PSScriptAnalyzer (PowerShell 7)
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer | Where-Object { $_.Version -ge [version]'1.21.0' })) {
+              foreach ($attempt in 1..3) {
+                  try {
+                      Install-Module -Name PSScriptAnalyzer -MinimumVersion 1.21.0 -Force -Scope CurrentUser -ErrorAction Stop
+                      break
+                  }
+                  catch {
+                      if ($attempt -eq 3) { throw }
+                      Start-Sleep -Seconds (10 * $attempt)
+                  }
+              }
+          }
+
+      - name: Analyze PowerShell scripts
+        shell: pwsh
+        run: .\tests\Invoke-PSScriptAnalyzer.ps1
+
   tests-powershell:
     name: Tests (Windows PowerShell 5.1)
     runs-on: windows-latest

@@ -112,6 +112,11 @@ The GitHub Actions workflow runs `tests/Invoke-Tests.ps1` with Windows PowerShel
 targeting `main`. To run the same test suite locally, use `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5
 or later is required.
 
+To run PSScriptAnalyzer locally, install it with
+`Install-Module PSScriptAnalyzer -MinimumVersion 1.21.0 -Scope CurrentUser`, then run
+`.\tests\Invoke-PSScriptAnalyzer.ps1`. The analyzer checks production PowerShell scripts outside `tests`; CI runs it
+with PowerShell 7.
+
 ## License
 
 The project is licensed under the [MIT License](LICENSE.md).
