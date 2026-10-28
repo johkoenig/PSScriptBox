@@ -55,8 +55,10 @@ synchronization. See the [Nextcloud tools guide](nextcloud/README.md) for detail
 
 ## Testing
 
-Run the test suite with `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5 or later is required. GitHub
-Actions also runs the tests on Windows PowerShell 5.1 and PowerShell 7.
+Run the test suite with `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5 or later is required. Add
+`-Coverage` to report executable-line coverage for internal helpers, list uncovered line ranges, and print a coverage
+summary. Fully covered files are omitted from the listing. GitHub Actions also runs the tests on Windows PowerShell 5.1
+and PowerShell 7.
 
 ## Contributing
 

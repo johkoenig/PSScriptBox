@@ -18,8 +18,9 @@ responsible for your PR. Do not share confidential information, credentials, or 
 
 ## Before submitting
 
-Run the relevant tests and review your changes with `git diff` and `git diff --check`. See [AGENTS.md](AGENTS.md) for
-the full validation requirements.
+Run the relevant tests; use `tests\Invoke-Tests.ps1 -Coverage` to report executable-line coverage for internal helpers,
+uncovered line ranges, and the coverage summary. Review your changes with `git diff` and `git diff --check`. See
+[AGENTS.md](AGENTS.md) for the full validation requirements.
 
 ## Pull requests
 

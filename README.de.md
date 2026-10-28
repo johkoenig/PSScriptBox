@@ -58,7 +58,9 @@ der [Anleitung zu den Nextcloud-Werkzeugen](nextcloud/README.de.md).
 ## Tests
 
 Die Testsuite lässt sich im Repository-Stamm mit `.\tests\Invoke-Tests.ps1` starten; erforderlich ist Pester 5 oder
-höher. GitHub Actions führt die Tests außerdem unter Windows PowerShell 5.1 und PowerShell 7 aus.
+höher. Mit `-Coverage` werden die Zeilenabdeckung interner Hilfsfunktionen, nicht abgedeckte Zeilenbereiche und eine
+Zusammenfassung ausgegeben. Vollständig abgedeckte Dateien erscheinen nicht in der Dateiliste. GitHub Actions führt
+die Tests außerdem unter Windows PowerShell 5.1 und PowerShell 7 aus.
 
 ## Mitwirken
 

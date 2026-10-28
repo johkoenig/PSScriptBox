@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Tests: Run tests with coverage" type="PowerShellRunType" factoryName="PowerShell" scriptUrl="$PROJECT_DIR$/tests/Invoke-Tests.ps1" scriptParameters="-Coverage" executablePath="powershell.exe">
+    <envs />
+    <method v="2" />
+  </configuration>
+</component>

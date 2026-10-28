@@ -117,7 +117,9 @@ Repository guidance, especially for PowerShell scripts.
 - Functions in `internal` must be testable: pass all inputs and outputs explicitly (parameters and return values) so
   that little or no mocking is needed. Avoid reading user folders inside helpers.
 - New code aims for near 100% coverage. Existing code is covered step by step. Legacy scripts with top-level flow have a skipped placeholder test until they are refactored into functions.
-- Run `tests\Invoke-Tests.ps1` (add `-Coverage` for coverage of `internal` files). The tests must pass on Windows PowerShell 5.1 and PowerShell 7.
+- Run `tests\Invoke-Tests.ps1`; add `-Coverage` to report executable-line coverage for `internal` files, list
+  uncovered line ranges, and summarize fully covered, partly covered, and uncovered files plus overall coverage.
+  Fully covered files are omitted from the listing. The tests must pass on Windows PowerShell 5.1 and PowerShell 7.
 - Every `.ps1` file, including tests, is saved with a UTF-8 BOM.
 
 ## AI-assisted development
