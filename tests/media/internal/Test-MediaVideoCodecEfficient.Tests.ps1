@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for media\internal\Test-MediaVideoCodecEfficient.ps1.

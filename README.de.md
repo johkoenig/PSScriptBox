@@ -1,4 +1,4 @@
-# scriptbox
+# PSScriptBox
 
 > Englische Version: [README.md](README.md)
 

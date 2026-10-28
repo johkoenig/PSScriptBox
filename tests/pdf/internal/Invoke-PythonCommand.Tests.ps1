@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for pdf\internal\Invoke-PythonCommand.ps1.
@@ -44,7 +44,7 @@ Describe 'Invoke-PythonCommand' {
     }
 
     It 'throws when the executable does not exist' {
-        { Invoke-PythonCommand -PythonPath 'C:\scriptbox-missing\python.exe' -Arguments @('-c', 'print(1)') } |
+        { Invoke-PythonCommand -PythonPath 'C:\PSScriptBox-missing\python.exe' -Arguments @('-c', 'print(1)') } |
             Should -Throw
     }
 }

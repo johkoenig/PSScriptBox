@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for pdf\internal\Invoke-PdfProcessing.ps1.
@@ -22,7 +22,7 @@ BeforeAll {
         param([System.IO.FileInfo] $Pdf, [scriptblock] $Reporter)
         $arguments = @{
             Pdf                     = $Pdf
-            PythonPath              = 'C:\scriptbox-no-such\python.exe'
+            PythonPath = 'C:\PSScriptBox-no-such\python.exe'
             Language                = 'deu'
             NoDeskew                = $false
             NoRotationOfPages       = $false

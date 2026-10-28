@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for pdf\internal\Invoke-PdfSizeOptimization.ps1.
@@ -30,8 +30,8 @@ Describe 'Invoke-PdfSizeOptimization' {
 
     It 'returns a failed result when the PDF protection check cannot run' {
         $result = Invoke-PdfSizeOptimization -Pdf $script:Pdf `
-            -PythonPath 'C:\scriptbox-no-such\python.exe' `
-            -GhostscriptPath 'C:\scriptbox-no-such\gs.exe' `
+            -PythonPath 'C:\PSScriptBox-no-such\python.exe' `
+            -GhostscriptPath 'C:\PSScriptBox-no-such\gs.exe' `
             -Dpi 200 -Quality 75 -MinFileSize 0 -ReplaceOriginal $false
         $result.Success | Should -BeFalse
         $result.Skipped | Should -BeFalse
@@ -41,24 +41,24 @@ Describe 'Invoke-PdfSizeOptimization' {
     It 'does not modify the input when the protection check fails' {
         $before = [System.IO.File]::ReadAllBytes($script:PdfPath)
         Invoke-PdfSizeOptimization -Pdf $script:Pdf `
-            -PythonPath 'C:\scriptbox-no-such\python.exe' `
-            -GhostscriptPath 'C:\scriptbox-no-such\gs.exe' `
+            -PythonPath 'C:\PSScriptBox-no-such\python.exe' `
+            -GhostscriptPath 'C:\PSScriptBox-no-such\gs.exe' `
             -Dpi 200 -Quality 75 -MinFileSize 0 -ReplaceOriginal $false | Out-Null
         [System.IO.File]::ReadAllBytes($script:PdfPath) | Should -Be $before
     }
 
     It 'removes temporary files when the protection check fails' {
         Invoke-PdfSizeOptimization -Pdf $script:Pdf `
-            -PythonPath 'C:\scriptbox-no-such\python.exe' `
-            -GhostscriptPath 'C:\scriptbox-no-such\gs.exe' `
+            -PythonPath 'C:\PSScriptBox-no-such\python.exe' `
+            -GhostscriptPath 'C:\PSScriptBox-no-such\gs.exe' `
             -Dpi 200 -Quality 75 -MinFileSize 0 -ReplaceOriginal $false | Out-Null
         @(Get-ChildItem -LiteralPath $script:Folder -Force | Where-Object { $_.Name -ne 'document.pdf' }).Count | Should -Be 0
     }
 
     It 'skips files below the minimum size without invoking Python' {
         $result = Invoke-PdfSizeOptimization -Pdf $script:Pdf `
-            -PythonPath 'C:\scriptbox-no-such\python.exe' `
-            -GhostscriptPath 'C:\scriptbox-no-such\gs.exe' `
+            -PythonPath 'C:\PSScriptBox-no-such\python.exe' `
+            -GhostscriptPath 'C:\PSScriptBox-no-such\gs.exe' `
             -Dpi 300 -Quality 75 -MinFileSize 1MB -ReplaceOriginal $false
         $result.Success | Should -BeFalse
         $result.Skipped | Should -BeTrue

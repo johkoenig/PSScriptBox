@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 scriptbox contributors
+# Copyright (c) 2026 PSScriptBox contributors
 <#
 .SYNOPSIS
     Unit tests for pdf\internal\Optimize-WithGhostscript.ps1.
@@ -31,12 +31,12 @@ Describe 'Optimize-WithGhostscript' {
 
     It 'reports a start failure and leaves the input untouched when Ghostscript cannot be started' {
         $before = (Get-Item -LiteralPath $script:Pdf).Length
-        { Optimize-WithGhostscript -GhostscriptPath 'C:\scriptbox-no-such\gs.exe' -Pdf (Get-Item -LiteralPath $script:Pdf) -Dpi 200 -Quality 75 } | Should -Throw
+        { Optimize-WithGhostscript -GhostscriptPath 'C:\PSScriptBox-no-such\gs.exe' -Pdf (Get-Item -LiteralPath $script:Pdf) -Dpi 200 -Quality 75 } | Should -Throw
         (Get-Item -LiteralPath $script:Pdf).Length | Should -Be $before
     }
 
     It 'removes no temporary file in the input folder after a failure' {
-        { Optimize-WithGhostscript -GhostscriptPath 'C:\scriptbox-no-such\gs.exe' -Pdf (Get-Item -LiteralPath $script:Pdf) -Dpi 200 -Quality 75 } | Should -Throw
+        { Optimize-WithGhostscript -GhostscriptPath 'C:\PSScriptBox-no-such\gs.exe' -Pdf (Get-Item -LiteralPath $script:Pdf) -Dpi 200 -Quality 75 } | Should -Throw
         @(Get-ChildItem -LiteralPath (Split-Path -Parent $script:Pdf) -Filter '.*.gs.pdf.part' -Force).Count | Should -Be 0
     }
 
