@@ -60,7 +60,8 @@
     German message catalog keyed by the English source text.
 
 .PARAMETER ProgressReporter
-    Callback invoked with -Activity, -Status, and -PercentComplete during copy.
+    Optional callback invoked with -Activity, -Status, and -PercentComplete
+    during copy. Without a callback, no progress is reported.
 
 .OUTPUTS
     None. Throws when copying, verification, or final publication fails.
@@ -80,7 +81,7 @@ function Copy-FileToStaging
         [Parameter(Mandatory)][string] $FolderName,
         [string] $Language = 'en',
         [hashtable] $Messages = @{ },
-        [scriptblock] $ProgressReporter = { param([string] $Activity, [string] $Status, [int] $PercentComplete, [switch] $Completed) }
+        [AllowNull()][scriptblock] $ProgressReporter
     )
 
     $localization = @{ Language = $Language; Messages = $Messages }
@@ -152,8 +153,11 @@ function Copy-FileToStaging
                         {
                             $filePercent
                         }
-                        & $ProgressReporter -Activity $activity -Status $status `
-                            -PercentComplete ([Math]::Min(100,[Math]::Max(0, [int]$overallPercent)))
+                        if ($null -ne $ProgressReporter)
+                        {
+                            & $ProgressReporter -Activity $activity -Status $status `
+                                -PercentComplete ([Math]::Min(100,[Math]::Max(0, [int]$overallPercent)))
+                        }
                         $lastPercent = $filePercent
                     }
                 }

@@ -25,8 +25,8 @@
     copying from an earlier source file. Copies other files through same-folder
     staging files with a .part extension and verifies their hashes before
     publishing. Creates missing destination folders.
-    Progress is passed to the ProgressReporter callback instead of being written
-    to the console.
+    When supplied, progress is passed to the ProgressReporter callback instead
+    of being written to the console. Without a callback, no progress is reported.
 
 .PARAMETER Source
     Source folder.
@@ -50,9 +50,9 @@
     German message catalog keyed by the English source text.
 
 .PARAMETER ProgressReporter
-    Callback invoked with -Activity, -Status, and -PercentComplete while checking
-    and copying, and with -Activity -Completed at the end. The default callback
-    does nothing.
+    Optional callback invoked with -Activity, -Status, and -PercentComplete
+    while checking and copying, and with -Activity -Completed at the end.
+    Without a callback, no progress is reported.
 
 .OUTPUTS
     PSCustomObject with CopiedFiles, IdenticalFiles, and CopiedBytes.
@@ -71,7 +71,7 @@ function Copy-ChangedFiles {
         [Parameter(Mandatory)][string] $FolderName,
         [string] $Language = 'en',
         [hashtable] $Messages = @{},
-        [scriptblock] $ProgressReporter = { param([string] $Activity, [string] $Status, [int] $PercentComplete, [switch] $Completed) }
+        [AllowNull()][scriptblock] $ProgressReporter
     )
 
     $sourceSizes = @{}
@@ -101,7 +101,8 @@ function Copy-ChangedFiles {
     $activity = Get-LocalizedText -Text 'Copying folder {0}' -Arguments @($FolderName) -Language $Language -Messages $Messages
     for ($i = 0; $i -lt $SourceInventory.Files.Count; $i++) {
         $file = $SourceInventory.Files[$i]
-        if ($SourceInventory.Files.Count -gt 0) {
+        if ($SourceInventory.Files.Count -gt 0 -and $null -ne $ProgressReporter)
+        {
             $checkPercent = [int](100 * $i / $SourceInventory.Files.Count)
             & $ProgressReporter -Activity $activity `
                 -Status (Get-LocalizedText -Text 'Checking files for identical content' -Language $Language -Messages $Messages) `
@@ -154,7 +155,10 @@ function Copy-ChangedFiles {
         $copiedBytes += [long]$file.Length
         $completedBytes += [long]$file.Length
     }
-    & $ProgressReporter -Activity $activity -Completed
+    if ($null -ne $ProgressReporter)
+    {
+        & $ProgressReporter -Activity $activity -Completed
+    }
 
     [pscustomobject]@{
         CopiedFiles    = $copiedFiles

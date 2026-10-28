@@ -85,7 +85,7 @@ function Invoke-PdfProcessing {
         [AllowNull()][string] $TesseractPath,
         [string] $UiLanguage = 'en',
         [hashtable] $Messages = @{},
-        [scriptblock] $Reporter = { param($Kind, $Color, $Text) }
+        [scriptblock] $Reporter = { }
     )
 
     $localization = @{ Language = $UiLanguage; Messages = $Messages }
