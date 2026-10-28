@@ -60,6 +60,10 @@ Die Kodierung ist verlustbehaftet und kann keine unmerkliche Qualitätsänderung
 FFprobe) mit `libx265`- und MJPEG-Encodern sowie ExifTool müssen über `PATH` verfügbar sein.
 `media/Remove-MediaBackups.ps1` entfernt interaktiv `_orig`-Sicherungen nur, wenn die bearbeitete Datei vorhanden ist;
 eine MOV-Sicherung wird der MP4-Ausgabe zugeordnet.
+`media/Remove-LivePhotos.ps1` entfernt ein MOV-Video nur, wenn im selben Ordner ein gleichnamiges JPG-Foto vorhanden
+ist;
+das JPG bleibt erhalten und `.jpeg` gilt nicht als Treffer. Das Skript unterstützt `-WhatIf` und fragt vor jeder
+Löschung nach.
 
 `media/Restore-MediaDate.ps1` stellt Datumsangaben in dieser Reihenfolge wieder her: Dateiname, EXIF
 `DateTimeOriginal`, `CreateDate`, dann `ModifyDate`. Das Skript benennt unterstützte Mediendateien nach
@@ -72,6 +76,7 @@ niedrigstufigen NTFS-Änderungszeit.
 |---------------------------|-----------------------------------------------------------------------------------|
 | `Optimize-MediaSize.ps1`  | `-InputPath <Pfad>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
 | `Remove-MediaBackups.ps1` | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
+| `Remove-LivePhotos.ps1`   | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
 | `Restore-MediaDate.ps1`   | `-InputPath <Ordner>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
 
 Die [Anleitung zu den Medienwerkzeugen](media/README.de.md) enthält Beispiele, Abhängigkeiten und Einschränkungen beim

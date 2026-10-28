@@ -1,43 +1,55 @@
 > Deutsche Version: [README.de.md](README.de.md)
 
 This folder contains PowerShell utilities for reducing video and high-resolution JPEG photo sizes while preserving
-dates, and for restoring media dates from filenames or metadata. Use Windows PowerShell 5.1 or PowerShell 7 from a
-regular user session.
+dates, removing matching Live Photo videos, and restoring media dates from filenames or metadata. Use Windows
+PowerShell 5.1 or PowerShell 7 from a regular user session.
 
 ## Quick start
 
 1. Install FFmpeg with the `libx265` and MJPEG encoders plus ExifTool; make the executables available in `PATH`.
-2. Preview video and JPEG files in a folder:
+2. Preview Live Photo videos identified by a same-name JPG in the same folder:
+
+   ```powershell
+   .\Remove-LivePhotos.ps1 -InputPath 'C:\Media' -WhatIf
+   ```
+
+3. After reviewing the candidates, remove matching MOV videos; the script asks before each deletion:
+
+   ```powershell
+   .\Remove-LivePhotos.ps1 -InputPath 'C:\Media'
+   ```
+
+4. Preview video and JPEG files in a folder:
 
    ```powershell
    .\Optimize-MediaSize.ps1 -InputPath 'C:\Media' -WhatIf
    ```
 
-3. Optimize the folder, keeping each original as an `_orig` backup with its original extension:
+5. Optimize the folder, keeping each original as an `_orig` backup with its original extension:
 
    ```powershell
    .\Optimize-MediaSize.ps1 -InputPath 'C:\Media'
    ```
 
-4. Preview removal of backups whose processed media file exists:
+6. Preview removal of backups whose processed media file exists:
 
    ```powershell
    .\Remove-MediaBackups.ps1 -InputPath 'C:\Media' -WhatIf
    ```
 
-5. After checking the list, remove eligible backups; the script asks before each deletion:
+7. After checking the list, remove eligible backups; the script asks before each deletion:
 
    ```powershell
    .\Remove-MediaBackups.ps1 -InputPath 'C:\Media'
    ```
 
-6. Preview restoring dates and renaming supported media files:
+8. Preview restoring dates and renaming supported media files:
 
    ```powershell
    .\Restore-MediaDate.ps1 -InputPath 'C:\Media' -WhatIf
    ```
 
-7. Restore dates and rename files after reviewing the preview:
+9. Restore dates and rename files after reviewing the preview:
 
    ```powershell
    .\Restore-MediaDate.ps1 -InputPath 'C:\Media'
@@ -123,6 +135,27 @@ Examples:
 .\Remove-MediaBackups.ps1 -InputPath 'C:\Media'
 ```
 
+### `Remove-LivePhotos.ps1`
+
+Recursively finds `.mov` videos with a same-name `.jpg` still image in the same folder, then deletes the video and
+keeps the image. This follows the legacy Live Photo matching pattern; `.jpeg` files do not count as a match. The
+script prompts before each deletion by default and supports `-WhatIf` for preview.
+
+| Parameter / switch  | Description                                                      |
+|---------------------|------------------------------------------------------------------|
+| `-InputPath <path>` | Folder to search recursively. If omitted, prompts for a folder.  |
+| `-WhatIf`           | Lists matching videos without deleting them.                     |
+| `-Confirm`          | Prompts before deleting each matching video.                     |
+| `-EnglishOutput`    | Forces English console output regardless of Windows UI language. |
+
+Examples:
+
+```powershell
+.\Remove-LivePhotos.ps1
+.\Remove-LivePhotos.ps1 -InputPath 'C:\Photos' -WhatIf
+.\Remove-LivePhotos.ps1 -InputPath 'C:\Photos'
+```
+
 ### `Restore-MediaDate.ps1`
 
 Recursively processes `.jpg`, `.jpeg`, `.png`, `.mp4`, `.mov`, `.avi`, `.mkv`, `.gif`, `.heic`, `.webp`, `.3gp`, and
@@ -184,10 +217,12 @@ All scripts support common parameters including `-Verbose`, `-Debug`, `-ErrorAct
   after processing.
 - `-ReplaceOriginal` replaces the source only after the output is present, smaller, and its dates are verified. Back up
   important files before using this option.
-- The script does not delete matching Live Photo videos or process formats other than `.mov`, `.mp4`, `.jpg`, and
-  `.jpeg`.
+- `Optimize-MediaSize.ps1` does not delete matching Live Photo videos or process formats other than `.mov`, `.mp4`,
+  `.jpg`, and `.jpeg`. Use `Remove-LivePhotos.ps1` for the separate same-name MOV/JPG cleanup.
 - `Remove-MediaBackups.ps1` deletes only `_orig` backups with an existing processed counterpart in the same folder.
   MOV backups are matched to MP4 outputs. Use `-WhatIf` to review candidates before deletion.
+- `Remove-LivePhotos.ps1` deletes only MOV files that have a same-name JPG in the same folder. It keeps the JPG and
+  does not treat `.jpeg` as a match. Review candidates with `-WhatIf` before deletion.
 - `Restore-MediaDate.ps1` uses filename date, EXIF `DateTimeOriginal`, `CreateDate`, and then `ModifyDate`; it renames
   every valid supported file and updates filesystem and embedded dates. Its random four-character suffix uses uppercase
   letters and digits. Windows does not permit the script to set NTFS change time.

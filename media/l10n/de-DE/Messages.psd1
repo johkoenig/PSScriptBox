@@ -59,6 +59,17 @@
     'Deleting original media backups...' = 'Lösche Original-Mediensicherungen...'
     '  Deleted: {0}' = '  Gelöscht: {0}'
 
+    'Removes MOV videos paired with same-name JPG still images.' = 'Entfernt MOV-Videos, zu denen gleichnamige JPG-Fotos vorhanden sind.'
+    'Matching still images are kept; use -WhatIf to preview deletions.' = 'Passende Fotos bleiben erhalten; mit -WhatIf lassen sich Löschungen vorab anzeigen.'
+    'Enter the folder containing Live Photo files.' = 'Gib den Ordner mit Live-Photo-Dateien ein.'
+    '=== Live Photo removal: processing started ===' = '=== Live-Photo-Entfernung: Verarbeitung gestartet ==='
+    'Matching MOV videos: {0}' = 'Passende MOV-Videos: {0}'
+    'No MOV videos with a same-name JPG still image were found.' = 'Keine MOV-Videos mit einem gleichnamigen JPG-Foto gefunden.'
+    '--- Live Photo {0}/{1}: {2} ---' = '--- Live Photo {0}/{1}: {2} ---'
+    'Matching still image kept: {0}' = 'Passendes Foto bleibt erhalten: {0}'
+    'Delete Live Photo video and keep still image: {0}' = 'Live-Photo-Video löschen und Foto behalten: {0}'
+    "Could not delete '{0}':`n{1}" = "'{0}' konnte nicht gelöscht werden:`n{1}"
+
     'Optimizes inefficient videos and large JPEG photos.' = 'Optimiert ineffizient komprimierte Videos und große JPEG-Fotos.'
     'Preserves supported file timestamps and verified capture dates.' = 'Erhält unterstützte Dateizeitstempel und geprüfte Aufnahmedaten.'
     'Missing dependencies: {0}' = 'Fehlende Abhängigkeiten: {0}'

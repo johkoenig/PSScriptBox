@@ -54,6 +54,8 @@ verification. By default, the original is saved as `<Name>_orig` with its origin
 cannot guarantee imperceptible changes. FFmpeg (including FFprobe) with `libx265` and MJPEG encoders, plus ExifTool,
 must be available in `PATH`. `media/Remove-MediaBackups.ps1` interactively removes `_orig` backups only when their
 processed counterpart exists; a MOV backup is matched to its MP4 output.
+`media/Remove-LivePhotos.ps1` removes a MOV video only when a same-name JPG still image exists in the same folder; the
+JPG is kept, and `.jpeg` is not considered a match. It supports `-WhatIf` and confirms each deletion.
 
 `media/Restore-MediaDate.ps1` restores dates in this order: filename, EXIF `DateTimeOriginal`, `CreateDate`, then
 `ModifyDate`. It renames supported media to `YY-MM-DD HH-mm-ss XXXX.ext`, updates filesystem creation and last-write
@@ -65,6 +67,7 @@ setting the low-level NTFS change time.
 |---------------------------|-----------------------------------------------------------------------------------|
 | `Optimize-MediaSize.ps1`  | `-InputPath <path>`, `-ReplaceOriginal`, `-WhatIf`, `-Confirm`, `-EnglishOutput`. |
 | `Remove-MediaBackups.ps1` | `-InputPath <folder>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
+| `Remove-LivePhotos.ps1`   | `-InputPath <folder>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
 | `Restore-MediaDate.ps1`   | `-InputPath <folder>`, `-WhatIf`, `-Confirm`, `-EnglishOutput`.                   |
 
 See the [Media tools guide](media/README.md) for examples, dependencies, and date-preservation limits.
