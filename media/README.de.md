@@ -90,14 +90,18 @@ H.264-Dateien bis einschließlich 1,9 Mb/s sowie HEVC-, AV1- und VP9-Dateien wer
 Bitrate wird vorsichtshalber übersprungen; eine passende `_orig`-Sicherung verhindert wiederholte verlustbehaftete
 Kodierung. Andere Codecs werden neu kodiert.
 
-JPEG-Fotos über 6 MB werden anhand ihrer Quelldateigröße und Pixelabmessungen verkleinert und mit der hohen
-MJPEG-Qualität
-von FFmpeg neu kodiert. Die geschätzte Ausgabe-Pixelzahl entspricht der Quell-Pixelzahl multipliziert mit
-`5 MB / Quelldateigröße`; Breite und Höhe werden mit der Quadratwurzel dieses Verhältnisses skaliert. Die tatsächliche
-Ausgabegröße hängt von Bilddetails und Kompression ab; 5 MB sind ein Schätzwert, keine feste Obergrenze. Fotos bis
-einschließlich 6 MB werden übersprungen und weder in den abschließenden Zählungen für erfolgreiche, übersprungene und
-fehlgeschlagene Dateien noch in den Listen aufgeführt. Ordner werden rekursiv durchsucht; ein Ergebnis wird nur
-übernommen, wenn es kleiner als die Quelldatei ist.
+JPEG-Fotos werden zuerst anhand ihrer Dichte bewertet: Dateigröße in MB geteilt durch Megapixel (ein Megapixel
+entspricht 1.000.000 Pixeln). Fotos über 0,25 MB/MP werden mit der hohen MJPEG-Qualität von FFmpeg neu kodiert, ohne
+ihre Pixelabmessungen zu ändern. Andernfalls werden Fotos über 6 MB proportional auf eine geschätzte Ausgabegröße von
+5 MB verkleinert und neu kodiert. Die geschätzte Ausgabe-Pixelzahl entspricht der Quell-Pixelzahl multipliziert mit
+`5 MB / Quelldateigröße`; Breite und Höhe werden mit der Quadratwurzel dieses Verhältnisses skaliert. Treffen beide
+Bedingungen zu, hat die Dichteschwelle Vorrang und die Auflösung bleibt unverändert. Fotos, die keine der Bedingungen
+erfüllen, werden übersprungen. Die tatsächliche Ausgabegröße hängt von Bilddetails und Kompression ab; 5 MB sind ein
+Schätzwert, keine feste Obergrenze. Ordner werden rekursiv durchsucht; ein Ergebnis wird nur übernommen, wenn es
+kleiner als die Quelldatei ist. Die Eignung wird bei jedem Durchlauf anhand der aktuellen Dateigröße und Abmessungen
+neu ermittelt. Erfolgreich optimierte JPEGs erhalten die Markierung
+`XMP-psscriptbox:OptimizationProfile`, damit spätere Durchläufe sie überspringen können. Die Markierung wird in die
+Zwischendatei geschrieben und gelangt nur dann an den Quellpfad, wenn das kleinere Ergebnis übernommen wird.
 
 | Parameter / Schalter | Beschreibung                                                                                                    |
 |----------------------|-----------------------------------------------------------------------------------------------------------------|
@@ -217,10 +221,17 @@ Alle Skripte unterstützen allgemeine Parameter wie `-Verbose`, `-Debug`, `-Erro
 - Erstellungszeit, Änderungszeit und letzter Zugriff der Quelldatei werden auf der optimierten Datei wiederhergestellt.
   Windows erlaubt dem Skript nicht, die NTFS-Änderungszeit festzulegen; dieser niedrigstufige Dateisystem-Zeitstempel
   kann daher nicht erhalten werden.
-- JPEG-Fotos bis einschließlich 6 MB werden übersprungen und nicht in der abschließenden Zusammenfassung aufgeführt.
-  Größere Fotos werden proportional auf eine geschätzte Ausgabegröße von 5 MB verkleinert und mit hoher Qualität
-  kodiert (FFmpeg-MJPEG-Qualitätswert 2). Die Skalierung ist verlustbehaftet; die tatsächliche Ausgabegröße variiert
-  mit den Bilddetails und der Kompression.
+- Bei JPEG-Fotos wird zuerst die Schwelle von 0,25 MB/MP geprüft. Fotos darüber werden bei unveränderter Pixelgröße
+  neu komprimiert; andernfalls werden Fotos über 6 MB proportional auf eine geschätzte Ausgabegröße von 5 MB
+  verkleinert. Treffen beide Bedingungen zu, hat die Dichteschwelle Vorrang und es wird nicht verkleinert. Beide
+  Varianten verwenden die hochwertige FFmpeg-MJPEG-Kodierung (Qualitätswert 2) und ersetzen das Original nur, wenn
+  das Ergebnis kleiner ist. Die tatsächliche Ausgabegröße variiert mit den Bilddetails; 5 MB sind keine garantierte
+  Obergrenze.
+- Die Eignung eines Fotos wird bei jedem Durchlauf anhand der aktuellen Größe und Abmessungen neu ermittelt; ein
+  separates Manifest wird nicht verwendet. Erfolgreich optimierte Fotos erhalten eine benutzerdefinierte XMP-
+  Profilmarkierung und werden vor Größen- und Dichteprüfungen übersprungen. Übersprungene Dateien sowie fehlgeschlagene
+  oder nicht kleinere Ergebnisse erhalten keine Markierung. Programme, die benutzerdefinierte XMP-Metadaten entfernen,
+  können die Markierung löschen.
 - Die EXIF-Ausrichtung bleibt erhalten, ohne die Pixel der Quelldatei zu drehen. Die optimierte Datei behält die
   ursprüngliche Erweiterung `.jpg` oder `.jpeg`.
 - Ein Original wird nur ersetzt, wenn das optimierte Ergebnis kleiner ist. Vorhandene Sicherungen bleiben erhalten und

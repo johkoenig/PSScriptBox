@@ -2,6 +2,7 @@
 # Copyright (c) 2026 PSScriptBox contributors
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
+# - Copilot
 
 @{
     'Missing dependency: {0}' = 'Fehlende Abhängigkeit: {0}'
@@ -73,7 +74,7 @@
     'Delete Live Photo video and keep still image: {0}' = 'Live-Photo-Video löschen und Foto behalten: {0}'
     "Could not delete '{0}':`n{1}" = "'{0}' konnte nicht gelöscht werden:`n{1}"
 
-    'Optimizes inefficient videos and large JPEG photos.' = 'Optimiert ineffizient komprimierte Videos und große JPEG-Fotos.'
+    'Optimizes inefficient videos and JPEG photos by size and density.' = 'Optimiert ineffizient komprimierte Videos und JPEG-Fotos nach Größe und Dichte.'
     'Preserves supported file timestamps and verified capture dates.' = 'Erhält unterstützte Dateizeitstempel und geprüfte Aufnahmedaten.'
     'Install FFmpeg (including FFprobe) with Chocolatey: choco install ffmpeg -y.' = 'Installiere FFmpeg (einschließlich FFprobe) mit Chocolatey: choco install ffmpeg -y.'
     'Enter the path to a MOV, MP4, JPG, or JPEG file or a folder containing these files.' = 'Gib den Pfad zu einer MOV-, MP4-, JPG- oder JPEG-Datei oder einem Ordner mit solchen Dateien ein.'
@@ -86,7 +87,7 @@
     'Number of files: {0}' = 'Anzahl der Dateien: {0}'
     'Video encoder: H.265 (HEVC/libx265), maximum 720p, target 1.9 Mb/s; preset medium' = 'Video-Encoder: H.265 (HEVC/libx265), maximal 720p, Ziel 1,9 Mb/s; Preset medium'
     'Audio bitrate: 96 kb/s' = 'Audio-Bitrate: 96 kb/s'
-    'Photo profile: 6 MB threshold, estimated 5 MB output, proportional pixel scaling, high JPEG quality' = 'Fotoprofil: Schwelle 6 MB, geschätzte Ausgabe 5 MB, proportionale Pixelskalierung, hohe JPEG-Qualität'
+    'Photo profile: density-first 0.25 MB/MP threshold; otherwise photos over 6 MB are scaled toward an estimated 5 MB output; high JPEG quality' = 'Fotoprofil: zuerst Dichteschwelle von 0,25 MB/MP; andernfalls werden Fotos über 6 MB auf eine geschätzte Ausgabe von 5 MB skaliert; hohe JPEG-Qualität'
     'FFprobe failed to read JPEG dimensions for {0} (exit code {1}): {2}' = 'FFprobe konnte die JPEG-Abmessungen von {0} nicht lesen (Exitcode {1}): {2}'
     'FFprobe returned invalid JPEG dimensions for {0}: {1}' = 'FFprobe lieferte ungültige JPEG-Abmessungen für {0}: {1}'
     'Estimated JPEG dimensions: {0} x {1} -> {2} x {3} pixels (target {4:N1} MB).' = 'Geschätzte JPEG-Abmessungen: {0} x {1} -> {2} x {3} Pixel (Ziel {4:N1} MB).'
@@ -96,8 +97,17 @@
     '--- Photo {0}/{1}: {2} ---' = '--- Foto {0}/{1}: {2} ---'
     'Create optimized MP4 and replace source: {0}' = 'Optimierte MP4-Datei erstellen und Quelldatei ersetzen: {0}'
     'Create optimized MP4 and back up source: {0}' = 'Optimierte MP4-Datei erstellen und Quelldatei sichern: {0}'
-    'Optimize JPEG and replace source: {0}' = 'JPEG optimieren und Quelldatei ersetzen: {0}'
-    'Optimize JPEG and back up source: {0}' = 'JPEG optimieren und Quelldatei sichern: {0}'
+    'Recompress JPEG without resizing' = 'JPEG ohne Größenänderung neu komprimieren'
+    'Resize and recompress JPEG' = 'JPEG verkleinern und neu komprimieren'
+    '{0} and replace source: {1}' = '{0} und Quelldatei ersetzen: {1}'
+    '{0} and back up source: {1}' = '{0} und Quelldatei sichern: {1}'
+    'JPEG size {0:N1} MB and density {1:N3} MB/MP are at or below their optimization thresholds.' = 'JPEG-Größe von {0:N1} MB und Dichte von {1:N3} MB/MP liegen auf oder unter den Optimierungsschwellenwerten.'
+    'JPEG density {0:N3} MB/MP exceeds the {1:N2} MB/MP threshold; recompressing without resizing.' = 'JPEG-Dichte von {0:N3} MB/MP überschreitet den Schwellenwert von {1:N2} MB/MP; Neukomprimierung ohne Größenänderung.'
+    'JPEG was already optimized by this script (profile {0}); skipping.' = 'JPEG wurde bereits von diesem Skript optimiert (Profil {0}); wird übersprungen.'
+    'ExifTool failed to check the optimization marker for {0} (exit code {1}): {2}' = 'ExifTool konnte die Optimierungsmarkierung von {0} nicht prüfen (Exitcode {1}): {2}'
+    'ExifTool failed to write the optimization marker for {0} (exit code {1}): {2}' = 'ExifTool konnte die Optimierungsmarkierung für {0} nicht schreiben (Exitcode {1}): {2}'
+    'ExifTool failed to verify the optimization marker on {0} (exit code {1}): {2}' = 'ExifTool konnte die Optimierungsmarkierung von {0} nicht überprüfen (Exitcode {1}): {2}'
+    'ExifTool did not preserve the optimization marker on {0}.' = 'ExifTool hat die Optimierungsmarkierung für {0} nicht beibehalten.'
     'Already uses an efficient video codec ({0}).' = 'Verwendet bereits einen effizienten Video-Codec ({0}).'
     'An _orig backup already exists; skipping to prevent repeat re-encoding.' = 'Eine _orig-Sicherung ist bereits vorhanden; wird übersprungen, um eine erneute Kodierung zu vermeiden.'
     'H.264 bitrate is unavailable; skipping to avoid unnecessary re-encoding.' = 'H.264-Bitrate nicht verfügbar; wird übersprungen, um unnötige Neukodierung zu vermeiden.'

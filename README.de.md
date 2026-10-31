@@ -29,7 +29,7 @@ bereinigen. Abhängigkeiten, Beispiele und Details stehen in der [Anleitung zu d
 
 | Skript                    | Zweck                                                                           |
 |---------------------------|---------------------------------------------------------------------------------|
-| `Optimize-MediaSize.ps1`  | Unterstützte Videos und JPEG-Fotos verkleinern.                                 |
+| `Optimize-MediaSize.ps1`  | Unterstützte Videos und JPEG-Fotos nach Größe und Dichte optimieren.            |
 | `Remove-MediaBackups.ps1` | `_orig`-Sicherungen entfernen, wenn eine bearbeitete Datei vorhanden ist.       |
 | `Remove-LivePhotos.ps1`   | MOV-Videos entfernen, wenn ein gleichnamiges JPG-Foto vorhanden ist.            |
 | `Restore-MediaDate.ps1`   | Mediendaten wiederherstellen und Dateien nach dem ermittelten Datum umbenennen. |

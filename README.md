@@ -28,7 +28,7 @@ the [Media tools guide](media/README.md) for dependencies, examples, and behavio
 
 | Script                    | Purpose                                                        |
 |---------------------------|----------------------------------------------------------------|
-| `Optimize-MediaSize.ps1`  | Reduce the size of supported videos and JPEG photos.           |
+| `Optimize-MediaSize.ps1`  | Optimize supported videos and JPEG photos by size and density. |
 | `Remove-MediaBackups.ps1` | Remove `_orig` backups when a processed file exists.           |
 | `Remove-LivePhotos.ps1`   | Remove MOV videos that have a matching JPG photo.              |
 | `Restore-MediaDate.ps1`   | Restore media dates and rename files using the recovered date. |

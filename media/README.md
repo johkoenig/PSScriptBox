@@ -88,12 +88,16 @@ bitrate, the `medium` preset, and 96 kb/s audio. Landscape video is limited to 1
 H.264 sources at or below 1.9 Mb/s and HEVC, AV1, and VP9 sources are skipped. H.264 with unknown bitrate is skipped
 conservatively, and a matching `_orig` backup prevents repeated lossy encoding. Other codecs are re-encoded.
 
-JPEG photos over 6 MB are resized according to their source file size and pixel dimensions, then re-encoded with
-FFmpeg's high-quality MJPEG setting. The estimated output pixel count is the source pixel count multiplied by
-`5 MB / source size`; width and height are scaled by the square root of that ratio. Actual output size varies with
-image detail and compression, so 5 MB is an estimate, not a hard limit. Photos at or below 6 MB are skipped and omitted
-from the end-of-run success, skipped, and failure counts and lists. Folder searches are recursive, and a result is
-accepted only when smaller than its source.
+JPEG photos are evaluated density-first. Density is file size in MB divided by megapixels (one megapixel is 1,000,000
+pixels). Photos above 0.25 MB/MP are re-encoded with FFmpeg's high-quality MJPEG setting without changing their pixel
+dimensions. Otherwise, photos over 6 MB are resized proportionally toward an estimated 5 MB output and re-encoded;
+the estimated output pixel count is the source pixel count multiplied by `5 MB / source size`, with width and height
+scaled by the square root of that ratio. If a photo meets both conditions, the density rule takes priority and its
+resolution is not changed. Photos meeting neither condition are skipped. Actual output size varies with image detail
+and compression, so 5 MB is an estimate, not a hard limit. Folder searches are recursive, and a result is accepted
+only when smaller than its source. Successful optimized JPEGs receive the
+`XMP-psscriptbox:OptimizationProfile` marker so later runs can skip them. The marker is written to the staged output
+and reaches the source path only when the smaller result is committed.
 
 | Parameter / switch  | Description                                                                                         |
 |---------------------|-----------------------------------------------------------------------------------------------------|
@@ -207,9 +211,15 @@ All scripts support common parameters including `-Verbose`, `-Debug`, `-ErrorAct
 - The source's creation, last-write, and last-access file timestamps are restored on the optimized file. ExifTool copies
   and verifies embedded dates. Windows does not permit the script to set NTFS change time, so that low-level file-system
   timestamp cannot be preserved.
-- JPEG photos at or below 6 MB are skipped and omitted from the end-of-run summary. Larger photos are proportionally
-  downscaled toward an estimated 5 MB output and encoded at high quality (FFmpeg MJPEG quality-scale value 2).
-  Resizing is lossy; actual output size varies with image detail and the estimate is not a guaranteed limit.
+- JPEG photos are checked against 0.25 MB/MP first. Those over the density threshold are recompressed at their original
+  pixel dimensions; otherwise, photos over 6 MB are proportionally downscaled toward an estimated 5 MB output. If both
+  conditions are met, density takes priority and no resizing occurs. Both paths use high-quality FFmpeg MJPEG
+  encoding (quality-scale value 2) and only replace the source when the result is smaller. Actual output size varies
+  with image detail; the 5 MB estimate is not a guaranteed limit.
+- Photo eligibility is recalculated from current size and dimensions each run rather than recorded in a separate
+  manifest. A successful optimized photo carries the custom XMP profile marker; marked files are skipped before
+  dimension and threshold checks. Skipped files and failed or non-smaller candidates are not marked. Software that
+  strips custom XMP metadata can remove the marker.
 - JPEG EXIF orientation is preserved without rotating the source pixels. The optimized JPEG retains its original
   `.jpg` or `.jpeg` extension.
 - An original is not replaced unless its optimized result is smaller. Existing backups are preserved, not overwritten.

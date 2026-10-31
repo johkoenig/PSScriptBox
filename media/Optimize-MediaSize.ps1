@@ -1,13 +1,14 @@
 ﻿<#
 .SYNOPSIS
-    Reduces sizes of inefficient videos and large JPEG photos.
+    Reduces sizes of inefficient videos and eligible JPEG photos.
 
 .DESCRIPTION
     Processes MOV, MP4, JPG, and JPEG files from a path or recursively from a
     folder. Video behavior uses the existing 720p H.265 profile and codec
-    skip rules. JPEG photos larger than 6 MB are scaled proportionally to an
-    estimated 5 MB output size and re-encoded at high quality. Smaller photos
-    are skipped.
+    skip rules. JPEG photos above 0.25 MB per megapixel are re-encoded at high
+    quality without changing their pixel dimensions. Otherwise, photos larger
+    than 6 MB are scaled proportionally toward an estimated 5 MB output size.
+    Photos meeting neither threshold are skipped.
 
     Videos and photos are kept only when the result is smaller. FFmpeg and
     ExifTool copy and verify supported file-level and capture date/time
@@ -58,6 +59,7 @@
 # Copyright (c) 2026 PSScriptBox contributors
 # Contributors:
 # - Johannes Koenig <dev@jokoenig.de>
+# - Copilot
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSAvoidUsingWriteHost',
@@ -81,6 +83,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-MediaInputFile.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaTool.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MediaVideoInfo.ps1')
+. (Join-Path $PSScriptRoot 'internal\Get-MediaPhotoOptimizationPlan.ps1')
 . (Join-Path $PSScriptRoot 'internal\Test-MediaVideoCodecEfficient.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MediaDateTag.ps1')
 . (Join-Path $PSScriptRoot 'internal\Set-MediaFileTimestamp.ps1')
@@ -105,7 +108,7 @@ $headerLines = @(
     '     /___________________________________________/ |'
     '     |  .-------------------------------------.  | |'
     '     |  | MEDIA SIZE OPTIMIZATION             |  | |'
-    '     |  | VIDEO + LARGE JPEG PHOTOS           |  | /'
+    '         |  | VIDEO + JPEG PHOTOS: SIZE/DENSITY   |  | /'
     '     |  ''-------------------------------------''  |/'
     '     ''-------------------------------------------'''
 )
@@ -114,7 +117,7 @@ foreach ($headerLine in $headerLines)
 {
     Write-Host $headerLine -ForegroundColor Cyan
 }
-Write-Host (Get-LocalizedText 'Optimizes inefficient videos and large JPEG photos.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
+Write-Host (Get-LocalizedText 'Optimizes inefficient videos and JPEG photos by size and density.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 Write-Host (Get-LocalizedText 'Preserves supported file timestamps and verified capture dates.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 Write-Host ''
 
@@ -204,7 +207,7 @@ if ($videoFiles.Count -gt 0)
 }
 if ($photoFiles.Count -gt 0)
 {
-    Write-Host (Get-LocalizedText 'Photo profile: 6 MB threshold, estimated 5 MB output, proportional pixel scaling, high JPEG quality' -Language $OutputLanguage -MessagesPath $MessagesPath)
+    Write-Host (Get-LocalizedText 'Photo profile: density-first 0.25 MB/MP threshold; otherwise photos over 6 MB are scaled toward an estimated 5 MB output; high JPEG quality' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 if ($ReplaceOriginal)
 {
@@ -234,8 +237,11 @@ $reporter = {
 
 $results = @()
 $photoTargetSizeBytes = 6MB
+$photoDensityThresholdMegabytesPerMegapixel = 0.25
 $photoEstimatedOutputSizeBytes = [long](5 * 1MB)
 $photoJpegQuality = 2
+$photoExifToolConfigPath = Join-Path $PSScriptRoot 'internal\exiftool.config'
+$photoOptimizationMarkerValue = 'Optimize-MediaSize/photo-v1'
 $videoIndex = 0
 $photoIndex = 0
 for ($index = 0; $index -lt $mediaFiles.Count; $index++)
@@ -251,14 +257,23 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
 
         $photo = $mediaFile
         $photoTimestamps = $null
+        $photoPlan = $null
         try
         {
             $sourceFile = Get-Item -LiteralPath $photo.FullName -ErrorAction Stop
+            $photo = $sourceFile
             $photoTimestamps = @{
                 CreationTimeUtc = $sourceFile.CreationTimeUtc
                 LastWriteTimeUtc = $sourceFile.LastWriteTimeUtc
                 LastAccessTimeUtc = $sourceFile.LastAccessTimeUtc
             }
+            $photoPlan = Get-MediaPhotoOptimizationPlan -Photo $photo `
+                -FFprobePath $ffprobeCommand.Source -ExifToolPath $exifToolCommand.Source `
+                -ExifToolConfigPath $photoExifToolConfigPath `
+                -OptimizationMarkerValue $photoOptimizationMarkerValue `
+                -SizeThresholdBytes $photoTargetSizeBytes `
+                -DensityThresholdMegabytesPerMegapixel $photoDensityThresholdMegabytesPerMegapixel `
+                -UiLanguage $OutputLanguage -MessagesPath $MessagesPath
         }
         catch
         {
@@ -275,22 +290,36 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
             continue
         }
 
-        if ($photo.Length -le $photoTargetSizeBytes)
+        if (-not $photoPlan.ShouldOptimize)
         {
-            $skipReason = Get-LocalizedText -Text 'JPEG size {0:N1} MB is at or below the {1:N1} MB optimization threshold.' -Arguments @(
-                ($photo.Length / 1MB), ($photoTargetSizeBytes / 1MB)
-            ) -Language $OutputLanguage -MessagesPath $MessagesPath
+            $skipReason = $photoPlan.SkipReason
             Write-Host $skipReason -ForegroundColor DarkYellow
+            $results += [pscustomobject]@{
+                Success = $false
+                Skipped = $true
+                FilePath = $photo.FullName
+                FailureReason = $skipReason
+                OriginalBytes = [long]0
+                ResultBytes = [long]0
+            }
             continue
         }
 
-        $photoAction = if ($ReplaceOriginal)
+        $photoActionDescription = if ($photoPlan.OptimizationMode -eq 'Density')
         {
-            Get-LocalizedText -Text 'Optimize JPEG and replace source: {0}' -Arguments @($photo.FullName) -Language $OutputLanguage -MessagesPath $MessagesPath
+            Get-LocalizedText 'Recompress JPEG without resizing' -Language $OutputLanguage -MessagesPath $MessagesPath
         }
         else
         {
-            Get-LocalizedText -Text 'Optimize JPEG and back up source: {0}' -Arguments @($photo.FullName) -Language $OutputLanguage -MessagesPath $MessagesPath
+            Get-LocalizedText 'Resize and recompress JPEG' -Language $OutputLanguage -MessagesPath $MessagesPath
+        }
+        $photoAction = if ($ReplaceOriginal)
+        {
+            Get-LocalizedText -Text '{0} and replace source: {1}' -Arguments @($photoActionDescription, $photo.FullName) -Language $OutputLanguage -MessagesPath $MessagesPath
+        }
+        else
+        {
+            Get-LocalizedText -Text '{0} and back up source: {1}' -Arguments @($photoActionDescription, $photo.FullName) -Language $OutputLanguage -MessagesPath $MessagesPath
         }
         if (-not $PSCmdlet.ShouldProcess($photo.FullName, $photoAction))
         {
@@ -309,9 +338,13 @@ for ($index = 0; $index -lt $mediaFiles.Count; $index++)
         {
             $results += Invoke-MediaPhotoOptimization -Photo $photo -FFmpegPath $ffmpegCommand.Source `
                 -FFprobePath $ffprobeCommand.Source -ExifToolPath $exifToolCommand.Source `
+                -ExifToolConfigPath $photoExifToolConfigPath `
                 -ReplaceOriginal $ReplaceOriginal.IsPresent -TargetSizeBytes $photoTargetSizeBytes `
+                -OptimizationMarkerValue $photoOptimizationMarkerValue `
+                -DensityThresholdMegabytesPerMegapixel $photoDensityThresholdMegabytesPerMegapixel `
                 -EstimatedOutputSizeBytes $photoEstimatedOutputSizeBytes `
-                -JpegQuality $photoJpegQuality -OriginalTimestamps $photoTimestamps `
+                -JpegQuality $photoJpegQuality -OptimizationPlan $photoPlan `
+                -OriginalTimestamps $photoTimestamps `
                 -UiLanguage $OutputLanguage -MessagesPath $MessagesPath -Reporter $reporter
         }
         catch
