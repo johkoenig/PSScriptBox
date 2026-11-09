@@ -17,6 +17,11 @@ Dieser Ordner enthält PowerShell-Werkzeuge zum Einrichten und Verarbeiten von P
    .\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs'
    .\Optimize-PdfSize.ps1 -InputPath 'C:\PDFs'
    ```
+5. Normalisiere vorhandene OCR-PDFs für unabhängige Textextraktoren:
+
+   ```powershell
+   .\Repair-PdfObjectStreams.ps1 -InputPath 'C:\PDFs' -WhatIf
+   ```
 
 Die PowerShell-Ausführungsrichtlinie kann eine genehmigte Vorgehensweise zum Ausführen lokaler Skripte erfordern. Ändere die systemweite Richtlinie nicht allein für diese Werkzeuge.
 
@@ -36,9 +41,10 @@ keine zusätzliche Software.
 
 ### `ConvertTo-SearchablePdf.ps1`
 
-Fügt gescannten PDFs OCR hinzu und korrigiert Schräglagen und verdrehte Seiten. Digital erzeugte PDFs werden anhand
-sichtbaren Texts und vorhandener Bildressourcen heuristisch erkannt und übersprungen; gemischte oder ungewöhnliche
-Dokumente können falsch eingeordnet werden. Verschlüsselte und digital signierte PDFs können nicht verarbeitet werden
+Fügt gescannten PDFs OCR hinzu, normalisiert vorhandene Textebenen und korrigiert Schräglagen und verdrehte Seiten.
+Digital erzeugte PDFs erhalten keine OCR, ihre Textebenen werden jedoch normalisiert. Die Klassifizierung verwendet
+sichtbaren Text und Bildressourcen; gemischte oder ungewöhnliche Dokumente können falsch eingeordnet werden.
+Verschlüsselte und digital signierte PDFs können nicht verarbeitet werden
 und werden als Probleme gemeldet. Die Bildoptimierung von OCRmyPDF ist deaktiviert, damit Herunterskalieren und
 JPEG-Komprimierung ausschließlich im separaten Skript `Optimize-PdfSize.ps1` stattfinden. Vorhandene OCR-Textebenen
 bleiben erhalten; Ghostscript rendert temporäre
@@ -48,6 +54,11 @@ wird OCR nur auf Seiten ohne Text ergänzt; die Schräglagenkorrektur wirkt nur 
 normale OCR optional, wird jedoch zur Rotationserkennung auf Seiten mit vorhandener Textebene benötigt. Nach
 erfolgreicher Verarbeitung wird die Eingabedatei ersetzt; standardmäßig wird vorher eine Sicherung `<Name>_orig.pdf`
 erstellt. Existiert diese Sicherung bereits, bleibt sie erhalten und die Eingabedatei wird direkt ersetzt.
+Vor dem Ersetzen prüft pikepdf, ob das Ergebnis Objektströme enthält, und schreibt es nur bei Bedarf ohne Objektströme
+neu. Dabei werden Seitenzahl und Anzahl der Seiten mit Textoperatoren auf Unverändertheit geprüft. Das verbessert
+die Kompatibilität mit unabhängigen PDF-Textextraktoren, ändert aber weder die OCR-Erkennung noch garantiert es
+Kompatibilität mit jedem Parser. Die Prüfung erfolgt auch dann, wenn OCR wegen einer vorhandenen Textebene oder eines
+digital erzeugten PDFs übersprungen wird.
 
 | Parameter / Schalter | Beschreibung                                                                                                                                                       |
 |----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -70,7 +81,35 @@ Beispiele:
 Das Ergebnis ist eine normale PDF und kein PDF/A. Vorhandene OCR-Textebenen werden bei späteren Läufen nicht erneuert;
 Seitenrotationen werden nur geändert, wenn die Ausrichtungserkennung eine Korrektur oberhalb der Konfidenzschwelle
 feststellt. Regulär übersprungene und unveränderte Dateien werden in der Zusammenfassung gezählt, aber nicht einzeln
-aufgeführt; verschlüsselte oder signierte PDFs erscheinen in der Problemliste.
+aufgeführt; verschlüsselte oder signierte PDFs erscheinen in der Problemliste. Die Normalisierung benötigt das
+installierte Python-Modul `pikepdf` und wird auf OCR-Ausgaben, Ergebnisse einer reinen Rotationskorrektur sowie
+texttragende PDFs angewendet, die wegen bereits vorhandener Textebene sonst übersprungen würden.
+
+### `Repair-PdfObjectStreams.ps1`
+
+Prüft eine PDF-Datei oder rekursiv gefundene PDFs auf Objektströme. PDFs mit Textebene werden nur bei vorhandenen
+Objektströmen mit pikepdf neu geschrieben und erneut geöffnet; Objektströme müssen entfernt und Seitenzahl sowie
+Anzahl der Seiten mit Textoperatoren erhalten bleiben. PDFs mit Textoperatoren, aber ohne Objektströme, gelten
+bereits als normalisiert und werden übersprungen; PDFs ohne Textoperatoren ebenfalls. Verschlüsselte und digital
+signierte PDFs bleiben unverändert und werden als Probleme gemeldet. Standardmäßig wird das Original als
+`<Name>_orig.pdf` gesichert;
+vorhandene Sicherungen bleiben erhalten. `-ReplaceOriginal` ersetzt die Eingabe ohne Sicherung.
+
+| Parameter / Schalter | Beschreibung                                                                           |
+|----------------------|----------------------------------------------------------------------------------------|
+| `-InputPath <Pfad>`  | PDF-Datei oder rekursiv zu verarbeitender Ordner. Ohne Angabe wird der Pfad abgefragt. |
+| `-ReplaceOriginal`   | Ersetzt die Eingabe, ohne eine neue `_orig`-Sicherung anzulegen.                       |
+| `-EnglishOutput`     | Erzwingt englische Konsolenausgabe unabhängig von der Windows-Anzeigesprache.          |
+| `-WhatIf`            | Zeigt geplante Änderungen, ohne PDFs zu verändern.                                     |
+| `-Confirm`           | Fragt vor dem Neuschreiben jeder PDF nach.                                             |
+
+Beispiele:
+
+```powershell
+.\Repair-PdfObjectStreams.ps1 -InputPath 'C:\PDFs' -WhatIf
+.\Repair-PdfObjectStreams.ps1 -InputPath 'C:\PDFs'
+.\Repair-PdfObjectStreams.ps1 -InputPath 'C:\PDFs\Scan.pdf' -ReplaceOriginal -EnglishOutput
+```
 
 ### `Optimize-PdfSize.ps1`
 
@@ -162,7 +201,8 @@ Beispiele:
 
 Skripte unterstützen, soweit anwendbar, außerdem PowerShell-Standardparameter wie `-Verbose`, `-Debug`, `-ErrorAction`
 und `-WarningAction`. `Remove-PdfBackups.ps1` und `Restore-PdfOriginals.ps1` unterstützen über
-`SupportsShouldProcess` auch `-WhatIf` und `-Confirm`.
+`SupportsShouldProcess` auch `-WhatIf` und `-Confirm`. `Repair-PdfObjectStreams.ps1` unterstützt diese Parameter
+ebenfalls.
 
 ## Sicherheit und Verhalten
 
@@ -170,8 +210,13 @@ und `-WarningAction`. `Remove-PdfBackups.ps1` und `Restore-PdfOriginals.ps1` unt
 - Neben der PDF werden keine dauerhaften Status- oder Markierungsdateien angelegt. Temporäre Verarbeitungsdateien werden nach dem Lauf entfernt.
 - Die OCR-Klassifizierung verwendet zustandslos sichtbaren Text und Hinweise auf gescannte Bildseiten. Sie ist eine
   bestmögliche Heuristik; gemischte oder ungewöhnliche PDFs können falsch eingeordnet werden. Vorhandene OCR-Textebenen
-  bleiben erhalten; Seitenrotationen werden durch Aktualisieren der PDF-Seitenmetadaten korrigiert, und OCR wird nur
-  für Seiten ohne Textebene ergänzt.
+  bleiben erhalten; digital erzeugte PDFs erhalten keine OCR, ihre Textebenen werden aber ebenfalls normalisiert.
+  Seitenrotationen werden durch Aktualisieren der PDF-Seitenmetadaten korrigiert, und OCR wird nur für Seiten ohne
+  Textebene ergänzt.
+- Die Objektstrom-Normalisierung schreibt PDFs nur neu, wenn Objektströme vorhanden sind, und kann die Dateigröße
+  ändern. Bereits normalisierte, verschlüsselte, digital signierte PDFs und PDFs ohne Textoperatoren werden
+  übersprungen. Verwende sie nur, wenn die PDF neu geschrieben werden darf; digitale Signaturen bleiben dabei nicht
+  gültig.
 - Das OCR-Skript akzeptiert geänderte Ergebnisse auch dann, wenn sie größer als das Original sind. Das
   Größenoptimierungsskript ersetzt eine PDF nur, wenn Ghostscript ein kleineres Ergebnis erzeugt.
 - Vorhandene `_orig`-Sicherungen bleiben erhalten.

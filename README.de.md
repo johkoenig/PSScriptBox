@@ -11,16 +11,18 @@ und lokale Nextcloud-Abläufe.
 
 ## PDF-Werkzeuge
 
-Diese Skripte machen PDFs durchsuchbar, verkleinern Dateien, finden fehlende Textebenen und verwalten Sicherungen.
+Diese Skripte machen PDFs durchsuchbar, normalisieren vorhandene OCR-PDFs für unabhängige Textextraktoren,
+verkleinern Dateien, finden fehlende Textebenen und verwalten Sicherungen.
 Einrichtung, Beispiele und Sicherheitshinweise stehen in der [PDF-Anleitung](pdf/README.de.md).
 
-| Skript                          | Zweck                                                                   |
-|---------------------------------|-------------------------------------------------------------------------|
-| `ConvertTo-SearchablePdf.ps1`   | OCR zu gescannten PDFs hinzufügen und Seitenrotation korrigieren.       |
-| `Optimize-PdfSize.ps1`          | PDF-Dateien durch Verkleinern der Bilder reduzieren.                    |
-| `Find-PdfsWithoutTextLayer.ps1` | PDFs mit fehlenden oder unvollständigen Textebenen finden.              |
-| `Remove-PdfBackups.ps1`         | `_orig`-Sicherungen entfernen, wenn eine bearbeitete PDF vorhanden ist. |
-| `Restore-PdfOriginals.ps1`      | PDFs aus passenden `_orig`-Sicherungen wiederherstellen.                |
+| Skript                          | Zweck                                                                      |
+|---------------------------------|----------------------------------------------------------------------------|
+| `ConvertTo-SearchablePdf.ps1`   | OCR hinzufügen, Objektströme normalisieren und Seitenrotation korrigieren. |
+| `Repair-PdfObjectStreams.ps1`   | Vorhandene texttragende PDFs für Parser-Kompatibilität normalisieren.      |
+| `Optimize-PdfSize.ps1`          | PDF-Dateien durch Verkleinern der Bilder reduzieren.                       |
+| `Find-PdfsWithoutTextLayer.ps1` | PDFs mit fehlenden oder unvollständigen Textebenen finden.                 |
+| `Remove-PdfBackups.ps1`         | `_orig`-Sicherungen entfernen, wenn eine bearbeitete PDF vorhanden ist.    |
+| `Restore-PdfOriginals.ps1`      | PDFs aus passenden `_orig`-Sicherungen wiederherstellen.                   |
 
 ## Medienwerkzeuge
 
