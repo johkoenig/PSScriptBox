@@ -65,6 +65,68 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-PdfInputFile.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-PdfObjectStreamNormalization.ps1')
 
+<#
+.SYNOPSIS
+    Rewrites text-bearing PDFs without object streams.
+
+.DESCRIPTION
+    Processes a PDF or all PDFs in a folder recursively. pikepdf checks for
+    object streams and rewrites text-bearing PDFs only when they are present,
+    improving compatibility with independent PDF text extractors. PDFs without
+    object streams or text-show operators are skipped. Encrypted or digitally
+    signed PDFs are not changed.
+
+    By default, the original is saved as <Name>_orig.pdf. Existing backups are
+    preserved. -ReplaceOriginal replaces the input without creating a backup.
+    The operation can be previewed with -WhatIf.
+
+.PARAMETER InputPath
+    PDF file or folder to process. If omitted, prompts for a path.
+
+.PARAMETER ReplaceOriginal
+    Replaces the input without creating a new _orig backup.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows UI language.
+
+.EXAMPLE
+    .\Repair-PdfObjectStreams.ps1 -InputPath 'C:\PDFs' -WhatIf
+    Previews normalization of text-bearing PDFs in C:\PDFs and its subfolders.
+
+.EXAMPLE
+    .\Repair-PdfObjectStreams.ps1 -InputPath 'C:\PDFs' -ReplaceOriginal
+    Normalizes text-bearing PDFs without creating original backups.
+
+.EXAMPLE
+Repair-PdfObjectStreams
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: PowerShell 5.1 or later, Python, and the pikepdf Python
+    module. This script checks dependencies and does not install software.
+
+#>
+function Repair-PdfObjectStreams
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSUseSingularNouns',
+            '',
+            Justification = 'The command processes multiple items; the plural noun is intentional and part of the documented command name.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [string] $InputPath,
+
+        [switch] $ReplaceOriginal,
+
+        [switch] $EnglishOutput
+    )
+
 $OutputLanguage = if (
 $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 )
@@ -118,7 +180,7 @@ if (-not $pythonRuntime)
         -MessageTemplate (Get-LocalizedText -Text 'Missing dependency: {0}' -Language $OutputLanguage -MessagesPath $MessagesPath)
     Write-Host $report.Message -ForegroundColor Yellow
     Write-Host "  $( $report.Guidance )"
-    exit 1
+    throw $report.Message
 }
 
 $pikepdfCheck = Invoke-PythonCommand -PythonPath $pythonRuntime.Path -Arguments @('-c', 'import pikepdf') `
@@ -131,7 +193,7 @@ if ($pikepdfCheck.ExitCode -ne 0)
         -MessageTemplate (Get-LocalizedText -Text 'Missing dependency: {0}' -Language $OutputLanguage -MessagesPath $MessagesPath)
     Write-Host $report.Message -ForegroundColor Yellow
     Write-Host "  $( $report.Guidance )"
-    exit 1
+    throw $report.Message
 }
 
 try
@@ -141,14 +203,14 @@ try
 catch
 {
     Write-Error $_.Exception.Message
-    exit 1
+    throw
 }
 
 $pdfFiles = @($inputSelection.Files)
 if ($pdfFiles.Count -eq 0)
 {
     Write-Host (Get-LocalizedText 'No PDFs found.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Green
-    exit 0
+    return
 }
 
 $basePathPrefix = $inputSelection.BasePath
@@ -349,5 +411,20 @@ else
 
 if ($failed.Count -gt 0)
 {
-    exit 1
+    throw (Get-LocalizedText -Text 'Failed: {0}' -Arguments @($failed.Count) -Language $OutputLanguage -MessagesPath $MessagesPath)
+}
+}
+
+# Direct execution (.\Repair-PdfObjectStreams.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Repair-PdfObjectStreams @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
+    }
 }

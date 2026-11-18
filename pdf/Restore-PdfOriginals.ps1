@@ -65,6 +65,72 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Get-EligibleOriginalPdf.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-OriginalPdfRestore.ps1')
 
+<#
+.SYNOPSIS
+    Restores original PDFs from backups and removes the processed PDFs.
+
+.DESCRIPTION
+    Recursively searches a folder for _orig PDF backups with a matching
+    processed PDF. For each approved item, the processed PDF is atomically
+    replaced by the original backup, removing the _orig file. Use -WhatIf to
+    preview the restore list.
+
+.PARAMETER InputPath
+    Folder to search recursively. If omitted, the path is requested interactively.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.PARAMETER Confirm
+Prompts before replacing each processed PDF with its original backup.
+
+.PARAMETER WhatIf
+Shows planned restorations without changing files.
+
+.EXAMPLE
+    .\Restore-PdfOriginals.ps1
+    Prompts for a folder.
+
+.EXAMPLE
+    .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -WhatIf
+    Previews which processed PDFs would be replaced by their original backups.
+
+.EXAMPLE
+    .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs'
+    Restores all matching original PDFs without per-file confirmation.
+
+.EXAMPLE
+    .\Restore-PdfOriginals.ps1 -InputPath 'C:\PDFs' -Confirm
+    Prompts before restoring each matching original PDF.
+
+.EXAMPLE
+Restore-PdfOriginals
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: PowerShell 5.1 or later. No additional programs or modules
+    are required.
+
+#>
+function Restore-PdfOriginals
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSUseSingularNouns',
+            '',
+            Justification = 'The command processes multiple items; the plural noun is intentional and part of the documented command name.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [string] $InputPath,
+
+        [switch] $EnglishOutput
+    )
+
 $OutputLanguage = if (
 $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 )
@@ -221,5 +287,20 @@ if ($failedFiles.Count -gt 0)
     foreach ($failedFile in $failedFiles)
     {
         Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($failedFile.Path, $failedFile.Reason) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
+    }
+}
+}
+
+# Direct execution (.\Restore-PdfOriginals.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Restore-PdfOriginals @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
     }
 }

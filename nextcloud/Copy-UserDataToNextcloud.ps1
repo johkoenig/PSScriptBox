@@ -78,10 +78,6 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$OutputLanguage = if (
-    $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
-) { 'en' } else { 'de' }
-$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-UserSpecialFolderPath.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-UserFolder.ps1')
@@ -90,6 +86,89 @@ $MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 . (Join-Path $PSScriptRoot 'internal\Test-FileReadAccess.ps1')
 . (Join-Path $PSScriptRoot 'internal\Copy-FileToStaging.ps1')
 . (Join-Path $PSScriptRoot 'internal\Copy-ChangedFile.ps1')
+
+<#
+.SYNOPSIS
+    Copies selected Windows user folders into a Nextcloud sync directory.
+
+.DESCRIPTION
+    Detects the current user's Desktop, Documents, Pictures, Music, and Videos
+    folders and copies selected folders to matching destinations beneath a
+    Nextcloud directory. The default Nextcloud path is discovered beneath the
+    current user's profile; use -NextcloudPath to specify another location.
+    All destination folders must already exist and be writable. Before copying,
+    the script checks read access and requires acknowledgement that the
+    Nextcloud sync client is paused. By default, folders are copied without
+    action-confirmation prompts; use -Confirm to request approval per folder.
+    Files with matching SHA-256 hashes anywhere in the destination are skipped.
+    Remaining files are copied to same-directory .part files, verified, and moved into
+    their final names with progress.
+    The script never mirrors or deletes unrelated destination content or
+    source data. After copying, it reminds the user to enable synchronization
+    and wait for completion before running Remove-MigratedUserData.ps1.
+
+    Before starting, the script inventories the selected source and destination
+    folders and checks read access. -WhatIf previews actions
+    without changing files.
+
+.PARAMETER NextcloudPath
+    Existing Nextcloud synchronization directory. If omitted, the
+    script uses the current user's 'Nextcloud' profile directory when present,
+    otherwise it prompts for a path.
+
+.PARAMETER Folders
+    One or more special user folders to copy. Defaults to Desktop,
+    Documents, Pictures, Music, and Videos. Pictures are copied to Photos.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.PARAMETER Confirm
+Prompts before copying each selected folder.
+
+.PARAMETER WhatIf
+Previews copy actions without changing files.
+
+.EXAMPLE
+    .\Copy-UserDataToNextcloud.ps1 -WhatIf
+    Shows which folders would be copied without changing files.
+
+.EXAMPLE
+    .\Copy-UserDataToNextcloud.ps1 -NextcloudPath 'D:\Nextcloud' -Folders Documents,Pictures
+    Copies the current user's Documents and Pictures folders to Documents and
+    Photos beneath D:\Nextcloud.
+
+.EXAMPLE
+Copy-UserDataToNextcloud
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: Windows PowerShell 5.1 or later. No administrator rights or
+    third-party modules are required.
+
+#>
+function Copy-UserDataToNextcloud
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [string] $NextcloudPath,
+
+        [ValidateSet('Desktop', 'Documents', 'Pictures', 'Music', 'Videos')]
+        [string[]] $Folders = @('Desktop', 'Documents', 'Pictures', 'Music', 'Videos'),
+
+        [switch] $EnglishOutput
+    )
+
+$OutputLanguage = if (
+    $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
+) { 'en' } else { 'de' }
+$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
+
 
 $progressWriter = {
     param([string] $Activity, [string] $Status, [int] $PercentComplete, [switch] $Completed)
@@ -241,8 +320,9 @@ try {
             Write-Host (Get-LocalizedText -Text '  ... and {0} more' -Arguments @($accessProblems.Count - $maxListed) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
         }
         Write-Host ''
-        Write-Host (Get-LocalizedText 'Copy not started: fix the read access problems listed above or exclude the affected folders with -Folders.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Red
-        exit 1
+        $abortMessage = Get-LocalizedText 'Copy not started: fix the read access problems listed above or exclude the affected folders with -Folders.' -Language $OutputLanguage -MessagesPath $MessagesPath
+        Write-Host $abortMessage -ForegroundColor Red
+        throw $abortMessage
     }
 
     # The client must be paused to prevent a concurrent sync from changing files.
@@ -354,5 +434,20 @@ try {
 }
 catch {
     Write-Host $_.Exception.Message -ForegroundColor Red
-    exit 1
+    throw
+}
+}
+
+# Direct execution (.\Copy-UserDataToNextcloud.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Copy-UserDataToNextcloud @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
+    }
 }

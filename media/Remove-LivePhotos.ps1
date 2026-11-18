@@ -59,6 +59,67 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-LivePhotoVideoCandidate.ps1')
 
+<#
+.SYNOPSIS
+    Removes Live Photo videos while keeping their matching still images.
+
+.DESCRIPTION
+    Recursively finds MOV files with a same-name JPG image in the same folder
+    and removes the MOV video. Use -WhatIf to preview candidates before
+    deletion.
+
+.PARAMETER InputPath
+    Folder to search recursively. If omitted, the path is requested interactively.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.PARAMETER Confirm
+Prompts before deleting each matching MOV file.
+
+.PARAMETER WhatIf
+Shows matching MOV files without deleting them.
+
+.EXAMPLE
+    .\Remove-LivePhotos.ps1 -InputPath 'C:\Photos' -WhatIf
+    Previews MOV files that have a same-name JPG in the same folder.
+
+.EXAMPLE
+    .\Remove-LivePhotos.ps1 -InputPath 'C:\Photos'
+    Removes matching MOV files without prompting.
+
+.EXAMPLE
+    .\Remove-LivePhotos.ps1 -InputPath 'C:\Photos' -Confirm
+    Prompts before deleting each matching MOV file.
+
+.EXAMPLE
+Remove-LivePhotos
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: PowerShell 5.1 or later. No additional programs or modules
+    are required.
+
+#>
+function Remove-LivePhotos
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSUseSingularNouns',
+            '',
+            Justification = 'The command processes multiple items; the plural noun is intentional and part of the documented command name.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [string] $InputPath,
+
+        [switch] $EnglishOutput
+    )
+
 $OutputLanguage = if (
 $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 )
@@ -100,7 +161,7 @@ if ( [string]::IsNullOrWhiteSpace($InputPath))
 if ( [string]::IsNullOrWhiteSpace($InputPath))
 {
     Write-Host (Get-LocalizedText 'No folder was specified.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Red
-    exit 1
+    throw (Get-LocalizedText 'No folder was specified.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 
 $InputPath = [Environment]::ExpandEnvironmentVariables($InputPath.Trim().Trim('"'))
@@ -117,7 +178,7 @@ try
 catch
 {
     Write-Host (Get-LocalizedText -Text 'Error: {0}' -Arguments @($_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Red
-    exit 1
+    throw
 }
 
 $basePathPrefix = $directory.FullName
@@ -247,5 +308,20 @@ else
         Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @(
             $relativePath, $result.FailureReason
         ) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
+    }
+}
+}
+
+# Direct execution (.\Remove-LivePhotos.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Remove-LivePhotos @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
     }
 }

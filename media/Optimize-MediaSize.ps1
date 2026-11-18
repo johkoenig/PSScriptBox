@@ -90,6 +90,83 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaSizeOptimization.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaPhotoOptimization.ps1')
 
+<#
+.SYNOPSIS
+    Reduces sizes of inefficient videos and eligible JPEG photos.
+
+.DESCRIPTION
+    Processes MOV, MP4, JPG, and JPEG files from a path or recursively from a
+    folder. Video behavior uses the existing 720p H.265 profile and codec
+    skip rules. JPEG photos above 0.25 MB per megapixel are re-encoded at high
+    quality without changing their pixel dimensions. Otherwise, photos larger
+    than 6 MB are scaled proportionally toward an estimated 5 MB output size.
+    Photos meeting neither threshold are skipped.
+
+    Videos and photos are kept only when the result is smaller. FFmpeg and
+    ExifTool copy and verify supported file-level and capture date/time
+    metadata before replacement. Creation, last-write, and last-access file
+    timestamps are preserved; NTFS change time cannot be set through the file
+    APIs used here. By default, the source is moved to <Name>_orig with its
+    original extension. -ReplaceOriginal removes the source only after the
+    smaller result is created and verified. Existing backups are never
+    overwritten.
+
+.PARAMETER InputPath
+    Optional path to a MOV, MP4, JPG, or JPEG file or folder containing these
+    files. If omitted, the path is requested interactively.
+
+.PARAMETER ReplaceOriginal
+    Replaces the source with a smaller optimized file after successful encoding
+    and date verification, without keeping an _orig backup. The source is not
+    removed if encoding or date verification fails.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.EXAMPLE
+    .\Optimize-MediaSize.ps1
+    Prompts for a video file or folder and keeps originals as _orig backups.
+
+.EXAMPLE
+    .\Optimize-MediaSize.ps1 -InputPath 'C:\Videos' -WhatIf
+    Previews which inefficiently encoded MOV and MP4 files would be processed.
+
+.EXAMPLE
+    .\Optimize-MediaSize.ps1 -InputPath 'C:\Videos\clip.mp4' -ReplaceOriginal
+    Replaces the MP4 only with a smaller, date-verified MP4.
+
+.EXAMPLE
+    .\Optimize-MediaSize.ps1 -InputPath 'C:\Photos' -WhatIf
+    Previews which large JPEG photos and inefficient videos would be processed.
+
+.EXAMPLE
+Optimize-MediaSize
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: Windows PowerShell 5.1 or PowerShell 7, FFmpeg with the
+    libx265 and MJPEG encoders, FFprobe, and ExifTool. These tools must be
+    available in PATH. Missing dependencies are reported individually with
+    installation guidance. The script does not install software or require
+    administrator rights.
+
+#>
+function Optimize-MediaSize
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [string] $InputPath,
+
+        [switch] $ReplaceOriginal,
+
+        [switch] $EnglishOutput
+    )
+
 $OutputLanguage = if (
 $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 )
@@ -158,7 +235,7 @@ if ($missingDependencies.Count -gt 0)
         Write-Host $report.Message -ForegroundColor Yellow
         Write-Host "  $( $report.Guidance )"
     }
-    exit 1
+    throw $report.Message
 }
 
 if ( [string]::IsNullOrWhiteSpace($InputPath))
@@ -175,14 +252,14 @@ try
 catch
 {
     Write-Host (Get-LocalizedText -Text 'Error: {0}' -Arguments @($_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Red
-    exit 1
+    throw
 }
 
 $mediaFiles = @($inputSelection.Files)
 if ($mediaFiles.Count -eq 0)
 {
     Write-Host (Get-LocalizedText 'No supported media files found.' -Language $OutputLanguage -MessagesPath $MessagesPath)
-    exit 0
+    return
 }
 $videoFiles = @($mediaFiles | Where-Object { $_.Extension -in @('.mov', '.mp4') })
 $photoFiles = @($mediaFiles | Where-Object { $_.Extension -in @('.jpg', '.jpeg') })
@@ -566,5 +643,20 @@ else
     {
         $relativePath = $result.FilePath.Substring($basePathPrefix.Length)
         Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $result.FailureReason) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
+    }
+}
+}
+
+# Direct execution (.\Optimize-MediaSize.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Optimize-MediaSize @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
     }
 }

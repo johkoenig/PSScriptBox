@@ -45,7 +45,7 @@ Repository guidance, especially for PowerShell scripts.
 - Production PowerShell code must not use `$script:` scope. Pass data explicitly through parameters and return values
   instead of relying on script-scoped state. Tests may use `$script:` when necessary, such as to share fixtures across
   Pester scopes.
-- Every other function lives in its own file in the tool folder's `internal` subfolder, or in `common\internal` when shared (see below). The file contains exactly one function and is named after it (`Verb-Noun.ps1`). Do not define functions inside top-level scripts.
+- Every other function lives in its own file in the tool folder's `internal` subfolder, or in `common\internal` when shared (see below). The file contains exactly one function and is named after it (`Verb-Noun.ps1`). Do not define helper functions inside top-level scripts; the only function a public command file defines is its own command (see Module layout below).
 - Internal functions used by more than one tool folder live in `common\internal\` (one function per file, same `Verb-Noun.ps1` rule). Their mirror tests live in `tests\common\internal\`. Internal functions used by only one tool folder stay in that folder's `internal\`.
 - Internal functions are written for testability:
   - All inputs are parameters, and all results are returned as objects. Do not read environment variables or user
@@ -54,6 +54,12 @@ Repository guidance, especially for PowerShell scripts.
   - Keep side effects (file system, processes, registry, network) in narrow functions. Logic that only transforms data must not touch the file system or processes, so tests need little or no mocking.
 - Every internal file has exactly one mirror test file at `tests\<tool>\internal\<Verb-Noun>.Tests.ps1`. New internal code aims for near 100% coverage; existing code is covered step by step.
 - Top-level scripts keep a skipped placeholder test in `tests\<tool>\` until their flow is covered by tests.
+
+### Module layout
+- The repository root contains the module manifest `PSScriptBox.psd1` and the script module `PSScriptBox.psm1`. The manifest lists the public commands explicitly in `FunctionsToExport`. The `.psm1` dot-sources every `internal\*.ps1` helper file and every public command file (excluding `tests` and `.git`), then calls `Export-ModuleMember -Function` with the public command names, so internal helpers stay module-private.
+- Each public command file is dual-mode. It keeps its top-level `param` block for direct execution, then defines its command as a function named after the file, with its own copy of the attribute block, `[CmdletBinding]`, `param` block, and comment-based help, followed by a direct-execution guard: `if ($MyInvocation.InvocationName -ne '.') { try { <Command> @PSBoundParameters } catch { exit 1 } }`. Dot-sourcing the file (module import, tests) only defines the function; running the file directly executes the command, and the guard turns a thrown error into exit code 1.
+- Inside a command function, fatal paths `throw` instead of calling `exit`, so calling the command from an imported module cannot terminate the host, and successful early ends use `return` instead of `exit 0`.
+- `tests\Module.Tests.ps1` validates the manifest, the module files, the import, the export list, and one end-to-end command run in a temporary Git repository.
 
 ## PowerShell style
 - Set `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'` near the start of every script.
@@ -111,7 +117,7 @@ Repository guidance, especially for PowerShell scripts.
 
 - The structure below `tests` mirrors the code structure. Example: `nextcloud\internal\Get-UserFolder.ps1` is tested in
   `tests\nextcloud\internal\Get-UserFolder.Tests.ps1`.
-- Every production `.ps1` file has exactly one mirror test file. `tests\Static.Tests.ps1` enforces this.
+- Every production `.ps1` file has exactly one mirror test file. `tests\Static.Tests.ps1` enforces this. The module files `PSScriptBox.psd1` and `PSScriptBox.psm1` are covered by the global `tests\Module.Tests.ps1`.
 - Global tests, such as repository-wide code analysis, stay directly in `tests`, but only if they apply to all files.
 - Shared test helpers (for example `tests\TestHelpers.ps1`) stay in `tests`.
 - Functions in `internal` must be testable: pass all inputs and outputs explicitly (parameters and return values) so

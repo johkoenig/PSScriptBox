@@ -26,6 +26,8 @@ This folder contains two PowerShell scripts: one copies selected Windows user fo
    .\Remove-MigratedUserData.ps1 -NextcloudPath 'D:\Nextcloud' -WhatIf
    ```
 
+After importing the module (`Import-Module .\PSScriptBox.psd1` from the repository root), every command in this folder is also available by name, for example `Copy-UserDataToNextcloud -NextcloudPath 'D:\Nextcloud' -WhatIf`.
+
 ## Dependency setup
 
 The Nextcloud sync client must be installed and configured. The synchronization folder is `%USERPROFILE%\Nextcloud` by

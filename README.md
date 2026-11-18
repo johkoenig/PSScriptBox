@@ -8,6 +8,19 @@
 PSScriptBox is a collection of PowerShell utilities for PDF and media processing, Git setup, and local Nextcloud
 workflows.
 
+## Module usage
+
+Import the module from a checkout of this repository:
+
+```powershell
+Import-Module .\PSScriptBox.psd1
+```
+
+After the import, all commands are available by name, for example `Remove-ObsoleteGitBranches -WhatIf` or
+`Optimize-PdfSize -InputPath .\Documents`. The manifest lists the exported commands in `FunctionsToExport`;
+internal helpers are not exported. The scripts in the tool folders can still be run directly by path, exactly as
+documented in the tool guides.
+
 ## PDF tools
 
 These scripts help make PDFs searchable, normalize existing OCR PDFs for independent text extractors, reduce file size,
@@ -60,7 +73,7 @@ synchronization. See the [Nextcloud tools guide](nextcloud/README.md) for detail
 Run the test suite with `.\tests\Invoke-Tests.ps1` from the repository root; Pester 5 or later is required. Add
 `-Coverage` to report executable-line coverage for internal helpers, list uncovered line ranges, and print a coverage
 summary. Fully covered files are omitted from the listing. GitHub Actions also runs the tests on Windows PowerShell 5.1
-and PowerShell 7.
+and PowerShell 7. The module tests in `tests\Module.Tests.ps1` verify the manifest, the import, and the exported commands.
 
 ## Contributing
 

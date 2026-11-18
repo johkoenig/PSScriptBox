@@ -61,6 +61,8 @@ Dateinamen oder Metadaten. Verwende Windows PowerShell 5.1 oder PowerShell 7 in 
 Die PowerShell-Ausführungsrichtlinie kann eine richtlinienkonforme Methode erfordern, um lokale Skripte auszuführen.
 Schwäche die systemweite Richtlinie nicht nur für diese Werkzeuge.
 
+Nach dem Importieren des Moduls (`Import-Module .\PSScriptBox.psd1` aus dem Repository-Wurzelverzeichnis) ist jeder Befehl dieses Ordners auch per Name verfügbar, zum Beispiel `Remove-LivePhotos -InputPath 'C:\Medien' -WhatIf`.
+
 ## Abhängigkeiten
 
 `Optimize-MediaSize.ps1` benötigt:

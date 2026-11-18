@@ -66,6 +66,74 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-EligibleMediaBackup.ps1')
 
+<#
+.SYNOPSIS
+    Removes media backups when the processed media file exists.
+
+.DESCRIPTION
+    Recursively searches a folder for MOV, MP4, JPG, and JPEG files with the
+    _orig suffix before the extension. A backup is eligible only when its
+    processed counterpart exists in the same folder. MOV backups match MP4
+    outputs; other supported backups match the same extension. Use -WhatIf to
+    preview the deletion list safely.
+
+.PARAMETER InputPath
+    Folder to search recursively for matching _orig media backups. If omitted,
+    the path is requested interactively.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.PARAMETER Confirm
+Prompts before deleting each eligible backup.
+
+.PARAMETER WhatIf
+Shows eligible backups without deleting them.
+
+.EXAMPLE
+    .\Remove-MediaBackups.ps1
+    Prompts for a folder.
+
+.EXAMPLE
+    .\Remove-MediaBackups.ps1 -InputPath 'C:\Media' -WhatIf
+    Previews which _orig files would be deleted.
+
+.EXAMPLE
+    .\Remove-MediaBackups.ps1 -InputPath 'C:\Media'
+    Removes eligible backups without prompting.
+
+.EXAMPLE
+    .\Remove-MediaBackups.ps1 -InputPath 'C:\Media' -Confirm
+    Prompts before deleting each eligible backup.
+
+.EXAMPLE
+Remove-MediaBackups
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: PowerShell 5.1 or later. No additional programs or modules
+    are required.
+
+#>
+function Remove-MediaBackups
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSUseSingularNouns',
+            '',
+            Justification = 'The command processes multiple items; the plural noun is intentional and part of the documented command name.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [string] $InputPath,
+
+        [switch] $EnglishOutput
+    )
+
 $OutputLanguage = if (
 $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 )
@@ -198,3 +266,18 @@ Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -Messa
 Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
 Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount) -Language $OutputLanguage -MessagesPath $MessagesPath)
 Write-Host (Get-LocalizedText -Text 'Deleted: {0}' -Arguments @($deletedCount) -Language $OutputLanguage -MessagesPath $MessagesPath)
+}
+
+# Direct execution (.\Remove-MediaBackups.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Remove-MediaBackups @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
+    }
+}

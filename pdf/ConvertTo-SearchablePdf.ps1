@@ -176,6 +176,164 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Invoke-PdfRotationOnly.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-PdfProcessing.ps1')
 
+<#
+.SYNOPSIS
+    Adds OCR and corrects scanned PDF pages.
+
+.DESCRIPTION
+    Processes one PDF file or all PDF files in a specified folder and its
+    subfolders. Digitally born PDFs are not OCRed, but their text-bearing pages
+    are still normalized. Classification is heuristic: visible text without
+    evidence of scanned image pages is treated as digitally born, while image
+    pages with hidden OCR text are treated as scanned.
+    Existing OCR text is preserved. Page rotation is detected separately and
+    applied as PDF page rotation metadata without regenerating the text layer.
+    In documents with partial OCR, OCRmyPDF adds text only to pages without
+    existing text. Deskewing is applied only to pages that still need OCR.
+    Digitally signed PDFs and encrypted PDFs that cannot be opened without a
+    password cannot be processed and are reported as issues.
+
+    On success, the input file is replaced. By default, the original is saved
+    as <Name>_orig.pdf. If that backup already exists, it is preserved and the
+    input is replaced directly with a warning. -ReplaceOriginal replaces the
+    input without a backup.
+
+    OCRmyPDF adds an OCR text layer and applies page correction. Image quality
+    optimization is handled separately by Optimize-PdfSize.ps1.
+
+    PAGE CORRECTION:
+      - Skewed scans are automatically deskewed (`--deskew`, enabled by default).
+      - Rotated pages (90°, 180°, 270°) are automatically detected and corrected
+        by default. Pages with existing text use Tesseract orientation detection
+        and require Ghostscript to render page previews; the existing PDF content
+        and OCR text are preserved while page rotation is updated.
+
+    LANGUAGES:
+      The default sequence is 'deu+eng+fra+ita+spa'. German (deu) and English
+      (eng) are required. French, Italian, and Spanish are optional and removed
+      if unavailable. No interactive language prompt is used.
+
+    RESULT VALIDATION:
+      Processing failures are reported and leave the input unchanged. A result
+      identical to the original is discarded. A larger but changed result is
+      treated as success and replaces the input. Before replacement, pikepdf
+      checks for object streams and rewrites the PDF only when they are present.
+      It verifies that the page count and text-bearing page count are preserved.
+      This also applies when OCR is skipped because the input already has text
+      or is digitally born.
+      The summary does not list routine skips or unchanged files; encrypted and
+      digitally signed PDFs are reported among the files with issues.
+
+    The script does not require administrator rights or install software.
+    Missing dependencies are reported with installation instructions.
+
+    OCRmyPDF progress bars and status messages are written directly to the
+    console without filtering.
+
+.PARAMETER Language
+    OCR languages as '+'-separated Tesseract codes, for example 'deu+eng'.
+    Default: 'deu+eng+fra+ita+spa'. deu and eng are required; unavailable
+    optional languages are removed.
+
+.PARAMETER InputPath
+    Optional path to a PDF file or folder containing PDFs. If omitted, the path
+    is requested interactively.
+
+.PARAMETER NoDeskew
+    Disables deskewing of pages that require OCR. Pages that already have text
+    are not deskewed or rasterized.
+
+.PARAMETER NoRotationOfPages
+    Disables automatic correction of pages rotated by 90°, 180°, or 270°.
+    Rotation correction is enabled by default with a confidence threshold of 5.
+
+.PARAMETER ReplaceOriginal
+    Replaces the input without a backup. By default, the original is saved as
+    <Name>_orig.pdf after successful processing. An existing backup is preserved
+    and the PDF is replaced directly.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.EXAMPLE
+    .\ConvertTo-SearchablePdf.ps1
+    Starts interactively with the default language sequence and automatic
+    deskewing. The original is saved as an _orig file on success.
+
+.EXAMPLE
+    .\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs'
+    Processes scanned PDFs in C:\PDFs. Rotated-page correction is enabled by default.
+
+.EXAMPLE
+    .\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs' -ReplaceOriginal
+    Processes all PDFs in C:\PDFs and replaces the originals without backups.
+
+.EXAMPLE
+    .\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs'
+    Preserves existing OCR text and corrects page rotation; OCR is added only
+    to scanned pages that do not already have text.
+
+.EXAMPLE
+ConvertTo-SearchablePdf
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies:
+      - Python
+      - OCRmyPDF (Python module)
+      - pikepdf (used for signature checking and installed with OCRmyPDF)
+      - Tesseract
+      - Ghostscript (optional for ordinary OCR; used for rotation-only
+        correction when a scanned PDF already has text)
+
+    This script checks its dependencies and prints installation guidance when
+    a required executable or Python module is missing.
+
+    Tesseract language data (.traineddata) is not installed automatically. If
+    required data is missing, the script points to
+    https://github.com/tesseract-ocr/tessdata_best and reports the local tessdata
+    folder where the files must be placed.
+
+    TECHNICAL NOTES:
+      - Output is a standard PDF version 1.5 (`--output-type pdf`), not a PDF/A
+        archive.
+      - Object streams are disabled after OCR to improve compatibility with
+        independent PDF text extractors.
+      - `--optimize 0` disables OCRmyPDF image optimization; use
+        Optimize-PdfSize.ps1 for image downsampling and JPEG compression.
+      - OCRmyPDF ignores `--image-dpi` for PDF input, so it is not passed.
+      - The file is saved as UTF-8 with BOM for correct Windows PowerShell 5.1
+        character decoding.
+
+#>
+function ConvertTo-SearchablePdf
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [CmdletBinding()]
+    param(
+        # Optional OCR language sequence, for example 'deu+eng'. Empty uses the default.
+        [string] $Language,
+
+        # Optional path to a PDF file or a folder containing PDFs.
+        [string] $InputPath,
+
+    # Disable deskewing on pages that need OCR (enabled by default).
+        [switch] $NoDeskew,
+
+        # Disable automatic correction of pages rotated by 90°, 180°, or 270°.
+        [switch] $NoRotationOfPages,
+
+        # Replace input without a backup (an _orig backup is created by default).
+        [switch] $ReplaceOriginal,
+
+        # Force English console output regardless of the Windows display language.
+        [switch] $EnglishOutput
+    )
+
 $OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 ) { 'en' } else { 'de' }
@@ -256,7 +414,7 @@ if ($dependencyCheck.Missing.Count -gt 0) {
         Write-Host $report.Message -ForegroundColor Yellow
         Write-Host "  $( $report.Guidance )"
     }
-    exit 1
+    throw $report.Message
 }
 if ($dependencyCheck.OptionalMissing.Count -gt 0) {
     foreach ($dependency in $dependencyCheck.OptionalMissing)
@@ -278,7 +436,7 @@ try {
 }
 catch {
     Write-Error (Get-LocalizedText -Text 'Could not get Tesseract languages. Check "tesseract --list-langs": {0}' -Arguments @($_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath)
-    exit 1
+    throw
 }
 $installedLanguages = @($tesseractInfo.Languages)
 
@@ -336,7 +494,7 @@ if ($missingRequired.Count -gt 0) {
     Get-LanguageDownloadHint -MissingLanguages $missingRequired -TessdataPath $tesseractInfo.TessdataPath `
         -TessdataUrl $TessdataUrl -UiLanguage $OutputLanguage -MessagesPath $MessagesPath |
         ForEach-Object { Write-Host $_ }
-    exit 1
+    throw (Get-LocalizedText -Text 'Missing required language data: {0}.' -Arguments @(($missingRequired -join ', ')) -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 
 # Silently remove unavailable optional languages.
@@ -347,7 +505,7 @@ if ($droppedLanguages.Count -gt 0) {
 }
 if ($availableLanguages.Count -eq 0) {
     Write-Error (Get-LocalizedText 'None of the requested languages is installed.' -Language $OutputLanguage -MessagesPath $MessagesPath)
-    exit 1
+    throw (Get-LocalizedText 'None of the requested languages is installed.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 $languageSelection = $availableLanguages -join '+'
 
@@ -430,5 +588,20 @@ if ($warningResults.Count -gt 0) {
     foreach ($warningResult in $warningResults) {
         $relativePath = $warningResult.FilePath.Substring($basePathPrefix.Length)
         Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $warningResult.Warning) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
+    }
+}
+}
+
+# Direct execution (.\ConvertTo-SearchablePdf.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        ConvertTo-SearchablePdf @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
     }
 }

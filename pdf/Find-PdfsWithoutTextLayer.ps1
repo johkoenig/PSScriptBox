@@ -57,6 +57,57 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Invoke-PythonCommand.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-PdfTextLayerStatus.ps1')
 
+<#
+.SYNOPSIS
+    Finds PDF files without a searchable text layer.
+
+.DESCRIPTION
+    Checks a PDF file or all PDFs in a folder and its subfolders. PDF text
+    operators in page content and embedded forms are detected. Files with no
+    text operators and PDFs with text on only some pages are listed separately.
+    The script does not assess text quality or searchability and does not modify
+    file contents.
+
+.PARAMETER InputPath
+    PDF file or folder to search recursively. If omitted, the path is requested
+    interactively.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.EXAMPLE
+    .\Find-PdfsWithoutTextLayer.ps1 -InputPath 'C:\PDFs'
+    Checks all PDFs in C:\PDFs and its subfolders.
+
+.EXAMPLE
+    .\Find-PdfsWithoutTextLayer.ps1 -InputPath 'C:\PDFs\Scan.pdf'
+    Checks only the specified PDF file.
+
+.EXAMPLE
+Find-PdfsWithoutTextLayer
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: PowerShell 5.1 or later, Python, and the pikepdf Python module.
+    This script checks its dependencies and prints installation guidance when
+    a required executable or Python module is missing.
+    No files are modified, and administrator rights are not required.
+
+#>
+function Find-PdfsWithoutTextLayer
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [CmdletBinding()]
+    param(
+        [string] $InputPath,
+
+        [switch] $EnglishOutput
+    )
+
 $OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 ) { 'en' } else { 'de' }
@@ -99,7 +150,7 @@ if (-not $pythonRuntime) {
         -MessageTemplate $missingDependencyTemplate
     Write-Host $report.Message -ForegroundColor Yellow
     Write-Host "  $( $report.Guidance )"
-    exit 1
+    throw $report.Message
 }
 $pythonPath = $pythonRuntime.Path
 
@@ -112,7 +163,7 @@ if ($moduleCheck.ExitCode -ne 0) {
 
     Write-Host $report.Message -ForegroundColor Yellow
     Write-Host "  $( $report.Guidance )"
-    exit 1
+    throw $report.Message
 }
 
 if (-not (Test-Path -LiteralPath $InputPath)) {
@@ -135,7 +186,7 @@ else {
 
 if ($pdfFiles.Count -eq 0) {
     Write-Host (Get-LocalizedText 'No PDFs found.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Green
-    exit 0
+    return
 }
 
 $basePathPrefix = $baseDirectory
@@ -223,5 +274,20 @@ if ($errors.Count -gt 0) {
     foreach ($result in $errors) {
         $relativePath = $result.FilePath.Substring($basePathPrefix.Length)
         Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $result.Error) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Red
+    }
+}
+}
+
+# Direct execution (.\Find-PdfsWithoutTextLayer.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Find-PdfsWithoutTextLayer @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
     }
 }

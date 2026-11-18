@@ -29,6 +29,8 @@ existing Git setting is listed first, so pressing Enter (default: choice 1) keep
 - **Name:** existing Git settings (local, global, system), the Active Directory or Windows display name, or a custom value.
 - **Email:** existing Git settings, the Active Directory `mail` attribute (domain-joined computers), the user principal name (Active Directory / Entra ID), the signed-in Microsoft account, or a custom value.
 
+After importing the module (`Import-Module .\PSScriptBox.psd1` from the repository root), every command in this folder is also available by name, for example `Remove-ObsoleteGitBranches -WhatIf`.
+
 ## Dependency setup
 
 Git must be installed and available on `PATH`. Each Git script checks for it and

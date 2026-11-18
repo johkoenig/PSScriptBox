@@ -79,16 +79,96 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$OutputLanguage = if (
-    $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
-) { 'en' } else { 'de' }
-$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-UserSpecialFolderPath.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-UserFolder.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-FolderInventory.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-FileSha256.ps1')
 . (Join-Path $PSScriptRoot 'internal\Remove-EmptyMatchingDirectory.ps1')
+
+<#
+.SYNOPSIS
+    Removes matching local files and empty subfolders represented in Nextcloud.
+
+.DESCRIPTION
+    Finds the current user's Desktop, Documents, Pictures, Music, and Videos
+    folders and compares each selected local file's SHA-256 hash with files
+    beneath its corresponding Nextcloud folder. Before deleting anything, the
+    user confirms that synchronization to the server has fully completed.
+    The script then shows the number and total size of matching local files,
+    counts subfolders that also exist in Nextcloud, and removes matching files
+    without per-folder confirmation by default. Use -Confirm to request
+    approval separately for each main folder. Matching local files are deleted after
+    their hashes are rechecked. Empty local subfolders are also deleted only
+    when the corresponding Nextcloud folder exists; non-matching files and the
+    selected main folders are retained.
+
+    The Nextcloud client must have completed synchronization before this
+    script runs. The script can compare local files but cannot independently
+    verify the server state. -WhatIf previews deletion without changing files.
+
+.PARAMETER NextcloudPath
+    Existing Nextcloud synchronization directory. If omitted, the script uses
+    the current user's 'Nextcloud' profile directory when present; otherwise
+    it prompts for a path.
+
+.PARAMETER Folders
+    One or more special user folders to inspect. Defaults to Desktop,
+    Documents, Pictures, Music, and Videos. Pictures map to Photos.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.PARAMETER Confirm
+Prompts before removing matching files and subfolders from each selected folder.
+
+.PARAMETER WhatIf
+Previews planned removals without changing files.
+
+.EXAMPLE
+    .\Remove-MigratedUserData.ps1 -WhatIf
+    Shows matching local files and corresponding subfolders that may be removed.
+
+.EXAMPLE
+    .\Remove-MigratedUserData.ps1 -NextcloudPath 'D:\Nextcloud' -Folders Documents,Pictures
+    Checks and removes matching local Documents and Pictures files after the
+    user confirms that synchronization has completed.
+
+.EXAMPLE
+    .\Remove-MigratedUserData.ps1 -NextcloudPath 'D:\Nextcloud' -Confirm
+    Requests per-folder approval after the synchronization acknowledgement.
+
+.EXAMPLE
+Remove-MigratedUserData
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: Windows PowerShell 5.1 or later. No administrator rights or
+    third-party modules are required.
+
+#>
+function Remove-MigratedUserData
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [string] $NextcloudPath,
+
+        [ValidateSet('Desktop', 'Documents', 'Pictures', 'Music', 'Videos')]
+        [string[]] $Folders = @('Desktop', 'Documents', 'Pictures', 'Music', 'Videos'),
+
+        [switch] $EnglishOutput
+    )
+
+$OutputLanguage = if (
+    $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
+) { 'en' } else { 'de' }
+$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
+
 
 # --- Banner ---------------------------------------------------------------
 $headerLines = @(
@@ -407,5 +487,20 @@ try {
 }
 catch {
     Write-Host $_.Exception.Message -ForegroundColor Red
-    exit 1
+    throw
+}
+}
+
+# Direct execution (.\Remove-MigratedUserData.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Remove-MigratedUserData @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
+    }
 }

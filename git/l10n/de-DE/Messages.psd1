@@ -86,5 +86,6 @@
     'Branches checked: {0}; obsolete candidates: {1}' = 'Geprüfte Branches: {0}; veraltete Kandidaten: {1}'
     'Removed: {0}, previewed: {1}, skipped: {2}, failed: {3}' = 'Entfernt: {0}, in Vorschau angezeigt: {1}, übersprungen: {2}, fehlgeschlagen: {3}'
     'Failed branches:' = 'Fehlerhafte Branches:'
+    'Failed: {0}' = 'Fehlgeschlagen: {0}'
     'Fatal error: {0}' = 'Schwerwiegender Fehler: {0}'
 }

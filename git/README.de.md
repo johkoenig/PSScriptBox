@@ -29,6 +29,8 @@ Eingabe. Eine vorhandene Git-Einstellung steht an erster Stelle, die Eingabetast
 - **Name:** vorhandene Git-Einstellungen (lokal, global, System), Anzeigename aus Active Directory bzw. Windows oder ein eigener Wert.
 - **E-Mail:** vorhandene Git-Einstellungen, das Active-Directory-Attribut `mail` (domänenverbundene Rechner), der Benutzerprinzipalname (Active Directory / Entra ID), das angemeldete Microsoft-Konto oder ein eigener Wert.
 
+Nach dem Importieren des Moduls (`Import-Module .\PSScriptBox.psd1` aus dem Repository-Wurzelverzeichnis) ist jeder Befehl dieses Ordners auch per Name verfügbar, zum Beispiel `Remove-ObsoleteGitBranches -WhatIf`.
+
 ## Abhängigkeiten einrichten
 
 Git muss installiert und über `PATH` erreichbar sein. Jedes Git-Skript prüft die

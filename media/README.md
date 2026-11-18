@@ -60,6 +60,8 @@ PowerShell 5.1 or PowerShell 7 from a regular user session.
 PowerShell execution policy may require a policy-approved way to run local scripts. Do not weaken system policy globally
 just to run these tools.
 
+After importing the module (`Import-Module .\PSScriptBox.psd1` from the repository root), every command in this folder is also available by name, for example `Remove-LivePhotos -InputPath 'C:\Media' -WhatIf`.
+
 ## Dependency setup
 
 `Optimize-MediaSize.ps1` requires:

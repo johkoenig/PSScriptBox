@@ -25,6 +25,8 @@ Dieser Ordner enthält PowerShell-Werkzeuge zum Einrichten und Verarbeiten von P
 
 Die PowerShell-Ausführungsrichtlinie kann eine genehmigte Vorgehensweise zum Ausführen lokaler Skripte erfordern. Ändere die systemweite Richtlinie nicht allein für diese Werkzeuge.
 
+Nach dem Importieren des Moduls (`Import-Module .\PSScriptBox.psd1` aus dem Repository-Wurzelverzeichnis) ist jeder Befehl dieses Ordners auch per Name verfügbar, zum Beispiel `Optimize-PdfSize -InputPath 'C:\PDFs' -WhatIf`.
+
 ## Abhängigkeiten einrichten
 
 PDF-Skripte mit externen Programmen prüfen ihre erforderlichen Programme und

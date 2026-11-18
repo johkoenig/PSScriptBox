@@ -1,16 +1,16 @@
 ﻿<#
 .SYNOPSIS
-    Analyzes repository PowerShell scripts with PSScriptAnalyzer.
+    Analyzes repository PowerShell scripts and module files with PSScriptAnalyzer.
 
 .DESCRIPTION
-    Runs PSScriptAnalyzer on production PowerShell scripts outside the tests
-    directory. The script requires PSScriptAnalyzer 1.21 or later, does not
+    Runs PSScriptAnalyzer on production PowerShell files (.ps1 and .psm1) outside
+    the tests directory. The script requires PSScriptAnalyzer 1.21 or later, does not
     install dependencies, and exits with code 1 when the analyzer reports
     errors or warnings.
 
 .EXAMPLE
     .\tests\Invoke-PSScriptAnalyzer.ps1
-    Analyzes production PowerShell scripts and fails if errors or warnings exist.
+    Analyzes production PowerShell files and fails if errors or warnings exist.
 
 .NOTES
     Dependencies: PSScriptAnalyzer 1.21 or later
@@ -45,7 +45,7 @@ foreach ($line in $banner)
 {
     Write-Host $line -ForegroundColor Cyan
 }
-Write-Host 'Analyzes PowerShell scripts and reports analyzer findings.' -ForegroundColor Cyan
+Write-Host 'Analyzes PowerShell scripts and module files and reports analyzer findings.' -ForegroundColor Cyan
 Write-Host ''
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -77,8 +77,8 @@ catch
     exit 1
 }
 
-$scriptFiles = @(Get-ChildItem -LiteralPath $repoRoot -Recurse -Filter '*.ps1' -File |
-        Where-Object { $_.FullName -notmatch '[\\/](\.git|tests)[\\/]' })
+$scriptFiles = @(Get-ChildItem -LiteralPath $repoRoot -Recurse -File |
+        Where-Object { $_.Extension -in @('.ps1', '.psm1') -and $_.FullName -notmatch '[\\/](\.git|tests)[\\/]' })
 Write-Host "Number of files: $( $scriptFiles.Count )"
 
 try

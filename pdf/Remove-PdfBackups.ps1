@@ -65,6 +65,73 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-EligibleOriginalPdf.ps1')
 
+<#
+.SYNOPSIS
+    Removes PDF backups when the processed PDF exists.
+
+.DESCRIPTION
+    Recursively searches a folder for PDF files with the _orig suffix before the
+    extension. A backup is deleted only when the corresponding processed PDF
+    without the _orig suffix exists in the same folder. Use -WhatIf to preview
+    the deletion list safely.
+
+.PARAMETER InputPath
+    Folder to search recursively for matching _orig PDFs. If omitted, the path
+    is requested interactively.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.PARAMETER Confirm
+Prompts before deleting each eligible backup.
+
+.PARAMETER WhatIf
+Shows eligible backups without deleting them.
+
+.EXAMPLE
+    .\Remove-PdfBackups.ps1
+    Prompts for a folder.
+
+.EXAMPLE
+    .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -WhatIf
+    Previews which _orig files would be deleted.
+
+.EXAMPLE
+    .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs'
+    Removes eligible backups without prompting.
+
+.EXAMPLE
+    .\Remove-PdfBackups.ps1 -InputPath 'C:\PDFs' -Confirm
+    Prompts before deleting each eligible backup.
+
+.EXAMPLE
+Remove-PdfBackups
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: PowerShell 5.1 or later. No additional programs or modules
+    are required.
+
+#>
+function Remove-PdfBackups
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSUseSingularNouns',
+            '',
+            Justification = 'The command processes multiple items; the plural noun is intentional and part of the documented command name.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [string] $InputPath,
+
+        [switch] $EnglishOutput
+    )
+
 $OutputLanguage = if (
     $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 ) { 'en' } else { 'de' }
@@ -173,3 +240,18 @@ Write-Host (Get-LocalizedText '=== Summary ===' -Language $OutputLanguage -Messa
 Write-Host (Get-LocalizedText -Text 'Path: {0}' -Arguments @($summaryPath) -Language $OutputLanguage -MessagesPath $MessagesPath)
 Write-Host (Get-LocalizedText -Text 'Found: {0}' -Arguments @($eligibleCount) -Language $OutputLanguage -MessagesPath $MessagesPath)
 Write-Host (Get-LocalizedText -Text 'Deleted: {0}' -Arguments @($deletedCount) -Language $OutputLanguage -MessagesPath $MessagesPath)
+}
+
+# Direct execution (.\Remove-PdfBackups.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Remove-PdfBackups @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
+    }
+}

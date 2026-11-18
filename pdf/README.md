@@ -25,6 +25,8 @@ This folder contains PowerShell utilities for preparing and processing PDF files
 
 PowerShell execution policy may require a policy-approved way to run local scripts. Do not weaken system policy globally just to run these tools.
 
+After importing the module (`Import-Module .\PSScriptBox.psd1` from the repository root), every command in this folder is also available by name, for example `Optimize-PdfSize -InputPath 'C:\PDFs' -WhatIf`.
+
 ## Dependency setup
 
 Each PDF script that needs external executables or Python modules checks them

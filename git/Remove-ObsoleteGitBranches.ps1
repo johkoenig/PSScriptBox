@@ -56,6 +56,68 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 
+<#
+.SYNOPSIS
+Removes obsolete local Git branches from the repository at the current location.
+
+.DESCRIPTION
+Protects the local main branch and the currently checked-out branch. A branch is
+considered obsolete when it is not ahead of local main, is not ahead of its
+available upstream, or is fully merged into the current branch. Branch analysis
+and removal do not check out branches or modify working-tree files.
+
+.PARAMETER EnglishOutput
+Forces English console output regardless of the Windows UI language.
+
+.PARAMETER WhatIf
+Shows obsolete branches that would be removed without deleting them.
+
+.PARAMETER Confirm
+Prompts before removing each obsolete branch.
+
+.EXAMPLE
+.\Remove-ObsoleteGitBranches.ps1
+Removes obsolete branches without prompting.
+
+.EXAMPLE
+.\Remove-ObsoleteGitBranches.ps1 -WhatIf
+
+.EXAMPLE
+.\Remove-ObsoleteGitBranches.ps1 -Confirm
+
+.EXAMPLE
+Remove-ObsoleteGitBranches
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+Dependencies: Git for Windows. If Git is missing, the script reports
+installation guidance and exits.
+Contributors:
+- Johannes Koenig <dev@jokoenig.de>
+
+#>
+function Remove-ObsoleteGitBranches
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSUseSingularNouns',
+            '',
+            Justification = 'The command processes multiple items; the plural noun is intentional and part of the documented command name.'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSShouldProcess',
+            '',
+            Justification = 'ShouldProcess runs in the internal helpers that receive the forwarded -WhatIf and -Confirm parameters.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [switch]$EnglishOutput
+    )
+
 $shouldProcessParameters = @{ }
 foreach ($parameterName in @('Confirm', 'WhatIf'))
 {
@@ -105,7 +167,7 @@ if ($null -eq $gitCommand)
             -Language $Language -MessagesPath $MessagesPath)
     Write-Host $report.Message -ForegroundColor Yellow
     Write-Host "  $( $report.Guidance )"
-    exit 1
+    throw $report.Message
 }
 
 $failedBranches = [System.Collections.Generic.List[object]]::new()
@@ -211,12 +273,27 @@ try
 
     if ($failedBranches.Count -gt 0)
     {
-        exit 1
+        throw (Get-LocalizedText -Text 'Failed: {0}' -Arguments @($failedBranches.Count) -Language $Language -MessagesPath $MessagesPath)
     }
 }
 catch
 {
     $message = Get-LocalizedText -Text 'Fatal error: {0}' -Language $Language -MessagesPath $MessagesPath
     Write-Host ($message -f $_.Exception.Message) -ForegroundColor Red
-    exit 1
+    throw ($message -f $_.Exception.Message)
+}
+}
+
+# Direct execution (.\Remove-ObsoleteGitBranches.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Remove-ObsoleteGitBranches @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
+    }
 }

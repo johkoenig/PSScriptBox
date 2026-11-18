@@ -26,6 +26,8 @@ Dieser Ordner enthält zwei PowerShell-Skripte: Das eine kopiert ausgewählte Wi
    .\Remove-MigratedUserData.ps1 -NextcloudPath 'D:\Nextcloud' -WhatIf
    ```
 
+Nach dem Importieren des Moduls (`Import-Module .\PSScriptBox.psd1` aus dem Repository-Wurzelverzeichnis) ist jeder Befehl dieses Ordners auch per Name verfügbar, zum Beispiel `Copy-UserDataToNextcloud -NextcloudPath 'D:\Nextcloud' -WhatIf`.
+
 ## Abhängigkeiten einrichten
 
 Der Nextcloud-Synchronisierungsclient muss installiert und eingerichtet sein. Der Synchronisierungsordner ist

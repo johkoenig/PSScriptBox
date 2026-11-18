@@ -90,10 +90,6 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$OutputLanguage = if (
-    $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
-) { 'en' } else { 'de' }
-$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 . (Join-Path $PSScriptRoot '..\common\internal\Get-LocalizedText.ps1')
 . (Join-Path $PSScriptRoot '..\common\internal\Get-MissingDependencyReport.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-GitCommand.ps1')
@@ -111,6 +107,106 @@ $MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
 . (Join-Path $PSScriptRoot 'internal\Get-RecommendedSettingOption.ps1')
 . (Join-Path $PSScriptRoot 'internal\Resolve-RecommendedSettingAnswer.ps1')
 . (Join-Path $PSScriptRoot 'internal\Set-RecommendedGitSetting.ps1')
+
+<#
+.SYNOPSIS
+    Initializes the Git author identity and optional standard settings.
+
+.DESCRIPTION
+    Configures user.name and user.email for the selected scope
+    (repository-local by default, or global). For each value the script offers
+    discovered choices and a custom entry; an existing setting is listed first
+    and is the default, so pressing Enter keeps it:
+    - Name: existing Git settings (local, global, system), the account display
+      name (Windows or Active Directory), or a custom value.
+    - Email: existing Git settings, the Active Directory mail attribute, the
+      user principal name, the signed-in Microsoft account, or a custom value.
+    Afterwards every recommended standard option (default branch, line endings,
+    pull/push behavior, sign-off helpers) is selected individually; the
+    default is the existing value, or the recommendation when none is set.
+    No personal information is stored in this script; every value is
+    discovered at run time or supplied by the user.
+
+.PARAMETER RepositoryPath
+    Path inside the Git repository to configure when -Scope is Local. Defaults
+    to the current directory. Ignored for the Global scope.
+
+.PARAMETER Scope
+    Configuration scope to write: Local (repository, default) or Global (all
+    repositories of the current user).
+
+.PARAMETER Name
+    Name to use instead of the interactive choice for user.name.
+
+.PARAMETER Email
+    Email address to use instead of the interactive choice for user.email.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.PARAMETER Confirm
+Prompts before each Git configuration write.
+
+.PARAMETER WhatIf
+Previews Git configuration writes without changing settings.
+
+.EXAMPLE
+    .\Initialize-GitConfiguration.ps1
+    Offers identity choices and selects recommended settings for the
+    repository in the current directory.
+
+.EXAMPLE
+    .\Initialize-GitConfiguration.ps1 -Scope Global
+    Configures the global identity and settings for the current user.
+
+.EXAMPLE
+    .\Initialize-GitConfiguration.ps1 -RepositoryPath 'C:\src\project' -Name 'Jane Doe' -Email 'jane@example.com' -WhatIf
+    Sets the identity for the specified repository without identity prompts.
+
+.EXAMPLE
+Initialize-GitConfiguration
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: Windows PowerShell 5.1 or later and Git for Windows. If Git
+    is missing, the script reports installation guidance and exits.
+    Active Directory lookups run only on domain-joined computers and fail
+    silently when no directory is reachable. Git has no setting that adds a
+    Signed-off-by trailer to every commit; the recommended settings include
+    format.signOff and an alias 'cs' (commit --signoff) instead.
+
+#>
+function Initialize-GitConfiguration
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSShouldProcess',
+            '',
+            Justification = 'ShouldProcess runs in the internal helpers that receive the forwarded -WhatIf and -Confirm parameters.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [string] $RepositoryPath = (Get-Location).Path,
+
+        [ValidateSet('Local', 'Global')]
+        [string] $Scope = 'Local',
+
+        [string] $Name,
+
+        [string] $Email,
+
+        [switch] $EnglishOutput
+    )
+
+$OutputLanguage = if (
+    $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
+) { 'en' } else { 'de' }
+$MessagesPath = Join-Path $PSScriptRoot 'l10n\de-DE\Messages.psd1'
+
 
 $shouldProcessParameters = @{ }
 foreach ($parameterName in @('Confirm', 'WhatIf'))
@@ -147,7 +243,7 @@ if ($null -eq $gitCommand)
         -MessageTemplate (Get-LocalizedText -Text 'Missing dependency: {0}' -Language $OutputLanguage -MessagesPath $MessagesPath)
     Write-Host $report.Message -ForegroundColor Yellow
     Write-Host "  $( $report.Guidance )"
-    exit 1
+    throw $report.Message
 }
 Write-Host (Get-LocalizedText '  Sets the Git author identity and configures recommended standard settings.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Cyan
 Write-Host ''
@@ -309,5 +405,20 @@ foreach ($setting in Get-RecommendedGitSetting)
 }
 catch {
     Write-Host $_.Exception.Message -ForegroundColor Red
-    exit 1
+    throw
+}
+}
+
+# Direct execution (.\Initialize-GitConfiguration.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Initialize-GitConfiguration @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
+    }
 }

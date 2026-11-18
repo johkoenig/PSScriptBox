@@ -70,6 +70,65 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\New-MediaDateFileName.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-MediaDateRestoration.ps1')
 
+<#
+.SYNOPSIS
+    Restores media dates and renames files using their best available date.
+
+.DESCRIPTION
+    Recursively processes supported media files in a folder. The date source
+    priority is filename, EXIF DateTimeOriginal, CreateDate, then ModifyDate.
+    Files are renamed when needed to YY-MM-DD HH-mm-ss XXXX with a random
+    uppercase four-character code, and supported filesystem and embedded dates
+    are set.
+
+.PARAMETER InputPath
+    Folder to search recursively. If omitted, the path is requested interactively.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.PARAMETER Confirm
+Prompts before renaming a file or changing its dates.
+
+.PARAMETER WhatIf
+Previews proposed names and date updates without changing files.
+
+.EXAMPLE
+    .\Restore-MediaDate.ps1 -InputPath 'C:\Photos' -WhatIf
+    Previews date sources and proposed filenames without changing files.
+
+.EXAMPLE
+    .\Restore-MediaDate.ps1 -InputPath 'C:\Photos'
+    Processes supported media files without confirmation prompts.
+
+.EXAMPLE
+    .\Restore-MediaDate.ps1 -InputPath 'C:\Photos' -Confirm
+    Prompts before each file is changed.
+
+.EXAMPLE
+Restore-MediaDate
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies: Windows PowerShell 5.1 or PowerShell 7 and ExifTool.
+    ExifTool must be available in PATH. If it is missing, the script prints
+    installation guidance. The script does not install software.
+
+#>
+function Restore-MediaDate
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param(
+        [string] $InputPath,
+
+        [switch] $EnglishOutput
+    )
+
 $OutputLanguage = if (
 $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 )
@@ -111,7 +170,7 @@ if ($null -eq $exifToolCommand)
         -MessageTemplate $missingDependencyTemplate
     Write-Host $report.Message -ForegroundColor Yellow
     Write-Host "  $( $report.Guidance )"
-    exit 1
+    throw $report.Message
 }
 
 if ( [string]::IsNullOrWhiteSpace($InputPath))
@@ -123,7 +182,7 @@ if ( [string]::IsNullOrWhiteSpace($InputPath))
 if ( [string]::IsNullOrWhiteSpace($InputPath))
 {
     Write-Host (Get-LocalizedText 'No folder was specified.' -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Red
-    exit 1
+    throw (Get-LocalizedText 'No folder was specified.' -Language $OutputLanguage -MessagesPath $MessagesPath)
 }
 
 $InputPath = [Environment]::ExpandEnvironmentVariables($InputPath.Trim().Trim('"'))
@@ -135,7 +194,7 @@ try
 catch
 {
     Write-Host (Get-LocalizedText -Text 'Error: {0}' -Arguments @($_.Exception.Message) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Red
-    exit 1
+    throw
 }
 
 $mediaFiles = @($inputSelection.Files)
@@ -323,5 +382,20 @@ else
         Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @(
             $relativePath, $result.FailureReason
         ) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor DarkYellow
+    }
+}
+}
+
+# Direct execution (.\Restore-MediaDate.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Restore-MediaDate @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
     }
 }

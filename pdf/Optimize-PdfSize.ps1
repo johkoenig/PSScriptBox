@@ -114,6 +114,110 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Optimize-WithGhostscript.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-PdfSizeOptimization.ps1')
 
+<#
+.SYNOPSIS
+    Reduces PDF file sizes by downsampling images.
+
+.DESCRIPTION
+    Processes one PDF file or all PDF files in a specified folder and its
+    subfolders. Ghostscript downsamples color, grayscale, and monochrome images
+    and encodes color and grayscale images as JPEG. Digitally signed and
+    encrypted PDFs cannot be processed and are reported as issues.
+    The input is replaced only when the optimized output is smaller.
+
+    By default, files smaller than 1 MB are skipped, and images are downsampled
+    to 300 DPI at JPEG quality 75. On success, the input file is replaced. By
+    default, the original is saved as <Name>_orig.pdf. If that backup already
+    exists, it is preserved and the input is replaced directly.
+    -ReplaceOriginal replaces the input without a backup.
+    For folder input, all PDFs are discovered first and files below the
+    minimum size are excluded before the processing loop.
+    The summary counts routine skips without listing them; encrypted and signed
+    PDFs are reported among the files with issues.
+
+    The script does not require administrator rights or install software.
+    Missing dependencies are reported with installation instructions.
+
+.PARAMETER InputPath
+    Optional path to a PDF file or folder containing PDFs. If omitted, the path
+    is requested interactively.
+
+.PARAMETER Dpi
+    Target image resolution for Ghostscript downsampling (50-1200). Default: 300.
+
+.PARAMETER JpegQuality
+    JPEG quality for downsampled images (1-100). Default: 75.
+
+.PARAMETER MinFileSize
+    Minimum original file size in bytes for processing. PowerShell size literals
+    such as 2MB can be used. Default: 1MB. Use 0 to disable the threshold.
+
+.PARAMETER ReplaceOriginal
+    Replaces the input without a backup. By default, the original is saved as
+    <Name>_orig.pdf. An existing backup is preserved.
+
+.PARAMETER EnglishOutput
+    Forces English console output regardless of the Windows display language.
+
+.EXAMPLE
+    .\Optimize-PdfSize.ps1
+    Starts interactively, skips files smaller than 1 MB, and targets 300 DPI
+    with JPEG quality 75.
+
+.EXAMPLE
+    .\Optimize-PdfSize.ps1 -InputPath 'C:\PDFs' -Dpi 200 -JpegQuality 65 -MinFileSize 2MB
+    Optimizes PDFs of at least 2 MB in C:\PDFs with a 200 DPI target and JPEG quality 65.
+
+.EXAMPLE
+    .\Optimize-PdfSize.ps1 -InputPath 'C:\PDFs' -ReplaceOriginal
+    Replaces smaller optimized PDFs in C:\PDFs without creating backups.
+
+.EXAMPLE
+Optimize-PdfSize
+After Import-Module PSScriptBox, runs the command from the module.
+
+.NOTES
+    Dependencies:
+      - Python
+      - pikepdf (used to detect encryption and digital signatures)
+      - Ghostscript
+
+    This script checks its dependencies and prints installation guidance when
+    a required executable or Python module is missing.
+    The output is a standard PDF version 1.5, not a PDF/A archive.
+
+#>
+function Optimize-PdfSize
+{
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSAvoidUsingWriteHost',
+            '',
+            Justification = 'This user-facing script provides localized, color-coded console output.'
+    )]
+    [CmdletBinding()]
+    param(
+    # Optional path to a PDF file or a folder containing PDFs.
+        [string] $InputPath,
+
+    # Target image resolution for Ghostscript downsampling. Default: 300 DPI.
+        [ValidateRange(50, 1200)]
+        [int] $Dpi = 300,
+
+    # JPEG quality for downsampled images. Default: 75.
+        [ValidateRange(1, 100)]
+        [int] $JpegQuality = 75,
+
+    # Minimum original PDF size in bytes; PowerShell size literals such as 2MB work.
+        [ValidateScript({ $_ -ge 0 })]
+        [long] $MinFileSize = 1MB,
+
+    # Replace the input without creating an _orig backup.
+        [switch] $ReplaceOriginal,
+
+    # Force English console output regardless of the Windows display language.
+        [switch] $EnglishOutput
+    )
+
 $OutputLanguage = if (
 $EnglishOutput -or [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -ne 'de'
 )
@@ -190,7 +294,7 @@ if ($missing.Count -gt 0)
         Write-Host $report.Message -ForegroundColor Yellow
         Write-Host "  $( $report.Guidance )"
     }
-    exit 1
+    throw $report.Message
 }
 
 try
@@ -216,14 +320,14 @@ try
 catch
 {
     Write-Error $_.Exception.Message
-    exit 1
+    throw
 }
 
 $allPdfFiles = @($inputSelection.Files)
 if ($allPdfFiles.Count -eq 0)
 {
     Write-Host (Get-LocalizedText 'No PDFs found.' -Language $OutputLanguage -MessagesPath $MessagesPath)
-    exit 0
+    return
 }
 $pdfFiles = $allPdfFiles
 $belowMinimumCount = 0
@@ -343,5 +447,20 @@ if ($warningResults.Count -gt 0)
     {
         $relativePath = $warningResult.FilePath.Substring($basePathPrefix.Length)
         Write-Host (Get-LocalizedText -Text '  - {0} ({1})' -Arguments @($relativePath, $warningResult.Warning) -Language $OutputLanguage -MessagesPath $MessagesPath) -ForegroundColor Yellow
+    }
+}
+}
+
+# Direct execution (.\Optimize-PdfSize.ps1, the call operator, or -File) runs the command; dot-sourcing (module import, tests) only defines it.
+if ($MyInvocation.InvocationName -ne '.')
+{
+    try
+    {
+        Optimize-PdfSize @PSBoundParameters
+    }
+    catch
+    {
+        # The command already reported the error; end the direct run with exit code 1.
+        exit 1
     }
 }
