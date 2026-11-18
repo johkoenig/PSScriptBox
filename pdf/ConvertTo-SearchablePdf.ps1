@@ -4,9 +4,10 @@
 
 .DESCRIPTION
     Processes one PDF file or all PDF files in a specified folder and its
-    subfolders. Digitally born PDFs are skipped. Classification is heuristic:
-    visible text without evidence of scanned image pages is treated as digitally
-    born, while image pages with hidden OCR text are treated as scanned.
+    subfolders. Digitally born PDFs are not OCRed, but their text-bearing pages
+    are still normalized. Classification is heuristic: visible text without
+    evidence of scanned image pages is treated as digitally born, while image
+    pages with hidden OCR text are treated as scanned.
     Existing OCR text is preserved. Page rotation is detected separately and
     applied as PDF page rotation metadata without regenerating the text layer.
     In documents with partial OCR, OCRmyPDF adds text only to pages without
@@ -37,7 +38,11 @@
     RESULT VALIDATION:
       Processing failures are reported and leave the input unchanged. A result
       identical to the original is discarded. A larger but changed result is
-      treated as success and replaces the input.
+      treated as success and replaces the input. Before replacement, pikepdf
+      checks for object streams and rewrites the PDF only when they are present.
+      It verifies that the page count and text-bearing page count are preserved.
+      This also applies when OCR is skipped because the input already has text
+      or is digitally born.
       The summary does not list routine skips or unchanged files; encrypted and
       digitally signed PDFs are reported among the files with issues.
 
@@ -110,6 +115,8 @@
     TECHNICAL NOTES:
       - Output is a standard PDF version 1.5 (`--output-type pdf`), not a PDF/A
         archive.
+      - Object streams are disabled after OCR to improve compatibility with
+        independent PDF text extractors.
       - `--optimize 0` disables OCRmyPDF image optimization; use
         Optimize-PdfSize.ps1 for image downsampling and JPEG compression.
       - OCRmyPDF ignores `--image-dpi` for PDF input, so it is not passed.
@@ -161,6 +168,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'internal\Test-PythonModule.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-MissingDependency.ps1')
 . (Join-Path $PSScriptRoot 'internal\Invoke-Tesseract.ps1')
+. (Join-Path $PSScriptRoot 'internal\Invoke-PdfObjectStreamNormalization.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-TesseractLanguage.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-LanguageDownloadHint.ps1')
 . (Join-Path $PSScriptRoot 'internal\Get-PdfInputFile.ps1')

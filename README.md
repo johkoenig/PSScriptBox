@@ -10,16 +10,18 @@ workflows.
 
 ## PDF tools
 
-These scripts help make PDFs searchable, reduce file size, find missing text layers, and manage backups. See
+These scripts help make PDFs searchable, normalize existing OCR PDFs for independent text extractors, reduce file size,
+find missing text layers, and manage backups. See
 the [PDF tools guide](pdf/README.md) for setup, examples, and safety details.
 
-| Script                          | Purpose                                             |
-|---------------------------------|-----------------------------------------------------|
-| `ConvertTo-SearchablePdf.ps1`   | Add OCR to scanned PDFs and correct page rotation.  |
-| `Optimize-PdfSize.ps1`          | Reduce PDF size by downsampling images.             |
-| `Find-PdfsWithoutTextLayer.ps1` | Find PDFs with missing or incomplete text layers.   |
-| `Remove-PdfBackups.ps1`         | Remove `_orig` backups when a processed PDF exists. |
-| `Restore-PdfOriginals.ps1`      | Restore PDFs from matching `_orig` backups.         |
+| Script                          | Purpose                                                        |
+|---------------------------------|----------------------------------------------------------------|
+| `ConvertTo-SearchablePdf.ps1`   | Add OCR, normalize object streams, and correct page rotation.  |
+| `Repair-PdfObjectStreams.ps1`   | Normalize existing text-bearing PDFs for parser compatibility. |
+| `Optimize-PdfSize.ps1`          | Reduce PDF size by downsampling images.                        |
+| `Find-PdfsWithoutTextLayer.ps1` | Find PDFs with missing or incomplete text layers.              |
+| `Remove-PdfBackups.ps1`         | Remove `_orig` backups when a processed PDF exists.            |
+| `Restore-PdfOriginals.ps1`      | Restore PDFs from matching `_orig` backups.                    |
 
 ## Media tools
 

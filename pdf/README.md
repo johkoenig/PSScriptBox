@@ -17,6 +17,11 @@ This folder contains PowerShell utilities for preparing and processing PDF files
    .\ConvertTo-SearchablePdf.ps1 -InputPath 'C:\PDFs'
    .\Optimize-PdfSize.ps1 -InputPath 'C:\PDFs'
    ```
+5. Normalize existing OCR PDFs for independent text extractors:
+
+   ```powershell
+   .\Repair-PdfObjectStreams.ps1 -InputPath 'C:\PDFs' -WhatIf
+   ```
 
 PowerShell execution policy may require a policy-approved way to run local scripts. Do not weaken system policy globally just to run these tools.
 
@@ -35,8 +40,9 @@ features and need no additional software.
 
 ### `ConvertTo-SearchablePdf.ps1`
 
-Adds OCR to scanned PDFs and corrects skewed or rotated pages. Digitally born PDFs are skipped using a heuristic based
-on visible text and image resources; mixed or unusual documents may be classified imperfectly. Encrypted PDFs and
+Adds OCR to scanned PDFs, normalizes existing text layers, and corrects skewed or rotated pages. Digitally born PDFs
+are not OCRed, but their text layers are normalized. Classification uses visible text and image resources; mixed or
+unusual documents may be classified imperfectly. Encrypted PDFs and
 digitally signed PDFs cannot be processed and are reported as issues. OCRmyPDF image optimization is disabled so image
 downsampling and JPEG compression remain the separate responsibility of `Optimize-PdfSize.ps1`. Existing OCR text is
 preserved; Ghostscript renders
@@ -45,6 +51,10 @@ avoids rerunning OCR or rasterizing pages that already have text. In partially O
 without text; deskew applies only to those pages. Ghostscript is optional for ordinary OCR but required for rotation
 detection on pages that already have text. On success, the input is replaced; by default, a backup named
 `<Name>_orig.pdf` is created. If that backup already exists, it is preserved and the input is replaced directly.
+Before replacement, pikepdf checks whether the result contains object streams and rewrites it with them disabled only
+when necessary. It verifies that the page count and text-bearing page count are unchanged. This improves compatibility
+with independent PDF text extractors; it does not change OCR recognition or guarantee compatibility with every parser.
+The check also runs when OCR is skipped because a text layer already exists or a PDF appears digitally born.
 
 | Parameter / switch   | Description                                                                                                                                      |
 |----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -66,7 +76,34 @@ Examples:
 
 The result is a standard PDF, not PDF/A. Existing OCR text is not regenerated on later runs; rotation is changed only
 when orientation detection identifies a correction above the confidence threshold. Routine skips and unchanged files
-are counted in the summary but not listed individually; encrypted or signed PDFs appear in the issue list.
+are counted in the summary but not listed individually; encrypted or signed PDFs appear in the issue list. The
+normalization step requires the installed `pikepdf` module and runs on OCR output, rotation-only output, and
+text-bearing PDFs that would otherwise be skipped because they already contain text.
+
+### `Repair-PdfObjectStreams.ps1`
+
+Checks a PDF file or recursively discovered PDFs for object streams. Text-bearing PDFs are rewritten with pikepdf and
+reopened to verify that object streams are absent and their page count and text-bearing page count remain unchanged.
+PDFs with text operators but no object streams are skipped as already normalized; PDFs without text-show operators are
+also skipped. Encrypted and digitally signed PDFs are not changed and are reported as issues.
+By default, the original is saved as `<Name>_orig.pdf`; existing backups are preserved. `-ReplaceOriginal` replaces
+the input without creating a backup.
+
+| Parameter / switch  | Description                                                                |
+|---------------------|----------------------------------------------------------------------------|
+| `-InputPath <path>` | PDF file or folder to process recursively. If omitted, prompts for a path. |
+| `-ReplaceOriginal`  | Replaces the input without creating a new `_orig` backup.                  |
+| `-EnglishOutput`    | Forces English console output regardless of Windows UI language.           |
+| `-WhatIf`           | Previews the changes without modifying PDFs.                               |
+| `-Confirm`          | Prompts before each PDF is rewritten.                                      |
+
+Examples:
+
+```powershell
+.\Repair-PdfObjectStreams.ps1 -InputPath 'C:\PDFs' -WhatIf
+.\Repair-PdfObjectStreams.ps1 -InputPath 'C:\PDFs'
+.\Repair-PdfObjectStreams.ps1 -InputPath 'C:\PDFs\Scan.pdf' -ReplaceOriginal -EnglishOutput
+```
 
 ### `Optimize-PdfSize.ps1`
 
@@ -156,15 +193,19 @@ Examples:
 
 Scripts also support PowerShell common parameters where applicable, including `-Verbose`, `-Debug`, `-ErrorAction`, and
 `-WarningAction`. `-WhatIf` and `-Confirm` are supported by `Remove-PdfBackups.ps1` and `Restore-PdfOriginals.ps1`
-through `SupportsShouldProcess`.
+through `SupportsShouldProcess`. `Repair-PdfObjectStreams.ps1` also supports them.
 
 ## Safety and behavior
 
 - Both optimization scripts use temporary files beside the input and clean them up after processing.
 - No persistent state or marker file is created beside a PDF. Temporary processing files are removed after the run.
 - OCR classification is stateless and uses visible text and scanned-image evidence. It is best-effort and may
-  misclassify mixed or unusual PDFs. Existing OCR text is preserved; page rotation is corrected by updating PDF page
-  metadata, and OCR is added only to pages without text.
+  misclassify mixed or unusual PDFs. Existing OCR text is preserved; digitally born PDFs are not OCRed, but their
+  text layers are still normalized. Page rotation is corrected by updating PDF page metadata, and OCR is added only
+  to pages without text.
+- Object-stream normalization rewrites PDFs only when object streams are present and may change file size. It skips
+  already-normalized PDFs, encrypted PDFs, digitally signed PDFs, and PDFs without text-show operators. Use it only
+  when the PDF may be rewritten; signatures cannot survive a rewrite.
 - The OCR script accepts changed results even when they are larger than the original. The size script replaces a PDF
   only when Ghostscript produces a smaller result.
 - Existing `_orig` backups are preserved.

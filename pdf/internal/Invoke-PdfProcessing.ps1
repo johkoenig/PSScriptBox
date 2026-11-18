@@ -22,8 +22,9 @@
 
 .DESCRIPTION
     Checks signatures and the text layer, then runs OCRmyPDF when OCR is
-    needed. Digitally born PDFs are skipped. Existing OCR text is preserved;
-    page rotation is detected separately and applied as PDF page metadata.
+    needed. Digitally born PDFs are not OCRed, but their text-bearing pages are
+    still normalized. Existing OCR text is preserved; page rotation is detected
+    separately and applied as PDF page metadata.
     OCRmyPDF skips pages that already have text, while adding OCR to textless
     pages in mixed documents. Encrypted and digitally signed PDFs are reported
     as issues because they cannot be processed.
@@ -90,6 +91,7 @@ function Invoke-PdfProcessing {
     # Keep temporary files beside the input so replacement stays on the same volume.
     $tempStem = '.{0}' -f [guid]::NewGuid().ToString('N')
     $tempPath = Join-Path $Pdf.DirectoryName ($tempStem + '.pdf.part')
+    $normalizedTempPath = Join-Path $Pdf.DirectoryName ($tempStem + '.normalized.pdf.part')
     $rotationTempPath = Join-Path $Pdf.DirectoryName ($tempStem + '.rotated.pdf.part')
     $originalPath = Join-Path $Pdf.DirectoryName ($Pdf.BaseName + '_orig' + $Pdf.Extension)
     $replaceBackupPath = Join-Path $Pdf.DirectoryName ($tempStem + '.bak.part')
@@ -258,9 +260,7 @@ with pdf:
 
         if ($isDigitallyBorn)
         {
-            $failureReason = Get-LocalizedText -Text 'Digitally born PDF; skipped by default' -Language $Language -MessagesPath $MessagesPath
-            & $Reporter 'Host' 'Green' (Get-LocalizedText -Text 'This PDF appears digitally born; skipping it.' -Language $Language -MessagesPath $MessagesPath)
-            return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $null; OriginalBytes = [long]0; ResultBytes = [long]0 }
+            & $Reporter 'Host' 'Green' (Get-LocalizedText -Text 'This PDF appears digitally born; OCR will be skipped, but its text layer will be normalized.' -Language $Language -MessagesPath $MessagesPath)
         }
 
         if (-not $ReplaceOriginal -and (Test-Path -LiteralPath $originalPath)) {
@@ -270,14 +270,24 @@ with pdf:
         }
 
         $hasExistingText = $textPageCount -gt 0
-        $shouldRunOcr = $true
+        $shouldRunOcr = -not $isDigitallyBorn
         $processingInputPath = $Pdf.FullName
-        $resultPath = $tempPath
+        $resultPath = if ($isDigitallyBorn)
+        {
+            $Pdf.FullName
+        }
+        else
+        {
+            $tempPath
+        }
         $changedRotationPages = 0
         if ($hasExistingText)
         {
-            & $Reporter 'Host' 'Yellow' (Get-LocalizedText -Text 'Existing OCR text will be preserved; page rotation is detected without running OCR.' -Language $Language -MessagesPath $MessagesPath)
-            if (-not $NoRotationOfPages)
+            if (-not $isDigitallyBorn)
+            {
+                & $Reporter 'Host' 'Yellow' (Get-LocalizedText -Text 'Existing text will be preserved; OCR is not required.' -Language $Language -MessagesPath $MessagesPath)
+            }
+            if (-not $NoRotationOfPages -and -not $isDigitallyBorn)
             {
                 if ($GhostscriptPath -and $TesseractPath)
                 {
@@ -313,12 +323,17 @@ with pdf:
             if ($textPageCount -eq $pageCount)
             {
                 $shouldRunOcr = $false
-                $resultPath = $rotationTempPath
-                if ($changedRotationPages -eq 0)
+                $resultPath = if ($changedRotationPages -gt 0)
                 {
-                    $failureReason = Get-LocalizedText -Text 'Existing OCR was preserved; no page rotation was applied.' -Language $Language -MessagesPath $MessagesPath
-                    & $Reporter 'Host' 'Yellow' $failureReason
-                    return [pscustomobject]@{ Success = $false; Skipped = $true; FilePath = $Pdf.FullName; FailureReason = $failureReason; Warning = $backupWarning; OriginalBytes = [long]0; ResultBytes = [long]0 }
+                    $rotationTempPath
+                }
+                else
+                {
+                    $Pdf.FullName
+                }
+                if ($changedRotationPages -eq 0 -and -not $isDigitallyBorn)
+                {
+                    & $Reporter 'Host' 'Yellow' (Get-LocalizedText -Text 'Existing OCR was preserved; no page rotation was applied.' -Language $Language -MessagesPath $MessagesPath)
                 }
             }
         }
@@ -363,13 +378,50 @@ with pdf:
         }
         else
         {
-            $resultPath = $rotationTempPath
+            $resultPath = if ($changedRotationPages -gt 0)
+            {
+                $rotationTempPath
+            }
+            else
+            {
+                $Pdf.FullName
+            }
         }
 
         if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf))
         {
             throw (Get-LocalizedText 'The processing step did not produce an output PDF.' -Language $Language -MessagesPath $MessagesPath)
         }
+        $normalization = Invoke-PdfObjectStreamNormalization -PythonPath $PythonPath `
+            -InputPath $resultPath -OutputPath $normalizedTempPath `
+            -UiLanguage $UiLanguage -MessagesPath $MessagesPath
+        switch ($normalization.Status)
+        {
+            'AlreadyNormalized' {
+                & $Reporter 'Host' 'DarkYellow' (Get-LocalizedText -Text 'PDF object streams are already disabled; normalization was skipped.' `
+                        -Language $Language -MessagesPath $MessagesPath)
+            }
+            'Repaired' {
+                $resultPath = $normalizedTempPath
+                & $Reporter 'Host' 'Green' (Get-LocalizedText -Text 'PDF object streams normalized ({0} pages; text found on {1} pages).' `
+                        -Arguments @($normalization.PageCount, $normalization.TextPageCount) `
+                        -Language $Language -MessagesPath $MessagesPath)
+            }
+            'NoTextLayer' {
+                throw (Get-LocalizedText 'The processed PDF contains no text layer.' -Language $Language -MessagesPath $MessagesPath)
+            }
+            'Signed' {
+                throw (Get-LocalizedText 'The processed PDF is digitally signed and cannot be normalized.' -Language $Language -MessagesPath $MessagesPath)
+            }
+            'Encrypted' {
+                throw (Get-LocalizedText 'The processed PDF is encrypted and cannot be normalized.' -Language $Language -MessagesPath $MessagesPath)
+            }
+            default {
+                throw (Get-LocalizedText 'Python returned an invalid object-stream result for ''{0}''.' `
+                        -Arguments @($resultPath) -Language $Language -MessagesPath $MessagesPath)
+            }
+        }
+
         $originalSize = (Get-Item -LiteralPath $Pdf.FullName).Length
         $resultSize = (Get-Item -LiteralPath $resultPath).Length
 
@@ -408,18 +460,12 @@ with pdf:
     }
     finally {
         # Always remove temporary files, including after failures.
-        if (Test-Path -LiteralPath $tempPath) {
-            Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
-        }
-        if (Test-Path -LiteralPath $rotationTempPath)
+        foreach ($temporaryPath in @($tempPath, $normalizedTempPath, $rotationTempPath, $replaceBackupPath, $signatureCheckPath))
         {
-            Remove-Item -LiteralPath $rotationTempPath -Force -ErrorAction SilentlyContinue
-        }
-        if (Test-Path -LiteralPath $replaceBackupPath) {
-            Remove-Item -LiteralPath $replaceBackupPath -Force -ErrorAction SilentlyContinue
-        }
-        if (Test-Path -LiteralPath $signatureCheckPath) {
-            Remove-Item -LiteralPath $signatureCheckPath -Force -ErrorAction SilentlyContinue
+            if (Test-Path -LiteralPath $temporaryPath)
+            {
+                Remove-Item -LiteralPath $temporaryPath -Force -ErrorAction SilentlyContinue
+            }
         }
     }
 }
