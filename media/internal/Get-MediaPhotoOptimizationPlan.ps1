@@ -19,7 +19,7 @@
     Path to the configuration defining the PSScriptBox XMP namespace.
 
 .PARAMETER OptimizationMarkerValue
-    Marker written to successfully optimized JPEG photos.
+    Marker value that identifies successfully optimized JPEG photos; a photo whose marker starts with the same profile prefix is skipped.
 
 .PARAMETER SizeThresholdBytes
     File size above which a photo is eligible for proportional resizing.
@@ -72,7 +72,7 @@
     Path to the configuration defining the PSScriptBox XMP namespace.
 
 .PARAMETER OptimizationMarkerValue
-    Marker written to successfully optimized JPEG photos.
+    Marker value that identifies successfully optimized JPEG photos; a photo whose marker starts with the same profile prefix is skipped.
 
 .PARAMETER SizeThresholdBytes
     File size above which a photo can be resized when its density is within
@@ -134,7 +134,15 @@ function Get-MediaPhotoOptimizationPlan
     }
 
     $existingMarker = $markerResult.StdOut.Trim()
-    if ( $existingMarker.StartsWith('Optimize-MediaSize/photo-', [System.StringComparison]::OrdinalIgnoreCase))
+    $markerProfilePrefix = if ($OptimizationMarkerValue.Contains('/'))
+    {
+        $OptimizationMarkerValue.Substring(0, $OptimizationMarkerValue.LastIndexOf('/') + 1)
+    }
+    else
+    {
+        $OptimizationMarkerValue
+    }
+    if ( $existingMarker.StartsWith($markerProfilePrefix, [System.StringComparison]::OrdinalIgnoreCase))
     {
         return [pscustomobject]@{
             Width = [long]0
